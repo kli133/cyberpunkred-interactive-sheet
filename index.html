@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CYBERPUNK RED // Интерактивный лист</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="scanlines"></div>
+  <header class="topbar">
+    <div class="brand"><span>CYBERPUNK</span><b>RED</b><small>// CHARACTER CONSOLE</small></div>
+    <div class="top-actions">
+      <button class="roll-mode" id="advantageBtn" type="button" aria-pressed="false">ПРЕИМУЩЕСТВО</button>
+      <button class="roll-mode" id="disadvantageBtn" type="button" aria-pressed="false">ПОМЕХА</button>
+      <button class="ghost" id="resetBtn">Очистить</button>
+      <button class="primary" id="exportBtn">Экспорт JSON</button>
+      <label class="file-btn">Импорт JSON<input id="importInput" type="file" accept=".json"></label>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <nav class="tabs" aria-label="Разделы листа">
+      <button class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">00 // Панель</button>
+      <button class="tab" data-tab="character" onclick="switchTab('character')">01 // Персонаж</button>
+      <button class="tab" data-tab="skills" onclick="switchTab('skills')">02 // Навыки</button>
+      <button class="tab" data-tab="equipment" onclick="switchTab('equipment')">03 // Снаряжение</button>
+      <button class="tab" data-tab="lifepath" onclick="switchTab('lifepath')">04 // Жизненный путь</button>
+      <button class="tab" data-tab="cyberware" onclick="switchTab('cyberware')">05 // Киберимпланты</button>
+    </nav>
+
+    <section class="status-strip">
+      <span><i class="dot"></i> SYSTEM ONLINE</span>
+      <span id="saveStatus">АВТОСОХРАНЕНИЕ ВКЛ.</span>
+      <span id="sheetName">НОВЫЙ ЛИСТ</span>
+      <button class="dice-toggle" id="diceToggle">КУБИК // 1D10</button>
+    </section>
+    <aside class="dice-drawer" id="diceDrawer" aria-label="Кубик Cyberpunk RED">
+      <div class="dice-head"><strong>КУБИК // NETRUNNER</strong><button id="diceClose">×</button></div>
+      <div class="dice-controls">
+        <div class="dice-pool" id="dicePool"></div>
+        <button type="button" class="add-die-button" id="addDie">+ ДОБАВИТЬ КУБИК</button>
+        <label>МОДИФИКАТОР<input id="diceModifier" type="number" value="0"></label>
+        <button class="primary roll-button" id="rollDice">БРОСИТЬ</button>
+      </div>
+      <div class="dice-result" id="diceResult">—</div>
+      <div class="dice-log" id="diceLog"></div>
+    </aside>
+
+    <section class="tab-panel active" id="dashboard">
+      <div class="page-heading">
+        <div><span class="eyebrow">CONTROL DECK // 00</span><h1>ПАНЕЛЬ ИГРОКА</h1></div>
+        <p id="dashboardGreeting">СИСТЕМА ГОТОВА</p>
+      </div>
+      <div class="dashboard-grid">
+        <div class="panel session-panel">
+          <div class="section-title">СЕССИЯ</div>
+          <label>Название сессии<input data-key="sessionTitle" placeholder="Ночная смена в Хейвуде"></label>
+          <label>Текущая сцена<textarea data-key="scene" rows="3" placeholder="Где сейчас находится команда?"></textarea></label>
+        </div>
+        <div class="panel activity-panel">
+          <div class="section-title">ПОСЛЕДНИЕ БРОСКИ <button class="clear-log" id="clearLog">ОЧИСТИТЬ</button></div>
+          <div id="dashboardLog" class="dashboard-log">Пока нет бросков.</div>
+        </div>
+        <div class="panel session-notes">
+          <div class="section-title">ЗАМЕТКИ ИГРОКА</div>
+          <textarea data-key="sessionNotes" rows="5" placeholder="Улики, NPC, обещания, важные детали..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="character">
+      <div class="identity-grid">
+        <div class="portrait-card">
+          <div class="portrait-placeholder" id="portraitPreview">NO<br>IMAGE</div>
+          <label class="portrait-upload">Загрузить портрет<input id="portraitInput" type="file" accept="image/*"></label>
+          <label>Имя персонажа<input data-key="name" placeholder="Введите имя"></label>
+          <label>Роль<input data-key="role" placeholder="Соло, Нетрunner..."></label>
+          <label>Особая способность<textarea data-key="ability" rows="2"></textarea></label>
+          <div class="character-resources">
+            <label>Репутация<input data-key="reputation" type="number" value="0"></label>
+            <label>Евродоллары<input data-key="eddies" type="number" value="0"></label>
+          </div>
+        </div>
+        <div class="stats-card">
+          <div class="section-title">ХАРАКТЕРИСТИКИ <span>STAT // CURRENT RESOURCE</span></div>
+          <div class="stats-grid" id="statsGrid"></div>
+          <div class="derived-grid">
+            <div class="metric"><span>Хиты</span><strong><input id="hpValue" data-key="currentHp" type="number" min="0" value="0" aria-label="Текущее здоровье"> / <output id="hpMaximum">0</output></strong></div>
+            <div class="metric"><span>Выносливость</span><strong id="staminaValue">0</strong></div>
+            <div class="metric"><span>Порог ранения</span><strong id="woundValue">0</strong></div>
+            <div class="metric"><span>Скорость</span><strong id="speedValue">0</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="columns-3">
+        <div class="panel">
+          <div class="section-title">БРОНЯ</div>
+          <div class="armor-grid">
+            <label>Голова<input data-key="armorHead" type="number" min="0"></label>
+            <label>Тело<input data-key="armorBody" type="number" min="0"></label>
+            <label>Штраф REF/DEX<input data-key="armorPenalty" type="number" min="0"></label>
+          </div>
+          <div class="section-title gap-top">ЗДОРОВЬЕ</div>
+          <label class="check-row"><input data-key="seriousWound" type="checkbox"> Тяжёлое ранение</label>
+          <div class="death-save-row">
+            <label class="check-row"><input data-key="deathSave" type="checkbox"> Испытание против смерти</label>
+            <button type="button" class="death-save-button" id="deathSaveButton">БРОСОК 1D10</button>
+          </div>
+        </div>
+        <div class="panel injury-panel">
+          <div class="section-title">СОСТОЯНИЕ</div>
+          <label class="note-field">КРИТИЧЕСКИЕ ТРАВМЫ<textarea data-key="criticalInjuries" rows="5" placeholder="Запишите критические травмы..."></textarea></label>
+          <label class="note-field">ЗАВИСИМОСТИ<textarea data-key="addictions" rows="5" placeholder="Запишите зависимости..."></textarea></label>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="tab-panel" id="skills">
+      <div class="page-heading">
+        <div><span class="eyebrow">SKILL DATABASE // 02</span><h1>НАВЫКИ</h1></div>
+        <div class="creation-controls">
+          <label><input id="creationMode" type="checkbox" checked> РЕЖИМ СОЗДАНИЯ</label>
+          <strong>ОСТАЛОСЬ ОЧКОВ: <span id="skillBudget">86</span></strong>
+        </div>
+      </div>
+      <div class="rules-note">В режиме создания уровень навыка ограничен 6, общий пул — 86 очков. В режиме игры ограничения снимаются.</div>
+      <div class="skill-search panel">
+        <label>ПОИСК НАВЫКА<input id="skillSearch" type="search" placeholder="Например: скрытность, техника, стрельба..."></label>
+        <div id="skillFilters" class="skill-filters"></div>
+      </div>
+      <div id="skillsCategories" class="skill-categories"></div>
+    </section>
+
+    <section class="tab-panel" id="equipment">
+      <div class="page-heading"><div><span class="eyebrow">LOADOUT DATABASE // 03</span><h1>СНАРЯЖЕНИЕ</h1></div><p>Предметы, оружие и боекомплект персонажа.</p></div>
+      <div class="equipment-grid">
+        <div class="panel">
+          <div class="section-title">СНАРЯЖЕНИЕ</div>
+          <table class="data-table gear-table">
+            <thead><tr><th>Предмет</th><th>Кол-во</th><th>Заметка</th><th></th></tr></thead>
+            <tbody id="gearRows"></tbody>
+          </table>
+          <button class="add-row" data-add="gear">+ ДОБАВИТЬ ПРЕДМЕТ</button>
+        </div>
+        <div class="panel">
+          <div class="section-title">ОРУЖИЕ <span>DMG // AMMO // ROF // NOTES</span></div>
+          <table class="data-table weapon-table">
+            <thead><tr><th>Оружие</th><th>Урон</th><th>Боепр.</th><th>ROF</th><th>Заметки</th><th></th></tr></thead>
+            <tbody id="weaponRows"></tbody>
+          </table>
+          <button class="add-row" data-add="weapon">+ ДОБАВИТЬ ОРУЖИЕ</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="lifepath">
+      <div class="page-heading"><div><span class="eyebrow">PERSONAL FILE // 04</span><h1>ЖИЗНЕННЫЙ ПУТЬ</h1></div><p>История, которая делает персонажа живым.</p></div>
+      <div class="panel life-basics" id="lifeBasics"></div>
+      <div class="life-grid">
+        <div class="panel life-fields" id="lifeFields"></div>
+        <div class="panel">
+          <div class="section-title">СВЯЗИ <span>RELATIONSHIPS</span></div>
+          <table class="data-table"><thead><tr><th>Персонаж</th><th>Кто это?</th><th>Что ему нужно?</th><th></th></tr></thead><tbody id="relationshipRows"></tbody></table>
+          <button class="add-row" data-add="relationship">+ ДОБАВИТЬ СВЯЗЬ</button>
+        </div>
+      </div>
+      <div class="panel story-panel">
+        <div class="section-title">РОЛЕВОЙ ЖИЗНЕННЫЙ ПУТЬ</div>
+        <textarea data-key="roleplay" rows="10" placeholder="Запишите важные события, цели и поворотные моменты..."></textarea>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="cyberware">
+      <div class="page-heading"><div><span class="eyebrow">BODY MODIFICATION // 05</span><h1>КИБЕРИМПЛАНТЫ</h1></div><div class="human-status">HUMANITY <input id="humanityValue" data-key="humanityValue" type="number" min="0" value="0" aria-label="Человечность"></div></div>
+      <div class="cyber-layout">
+        <div class="cyber-core">
+          <div class="cyber-table-slot slot-cranial" data-cyber-section="cranial"></div>
+          <div class="cyber-table-slot slot-right-eye" data-cyber-section="rightEye"></div>
+          <div class="cyber-table-slot slot-left-eye" data-cyber-section="leftEye"></div>
+          <div class="cyber-table-slot slot-right-arm" data-cyber-section="rightArm"></div>
+          <div class="cyber-table-slot slot-left-arm" data-cyber-section="leftArm"></div>
+          <div class="cyber-diagram"><svg class="body-silhouette" viewBox="0 0 180 360" aria-label="Схема тела"><circle cx="90" cy="35" r="25"></circle><path d="M90 60 L90 190 M90 80 L42 145 M90 80 L138 145 M90 190 L52 330 M90 190 L128 330 M65 105 L115 105 M65 125 L115 125"></path><path d="M42 145 L25 220 M138 145 L155 220"></path></svg><span class="cyber-note">Базовые слоты<br>киберимплантов</span></div>
+          <div class="cyber-table-slot slot-neural" data-cyber-section="neural"></div>
+          <div class="cyber-table-slot slot-right-leg" data-cyber-section="rightLeg"></div>
+          <div class="cyber-table-slot slot-left-leg" data-cyber-section="leftLeg"></div>
+        </div>
+        <div class="cyber-advanced">
+          <div class="cyber-table-slot" data-cyber-section="internal"></div>
+          <div class="cyber-table-slot" data-cyber-section="external"></div>
+          <div class="cyber-table-slot" data-cyber-section="fashionware"></div>
+          <div class="cyber-table-slot" data-cyber-section="borgware"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>НЕКОММЕРЧЕСКИЙ ЛИСТ ПЕРСОНАЖА // ДАННЫЕ ХРАНЯТСЯ ТОЛЬКО В ВАШЕМ БРАУЗЕРЕ</footer>
+  <script src="app.js"></script>
+</body>
+</html>
