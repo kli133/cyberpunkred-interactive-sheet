@@ -251,15 +251,17 @@ function skillRowHtml(ref, maxLevel){
   const custom = ref[0] === 'c';
   const j = ref.slice(1);
   const name = skills[base];
+  const rollButton = `<button class="skill-roll" data-roll-skill="${ref}" title="Бросить 1d10 + стат + навык">1d10</button>`;
+  // Специализация — в контейнере с переносом, чтобы на узком экране поле и кнопка не наезжали на колонку «Стат».
   const title = custom
-    ? `<span class="skill-variant">${esc(name)}:</span><input class="skill-spec" data-key="cskill${j}_spec" value="${esc(customSkill(ref).spec)}" placeholder="специализация" aria-label="Специализация">`
-    : `${esc(name)}${basicSkills.includes(name) ? '<span class="basic-mark" title="Базовый навык: при создании не ниже 2">Б</span>' : ''}`;
+    ? `<div class="skill-name"><span class="skill-variant">${esc(name)}:</span><input class="skill-spec" data-key="cskill${j}_spec" value="${esc(customSkill(ref).spec)}" placeholder="специализация" aria-label="Специализация">${rollButton}</div>`
+    : `${esc(name)}${basicSkills.includes(name) ? '<span class="basic-mark" title="Базовый навык: при создании не ниже 2">Б</span>' : ''}${rollButton}`;
   const actions = [
     `<button type="button" class="skill-upgrade" data-upgrade="${ref}" hidden></button>`,
     !custom && variantSkills.includes(name) ? `<button type="button" class="skill-add-variant" data-add-variant="${esc(name)}" title="Добавить специализацию">+</button>` : '',
     custom ? `<button type="button" class="remove" data-remove-skill="${j}" title="Удалить специализацию">×</button>` : ''
   ].join('');
-  return `<tr class="${custom ? 'is-variant' : ''}"><td>${title}<button class="skill-roll" data-roll-skill="${ref}" title="Бросить 1d10 + стат + навык">1d10</button></td><td>${esc(skillEntries[base][1])}</td><td><input data-key="${custom ? `cskill${j}_level` : `skill${base}`}" type="number" min="${refMin(ref)}" max="${maxLevel}" value="${refLevel(ref)}" aria-label="Уровень навыка"></td><td class="skill-total" data-skill-total="${ref}">${refTotal(ref)}</td><td class="skill-actions">${actions}</td></tr>`;
+  return `<tr class="${custom ? 'is-variant' : ''}"><td>${title}</td><td>${esc(skillEntries[base][1])}</td><td><input data-key="${custom ? `cskill${j}_level` : `skill${base}`}" type="number" min="${refMin(ref)}" max="${maxLevel}" value="${refLevel(ref)}" aria-label="Уровень навыка"></td><td class="skill-total" data-skill-total="${ref}">${refTotal(ref)}</td><td class="skill-actions">${actions}</td></tr>`;
 }
 
 function renderSkills(){
