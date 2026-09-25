@@ -1822,12 +1822,23 @@ footer {
 
 .skill-variant {
   color: #777;
-  margin-right: 4px;
+}
+
+.skill-table .skill-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 4px;
+}
+
+.skill-table .skill-name .skill-roll {
+  margin-left: 0;
 }
 
 .skill-table .skill-spec {
-  width: 45%;
-  min-width: 90px;
+  flex: 1 1 90px;
+  width: auto;
+  min-width: 70px;
   border: 0;
   border-bottom: 1px solid #aaa;
   background: transparent;
@@ -1905,8 +1916,7 @@ footer {
   }
 
   .skill-table .skill-spec {
-    width: 100%;
-    margin-top: 3px;
+    flex-basis: 100%;
   }
 }
 
