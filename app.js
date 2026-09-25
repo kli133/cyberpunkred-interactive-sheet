@@ -2,11 +2,12 @@
 const skillEntries = Object.values(skillCategories).flat();
 const skills = skillEntries.map(([name]) => name);
 const penalizedStats = [1, 2, 7]; // РЕФ, ЛВК, СКО
-const rowTypes = {gear:3, weapon:8, relationship:3};
+const rowTypes = {gear:3, weapon:10, relationship:3};
 // Порядок колонок в таблицах: j — индекс значения в сохранённой строке (новые колонки оружия добавлены в конец).
 const rowColumns = {
   gear:[{j:0},{j:1},{j:2,note:true}],
-  weapon:[{j:0},{j:5,select:'skill'},{j:1,placeholder:'3d6'},{j:2},{j:6},{j:3},{j:7,select:'autofire'},{j:4,note:true}],
+  // weapon: 7 — множитель автоогня (скрытое поле, заполняется типом), 8 — тип, 9 — автоогонь включён.
+  weapon:[{j:0},{j:8,select:'type'},{j:5,select:'skill'},{j:1,placeholder:'3d6'},{j:2},{j:6},{j:3},{j:9,toggle:true},{j:4,note:true}],
   relationship:[{j:0},{j:1},{j:2}]
 };
 const INDEX_KEY = 'cyberred-index';
@@ -306,30 +307,53 @@ function weaponSkillSelect(key, value){
   const options = list => list.map(name=>`<option value="${esc(name)}"${name === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
   return `<select data-key="${key}" aria-label="Навык оружия"><option value="">—</option><optgroup label="Дальний бой">${options(rangedWeaponSkills)}</optgroup><optgroup label="Ближний бой">${options(meleeWeaponSkills)}</optgroup></select>`;
 }
-function autofireSelect(key, value){
-  return `<select data-key="${key}" aria-label="Множитель автоматического огня" title="Максимальный множитель автоогня: ПП ×3, штурмовая винтовка ×4"><option value="">—</option>${autofireMultipliers.map(n=>`<option value="${n}"${String(n) === String(value) ? ' selected' : ''}>×${n}</option>`).join('')}</select>`;
+function weaponTypeSelect(key, value, multiplierKey, multiplier){
+  const options = Object.entries(weaponTypes).map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
+  return `<select data-key="${key}" aria-label="Тип оружия" title="Выбор типа заполняет навык, урон, магазин, ROF и автоогонь"><option value="">Своё</option>${options}</select><input type="hidden" data-key="${multiplierKey}" value="${esc(multiplier)}">`;
 }
-const hasAutofire = data => Number(data?.[7]) > 0 || data?.[5] === AUTOFIRE_SKILL;
+// Автоогонь доступен, если у оружия есть множитель (из типа оружия).
+const autofireMultiplier = data => Number(data?.[7]) || 0;
+const isAutofireOn = data => autofireMultiplier(data) > 0 && data?.[9] === '1';
 function row(type,data=[],index){
-  const cells = rowColumns[type].map(({j,note,select,placeholder})=>{
+  const cells = rowColumns[type].map(({j,note,select,toggle,placeholder})=>{
     const key = `${type}${index}_${j}`;
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
     if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
-    if(select === 'autofire') return `<td>${autofireSelect(key, data[j] || '')}</td>`;
+    if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;
+    if(toggle) return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Автоматический огонь"${isAutofireOn(data) ? ' checked' : ''}${autofireMultiplier(data) ? '' : ' disabled'}></td>`;
     return `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>`;
   }).join('');
   const weaponActions = type === 'weapon'
-    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}" title="Атака: 1d10 + стат + навык">АТК</button><button type="button" class="weapon-btn" data-weapon-autofire="${index}" title="Автоматический огонь: 10 патронов, атака и урон 2d6 с таблицей множителей для мастера"${hasAutofire(data) ? '' : ' hidden'}>АВТО</button><button type="button" class="weapon-btn" data-weapon-damage="${index}" title="Бросок урона">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
+    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">АТК</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
     : '';
   return `<tr>${cells}<td class="row-actions">${weaponActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
 function renderRows(type){
   const rows = state[type]?.length ? state[type] : [[]];
   $(`#${type}Rows`).innerHTML = rows.map((data,i)=>row(type,data,i)).join('');
+  if(type === 'weapon') refreshWeaponRows();
 }
-// Кнопка АВТО видна только у оружия с множителем автоогня.
-function refreshWeaponButtons(){
-  $$('[data-weapon-autofire]').forEach(button=>{ button.hidden = !hasAutofire(state.weapon?.[Number(button.dataset.weaponAutofire)]); });
+// Галочка «Авто» доступна только оружию с автоогнём; при включённой кнопка атаки — «ОЧЕРЕДЬ».
+function refreshWeaponRows(){
+  $$('#weaponRows tr').forEach((tr,i)=>{
+    const data = state.weapon?.[i];
+    const toggle = tr.querySelector('[data-key$="_9"]');
+    const multiplier = autofireMultiplier(data);
+    const on = isAutofireOn(data);
+    if(toggle){
+      toggle.disabled = !multiplier;
+      toggle.checked = on;
+      toggle.title = multiplier ? `Автоматический огонь (множитель до ×${multiplier})` : 'Этот тип оружия не стреляет очередями';
+    }
+    tr.classList.toggle('is-autofire', on);
+    const attack = tr.querySelector('[data-weapon-attack]');
+    const damage = tr.querySelector('[data-weapon-damage]');
+    if(attack){
+      attack.textContent = on ? 'ОЧЕРЕДЬ' : 'АТК';
+      attack.title = on ? 'Очередь: 10 патронов, 1d10 + РЕФ + «Автоматический огонь»' : 'Атака: 1d10 + стат + навык';
+    }
+    if(damage) damage.title = on ? 'Урон очереди: 2d6 × множитель (таблица для мастера)' : 'Бросок урона';
+  });
 }
 function renderCyber(){
   const saved = state.cyberSlots || {};
@@ -551,41 +575,39 @@ function spendAmmo(index, data, need){
   setInput(`weapon${index}_2`, data[2]);
   return true;
 }
-// Атака одиночным выстрелом или ударом: 1d10 + стат + навык оружия, дальний бой тратит 1 патрон.
+const damageTable = (entry, multiplier) => [
+  Array.from({length:multiplier},(_,i)=>`×${i + 1} = ${entry.total * (i + 1)}`).join(' · '),
+  `множитель = на сколько атака превысила DV, макс. ×${multiplier}`,
+  isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`
+].filter(Boolean).join('. ');
+// Атака: одиночный выстрел или удар — 1d10 + стат + навык оружия, дальний бой тратит 1 патрон.
+// С включённым «Авто» — очередь: 10 патронов, 1d10 + РЕФ + «Автоматический огонь».
 // Попала ли атака, решает мастер: сравнивает результат с DV или броском уклонения цели.
 function weaponAttack(index){
   const data = weaponRow(index);
   if(!data) return;
-  if(data[5] === AUTOFIRE_SKILL) return weaponAutofire(index);
   const name = data[0] || 'Оружие';
+  if(isAutofireOn(data)){
+    if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
+    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: очередь`);
+    return;
+  }
   const skill = skills.indexOf(data[5]);
-  if(skill < 0){ toast(`${name}: выберите навык оружия`); return; }
-  if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, 1)) return;
+  if(skill < 0){ toast(`${name}: выберите тип или навык оружия`); return; }
+  if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, data[5] === AUTOFIRE_SKILL ? AUTOFIRE_AMMO : 1)) return;
   rollCheck(`b${skill}`, `${name}: атака`);
 }
-// Автоматический огонь: 10 патронов, 1d10 + РЕФ + «Автоматический огонь».
-// DV знает мастер, поэтому урон 2d6 бросается сразу и показывается для каждого множителя:
-// мастер берёт множитель = на сколько атака превысила DV (не больше множителя оружия).
-function weaponAutofire(index){
-  const data = weaponRow(index);
-  if(!data) return;
-  const name = data[0] || 'Оружие';
-  const maxMultiplier = Number(data[7]) || 0;
-  if(!maxMultiplier){ toast(`${name}: выберите множитель автоогня в колонке «Авто»`); return; }
-  if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
-  rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: автоогонь`);
-  rollDicePool([AUTOFIRE_DAMAGE], 0, `${name}: урон автоогня`, {crits:false,
-    judge: entry => [
-      Array.from({length:maxMultiplier},(_,i)=>`×${i + 1} = ${entry.total * (i + 1)}`).join(' · '),
-      `множитель = на сколько атака превысила DV, макс. ×${maxMultiplier}`,
-      isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`
-    ].filter(Boolean).join('. ')});
-}
+// Урон: формула оружия. Для очереди — 2d6 и таблица множителей: DV знает мастер,
+// он берёт множитель = на сколько атака превысила DV (не больше множителя оружия).
 // Две и больше шестёрок на кубиках урона — критическая травма у цели.
 function weaponDamage(index){
   const data = weaponRow(index);
   if(!data) return;
   const name = data[0] || 'Оружие';
+  if(isAutofireOn(data)){
+    rollDicePool([AUTOFIRE_DAMAGE], 0, `${name}: урон очереди`, {crits:false, judge: entry => damageTable(entry, autofireMultiplier(data))});
+    return;
+  }
   const damage = parseDamage(data[1]);
   if(!damage){ toast(`${name}: укажите урон в виде 3d6 или 2d6+2`); return; }
   rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${name}: урон`, {crits:false,
@@ -682,7 +704,7 @@ function save(changedKey){
     const rows = [];
     $$(`[data-key^="${type}"]`).forEach(el=>{
       const match = pattern.exec(el.dataset.key);
-      if(match) (rows[Number(match[1])] ||= Array(width).fill(''))[Number(match[2])] = textValue(el);
+      if(match) (rows[Number(match[1])] ||= Array(width).fill(''))[Number(match[2])] = el.type === 'checkbox' ? (el.checked ? '1' : '') : textValue(el);
     });
     state[type] = Array.from(rows, data=>data || Array(width).fill(''));
   });
@@ -691,12 +713,29 @@ function save(changedKey){
     return all;
   },{});
   delete state.cyberware;
-  refreshWeaponButtons();
+  refreshWeaponRows();
   // Ничего не перерисовываем целиком, чтобы не сбивать фокус в поле, которое сейчас редактируется.
   refreshStats(); updateDerived();
   $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
   if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
   if(changedKey === 'name') renderSheetSelect();
+}
+
+// Выбор типа оружия заполняет навык, урон, магазин (и патроны), ROF и множитель автоогня.
+function applyWeaponType(key, value){
+  const match = /^weapon(\d+)_8$/.exec(key);
+  const preset = match && weaponTypes[value];
+  if(!preset) return;
+  const i = match[1];
+  const [name, skill, damage, magazine, rof, multiplier] = preset;
+  if(isBlank($(`[data-key="weapon${i}_0"]`)?.value)) setInput(`weapon${i}_0`, name);
+  setInput(`weapon${i}_5`, skill);
+  setInput(`weapon${i}_1`, damage);
+  setInput(`weapon${i}_6`, magazine);
+  setInput(`weapon${i}_2`, magazine);
+  setInput(`weapon${i}_3`, rof);
+  setInput(`weapon${i}_7`, multiplier || '');
+  if(!multiplier) $$(`[data-key="weapon${i}_9"]`).forEach(el=>{ el.checked = false; });
 }
 
 // Выбор брони из списка заполняет SP и штраф; ручная правка максимума считается сменой брони.
@@ -783,6 +822,7 @@ function bindInputs(){
         }
       }
       applyArmorInput(key, el.value);
+      applyWeaponType(key, el.value);
       applyHumanityLoss(key, el.value);
       // Одно и то же значение может быть в нескольких полях (человечность).
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
@@ -898,11 +938,10 @@ document.addEventListener('click',e=>{
   }
   const rem=e.target.closest('[data-remove]');
   if(rem) removeRow(rem.dataset.remove, Number(rem.dataset.index));
-  const weapon=e.target.closest('[data-weapon-attack],[data-weapon-autofire],[data-weapon-damage],[data-weapon-reload]');
+  const weapon=e.target.closest('[data-weapon-attack],[data-weapon-damage],[data-weapon-reload]');
   if(weapon){
-    const {weaponAttack:attack, weaponAutofire:autofire, weaponDamage:damage, weaponReload:reload} = weapon.dataset;
+    const {weaponAttack:attack, weaponDamage:damage, weaponReload:reload} = weapon.dataset;
     if(attack !== undefined) weaponAttack(Number(attack));
-    if(autofire !== undefined) weaponAutofire(Number(autofire));
     if(damage !== undefined) weaponDamage(Number(damage));
     if(reload !== undefined) weaponReload(Number(reload));
   }
