@@ -77,6 +77,7 @@ function migrate(data){
   delete s.humanityValue;
   Object.keys(s).forEach(key => { if(structuredKey.test(key)) delete s[key]; });
   if(s.portrait && !isSafeImage(s.portrait)) delete s.portrait;
+  delete s.targetDv;
   Object.entries(rowTypes).forEach(([type,width])=>{
     if(!Array.isArray(s[type])) { delete s[type]; return; }
     s[type] = s[type].map(row=>Array.from({length:width},(_,j)=>String(row?.[j] ?? '')));
@@ -318,7 +319,7 @@ function row(type,data=[],index){
     return `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>`;
   }).join('');
   const weaponActions = type === 'weapon'
-    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}" title="Атака: 1d10 + стат + навык">АТК</button><button type="button" class="weapon-btn" data-weapon-autofire="${index}" title="Автоматический огонь: 10 патронов, урон 2d6 × превышение DV"${hasAutofire(data) ? '' : ' hidden'}>АВТО</button><button type="button" class="weapon-btn" data-weapon-damage="${index}" title="Бросок урона">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
+    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}" title="Атака: 1d10 + стат + навык">АТК</button><button type="button" class="weapon-btn" data-weapon-autofire="${index}" title="Автоматический огонь: 10 патронов, атака и урон 2d6 с таблицей множителей для мастера"${hasAutofire(data) ? '' : ' hidden'}>АВТО</button><button type="button" class="weapon-btn" data-weapon-damage="${index}" title="Бросок урона">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
     : '';
   return `<tr>${cells}<td class="row-actions">${weaponActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
@@ -435,7 +436,7 @@ const diceText = item => item.diceDetails ? item.diceDetails.map(die=>`D${Number
 const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКАЯ НЕУДАЧА'}${item.critExtra ? ` (${item.die === 10 ? '+' : '−'}${Number(item.critExtra)})` : ''}</em>` : '';
 const logLine = item => item.kind === 'damage'
   ? `<b class="log-tag">УРОН</b> ${esc(item.text)}`
-  : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''}${Number(item.multiplier) > 1 ? ` × ${Number(item.multiplier)}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
+  : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
 
 function addHistory(entry){
   state.rollHistory = [{...entry, time:now()}, ...(state.rollHistory || [])].slice(0, 30);
@@ -443,18 +444,18 @@ function addHistory(entry){
 }
 
 // crits: по правилам RED 10 на 1d10 добавляет ещё 1d10, 1 — вычитает ещё 1d10.
-function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge, multiplier=1}={}){
+function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge}={}){
   const dicePool=normalizeDicePool(pool);
   const diceDetails=dicePool.flatMap(({sides,count})=>Array.from({length:count},()=>({sides,value:rollDie(sides)})));
   const die = diceDetails.reduce((sum,item)=>sum+item.value,0);
   const critical = crits && diceDetails.length === 1 && diceDetails[0].sides === 10 && (die === 1 || die === 10);
   const critExtra = critical ? d(10) : 0;
-  const total = (die + modifier + (die === 10 ? critExtra : -critExtra)) * multiplier;
-  const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel(), multiplier};
+  const total = die + modifier + (die === 10 ? critExtra : -critExtra);
+  const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel()};
   if(judge) entry.note = judge(entry) || '';
   addHistory(entry);
   persist();
-  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${multiplier > 1 ? `${die + modifier} × ${multiplier} = ` : ''}${signed(total)}</strong>${critText(entry)}${entry.note ? ` <em>${esc(entry.note)}</em>` : ''}`;
+  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry)}${entry.note ? ` <em>${esc(entry.note)}</em>` : ''}`;
   $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${logLine(entry)}</div>`);
   $('#diceDrawer').classList.add('open');
   return entry;
@@ -540,9 +541,6 @@ function weaponRow(index){
   if(!state.weapon?.[index]) save();
   return state.weapon?.[index];
 }
-// DV цели из поля над таблицей оружия; пусто — лист только бросает, без вердикта.
-const targetDv = () => isBlank(state.targetDv) ? null : Number(state.targetDv) || 0;
-const hitNote = dv => entry => entry.total > dv ? `ПОПАДАНИЕ (DV ${dv})` : `ПРОМАХ (DV ${dv})`;
 const isCriticalDamage = entry => entry.diceDetails.filter(die=>die.sides === 6 && die.value === 6).length >= 2;
 // Патроны списываются, только если в колонке «Патр.» указано число.
 function spendAmmo(index, data, need){
@@ -554,7 +552,7 @@ function spendAmmo(index, data, need){
   return true;
 }
 // Атака одиночным выстрелом или ударом: 1d10 + стат + навык оружия, дальний бой тратит 1 патрон.
-// Попадание — если результат больше DV (в ближнем бою DV — бросок уклонения цели).
+// Попала ли атака, решает мастер: сравнивает результат с DV или броском уклонения цели.
 function weaponAttack(index){
   const data = weaponRow(index);
   if(!data) return;
@@ -563,26 +561,25 @@ function weaponAttack(index){
   const skill = skills.indexOf(data[5]);
   if(skill < 0){ toast(`${name}: выберите навык оружия`); return; }
   if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, 1)) return;
-  const dv = targetDv();
-  rollCheck(`b${skill}`, `${name}: атака`, dv === null ? undefined : hitNote(dv));
+  rollCheck(`b${skill}`, `${name}: атака`);
 }
-// Автоматический огонь: 10 патронов, 1d10 + РЕФ + «Автоматический огонь» против DV.
-// При попадании урон 2d6 × (результат − DV), но не больше множителя оружия.
+// Автоматический огонь: 10 патронов, 1d10 + РЕФ + «Автоматический огонь».
+// DV знает мастер, поэтому урон 2d6 бросается сразу и показывается для каждого множителя:
+// мастер берёт множитель = на сколько атака превысила DV (не больше множителя оружия).
 function weaponAutofire(index){
   const data = weaponRow(index);
   if(!data) return;
   const name = data[0] || 'Оружие';
   const maxMultiplier = Number(data[7]) || 0;
   if(!maxMultiplier){ toast(`${name}: выберите множитель автоогня в колонке «Авто»`); return; }
-  const dv = targetDv();
-  if(dv === null){ toast('Автоматический огонь: укажите DV цели над таблицей оружия'); return; }
   if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
-  const attack = rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: автоогонь`,
-    entry => entry.total > dv ? `ПОПАДАНИЕ (DV ${dv}), множитель ×${Math.min(entry.total - dv, maxMultiplier)}` : `ПРОМАХ (DV ${dv})`);
-  if(attack.total <= dv) return;
-  const multiplier = Math.min(attack.total - dv, maxMultiplier);
-  rollDicePool([AUTOFIRE_DAMAGE], 0, `${name}: урон автоогня`, {crits:false, multiplier,
-    judge: entry => isCriticalDamage(entry) ? `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона` : ''});
+  rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: автоогонь`);
+  rollDicePool([AUTOFIRE_DAMAGE], 0, `${name}: урон автоогня`, {crits:false,
+    judge: entry => [
+      Array.from({length:maxMultiplier},(_,i)=>`×${i + 1} = ${entry.total * (i + 1)}`).join(' · '),
+      `множитель = на сколько атака превысила DV, макс. ×${maxMultiplier}`,
+      isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`
+    ].filter(Boolean).join('. ')});
 }
 // Две и больше шестёрок на кубиках урона — критическая травма у цели.
 function weaponDamage(index){
