@@ -159,18 +159,22 @@
       <div class="equipment-grid">
         <div class="panel">
           <div class="section-title">СНАРЯЖЕНИЕ</div>
-          <table class="data-table gear-table">
-            <thead><tr><th>Предмет</th><th>Кол-во</th><th>Заметка</th><th></th></tr></thead>
-            <tbody id="gearRows"></tbody>
-          </table>
+          <div class="table-scroll">
+            <table class="data-table gear-table">
+              <thead><tr><th>Предмет</th><th>Кол-во</th><th>Заметка</th><th></th></tr></thead>
+              <tbody id="gearRows"></tbody>
+            </table>
+          </div>
           <button class="add-row" data-add="gear">+ ДОБАВИТЬ ПРЕДМЕТ</button>
         </div>
         <div class="panel">
-          <div class="section-title">ОРУЖИЕ <span>DMG // AMMO // ROF // NOTES</span></div>
-          <table class="data-table weapon-table">
-            <thead><tr><th>Оружие</th><th>Урон</th><th>Боепр.</th><th>ROF</th><th>Заметки</th><th></th></tr></thead>
-            <tbody id="weaponRows"></tbody>
-          </table>
+          <div class="section-title">ОРУЖИЕ <span>SKILL // DMG // AMMO // ROF</span></div>
+          <div class="table-scroll">
+            <table class="data-table weapon-table">
+              <thead><tr><th>Оружие</th><th>Навык</th><th>Урон</th><th title="Патроны сейчас; пусто — не считать">Патр.</th><th title="Размер магазина">Маг.</th><th>ROF</th><th>Заметки</th><th></th></tr></thead>
+              <tbody id="weaponRows"></tbody>
+            </table>
+          </div>
           <button class="add-row" data-add="weapon">+ ДОБАВИТЬ ОРУЖИЕ</button>
         </div>
       </div>
@@ -183,7 +187,7 @@
         <div class="panel life-fields" id="lifeFields"></div>
         <div class="panel">
           <div class="section-title">СВЯЗИ <span>RELATIONSHIPS</span></div>
-          <table class="data-table"><thead><tr><th>Персонаж</th><th>Кто это?</th><th>Что ему нужно?</th><th></th></tr></thead><tbody id="relationshipRows"></tbody></table>
+          <div class="table-scroll"><table class="data-table"><thead><tr><th>Персонаж</th><th>Кто это?</th><th>Что ему нужно?</th><th></th></tr></thead><tbody id="relationshipRows"></tbody></table></div>
           <button class="add-row" data-add="relationship">+ ДОБАВИТЬ СВЯЗЬ</button>
         </div>
       </div>
@@ -216,6 +220,7 @@
       </div>
     </section>
   </main>
+  <div class="toast" id="toast" role="status" hidden></div>
   <footer>НЕКОММЕРЧЕСКИЙ ЛИСТ ПЕРСОНАЖА // ДАННЫЕ ХРАНЯТСЯ ТОЛЬКО В ВАШЕМ БРАУЗЕРЕ</footer>
   <script src="data.js"></script>
   <script src="app.js"></script>
