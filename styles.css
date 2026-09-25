@@ -179,10 +179,35 @@ button {
   white-space: nowrap;
 }
 
-.status-strip #sheetName {
+.sheet-switch {
   margin-left: auto;
-  color: #444;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sheet-switch select {
+  max-width: 220px;
+  border: 1px solid #bbb;
+  background: #fff;
+  color: #333;
   font-weight: 700;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+.sheet-switch button {
+  border: 1px solid #bbb;
+  background: transparent;
+  color: #444;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sheet-switch button:hover {
+  border-color: var(--red);
+  color: var(--red);
 }
 
 .life-basics {
@@ -1725,6 +1750,10 @@ footer {
   font-size: 14px;
 }
 
+.toast[hidden] {
+  display: none;
+}
+
 .toast button {
   border: 1px solid var(--red);
   background: transparent;
@@ -1810,4 +1839,113 @@ footer {
   font-size: 9px;
   font-weight: 700;
   vertical-align: middle;
+}
+
+/* Колонки сетки могут сжиматься: широкие таблицы прокручиваются внутри панели. */
+.equipment-grid > .panel, .life-grid > .panel {
+  min-width: 0;
+}
+
+.human-status {
+  flex-wrap: wrap;
+}
+
+/* === Телефоны === */
+@media(max-width:560px) {
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .top-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .top-actions button, .file-btn {
+    padding: 7px 9px;
+    font-size: 10px;
+  }
+
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    padding: 10px 12px;
+  }
+
+  .page-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .sheet-switch {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sheet-switch select {
+    flex: 1;
+    max-width: none;
+  }
+
+  .armor-form, .character-resources {
+    grid-template-columns: 1fr;
+  }
+
+  .skill-table .skill-spec {
+    width: 100%;
+    margin-top: 3px;
+  }
+}
+
+/* === Печать: все разделы подряд, без кнопок === */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body, .app-shell {
+    background: #fff !important;
+    color: #000;
+  }
+
+  .scanlines, .topbar, .tabs, .status-strip, .dice-drawer, .toast, footer,
+  .skill-search, .rules-note, .creation-controls, .damage-box, .add-row, .row-actions,
+  .skill-actions, .skill-roll, .portrait-upload, .death-save-button, .clear-log {
+    display: none !important;
+  }
+
+  .tab-panel {
+    display: block !important;
+    margin-bottom: 8mm;
+  }
+
+  .tab-panel + .tab-panel {
+    break-before: page;
+  }
+
+  .app-shell {
+    max-width: none;
+    padding: 0;
+    min-height: 0;
+  }
+
+  .panel, .skill-category, .metric, .human-status {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .table-scroll {
+    overflow: visible;
+  }
+
+  .equipment-grid .weapon-table {
+    min-width: 0;
+  }
 }

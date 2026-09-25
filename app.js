@@ -9,7 +9,8 @@ const rowColumns = {
   weapon:[{j:0},{j:5,select:true},{j:1,placeholder:'3d6'},{j:2},{j:6},{j:3},{j:4,note:true}],
   relationship:[{j:0},{j:1},{j:2}]
 };
-const STORAGE_KEY = 'cyberred-sheet';
+const INDEX_KEY = 'cyberred-index';
+const LEGACY_KEY = 'cyberred-sheet';
 const SKILL_POOL = 86, STAT_POOL = 62, MAX_SKILL = 10;
 // Поля строк таблиц и киберслотов хранятся только в структурированном виде (state.gear, state.cyberSlots...).
 const structuredKey = /^(gear|weapon|relationship)\d+_\d+$|^cyberSlot_|^cskill\d+_/;
@@ -94,21 +95,78 @@ function migrate(data){
   return s;
 }
 
-function loadState(){
-  try { return migrate(JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')); }
-  catch { return migrate({}); }
+// Несколько персонажей: список в cyberred-index, каждый лист — под своим ключом.
+// Первый лист хранится под старым ключом, поэтому прежние сохранения подхватываются сами.
+const sheetKey = id => id === 'main' ? LEGACY_KEY : `${LEGACY_KEY}:${id}`;
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+function readJson(key, fallback){
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch { return fallback; }
 }
-
+function loadIndex(){
+  const index = readJson(INDEX_KEY, null);
+  if(index && Array.isArray(index.sheets) && index.sheets.length){
+    if(!index.sheets.some(sheet=>sheet.id === index.current)) index.current = index.sheets[0].id;
+    return index;
+  }
+  return {current:'main', sheets:[{id:'main', name:readJson(LEGACY_KEY, {})?.name || ''}]};
+}
+let sheetIndex = loadIndex();
+const loadState = (id = sheetIndex.current) => migrate(readJson(sheetKey(id), {}));
 let state = loadState();
 
 function persist(){
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(sheetKey(sheetIndex.current), JSON.stringify(state));
+    const entry = sheetIndex.sheets.find(sheet=>sheet.id === sheetIndex.current);
+    if(entry) entry.name = state.name || '';
+    localStorage.setItem(INDEX_KEY, JSON.stringify(sheetIndex));
     return true;
   } catch {
     $('#saveStatus').textContent = 'ОШИБКА СОХРАНЕНИЯ: НЕТ МЕСТА';
     return false;
   }
+}
+
+function renderSheetSelect(){
+  $('#sheetSelect').innerHTML = sheetIndex.sheets.map(sheet=>`<option value="${esc(sheet.id)}"${sheet.id === sheetIndex.current ? ' selected' : ''}>${esc((sheet.name || 'Без имени').toUpperCase())}</option>`).join('');
+}
+function clearTransient(){
+  $('#diceLog').innerHTML = '';
+  $('#diceResult').textContent = '—';
+  $('#damageResult').textContent = '';
+}
+function openSheet(id, data){
+  sheetIndex.current = id;
+  state = data ?? loadState(id);
+  clearTransient();
+  render();
+  persist();
+}
+function switchSheet(id){
+  if(id === sheetIndex.current) return;
+  persist();
+  openSheet(id);
+}
+function createSheet(data = {}){
+  persist();
+  const id = newId();
+  sheetIndex.sheets.push({id, name:data.name || ''});
+  openSheet(id, migrate(data));
+}
+function deleteSheet(){
+  const position = sheetIndex.sheets.findIndex(sheet=>sheet.id === sheetIndex.current);
+  const removed = {id:sheetIndex.current, data:state};
+  if(!confirm(`Удалить персонажа «${state.name || 'Без имени'}»?`)) return;
+  localStorage.removeItem(sheetKey(removed.id));
+  sheetIndex.sheets.splice(position, 1);
+  if(sheetIndex.sheets.length) openSheet(sheetIndex.sheets[Math.max(0, position - 1)].id);
+  else { const id = newId(); sheetIndex.sheets.push({id, name:''}); openSheet(id, migrate({})); }
+  toast('Персонаж удалён', 'Вернуть', ()=>{
+    persist();
+    sheetIndex.sheets.splice(position, 0, {id:removed.id, name:removed.data.name || ''});
+    openSheet(removed.id, removed.data);
+  });
 }
 
 function normalizeStats(){
@@ -269,7 +327,7 @@ function renderCyber(){
   Object.entries(cyberSections).forEach(([key,[title,count]]) => {
     const target = $(`[data-cyber-section="${key}"]`);
     const rows = saved[key] || [];
-    target.innerHTML = `<table class="cyber-slot-table"><thead><tr><th>${title}</th><th>Информация</th><th title="Потеря человечности: число или формула (2d6)">ПЧ</th></tr></thead><tbody>${Array.from({length:count},(_,i)=>`<tr><td>${field(`cyberSlot_${key}_${i}_name`,rows[i]?.[0]||'')}</td><td>${field(`cyberSlot_${key}_${i}_info`,rows[i]?.[1]||'')}</td><td class="hl-cell">${field(`cyberSlot_${key}_${i}_hl`,rows[i]?.[2]||'','text','0')}</td></tr>`).join('')}</tbody></table>`;
+    target.innerHTML = `<table class="cyber-slot-table"><thead><tr><th>${title}</th><th>Информация</th><th title="Потеря человечности: число или формула (2d6)">ПЧ</th></tr></thead><tbody>${Array.from({length:count},(_,i)=>`<tr><td>${field(`cyberSlot_${key}_${i}_name`,rows[i]?.[0]||'')}</td><td>${field(`cyberSlot_${key}_${i}_info`,rows[i]?.[1]||'')}</td><td class="hl-cell">${field(`cyberSlot_${key}_${i}_hl`,rows[i]?.[2]||'')}</td></tr>`).join('')}</tbody></table>`;
   });
 }
 
@@ -321,7 +379,6 @@ function updateDerived(){
   const psycho = emp > 0 && numeric('humanityCurrent') <= 0;
   $('#humanityMeta').textContent = `ПОТЕРЯ ${humanityLoss()} · ЭМП ${currentEmp()}/${emp}${psycho ? ' · КИБЕРПСИХОЗ' : ''}`;
   $('#humanityMeta').classList.toggle('is-danger', psycho);
-  $('#sheetName').textContent=(state.name||'НОВЫЙ ЛИСТ').toUpperCase();
   // Штраф испытаний против смерти действует, пока персонаж смертельно ранен.
   if(!isMortallyWounded()) state.deathSavePenalty = 0;
   const deathPenalty = numeric('deathSavePenalty');
@@ -605,6 +662,7 @@ function save(changedKey){
   refreshStats(); updateDerived();
   $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
   if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(changedKey === 'name') renderSheetSelect();
 }
 
 // Выбор брони из списка заполняет SP и штраф; ручная правка максимума считается сменой брони.
@@ -716,6 +774,7 @@ function bindInputs(){
 }
 
 function render(){
+  renderSheetSelect();
   normalizeSkills();
   renderStats();renderSkills();renderLife();Object.keys(rowTypes).forEach(type=>renderRows(type));renderCyber();renderDashboard();
   $('#creationMode').checked=state.creationMode !== false;
@@ -733,17 +792,34 @@ function switchTab(tabName){
   if(tab && panel){tab.classList.add('active');panel.classList.add('active');}
 }
 
-// При удалении строки заметки с формулами должны сдвинуться вместе со строками.
-function shiftFormulaMarks(type, index){
-  const marks = state.formulaMarks;
-  if(!marks) return;
+// Формулы в заметках привязаны к номеру строки: при удалении и возврате строки сдвигаем их.
+// dir = −1 — строка удалена (возвращаются её отметки), dir = +1 — строка вставлена обратно.
+function shiftFormulaMarks(type, index, dir = -1){
   const pattern = new RegExp(`^${type}(\\d+)_(\\d+)$`);
-  state.formulaMarks = Object.entries(marks).reduce((next,[key,value])=>{
+  const removed = {};
+  state.formulaMarks = Object.entries(state.formulaMarks || {}).reduce((next,[key,value])=>{
     const match = pattern.exec(key);
-    if(!match) next[key] = value;
-    else if(Number(match[1]) !== index) next[Number(match[1]) > index ? `${type}${Number(match[1]) - 1}_${match[2]}` : key] = value;
+    if(!match){ next[key] = value; return next; }
+    const i = Number(match[1]);
+    if(dir < 0 && i === index){ removed[match[2]] = value; return next; }
+    const shifted = dir < 0 ? (i > index ? i - 1 : i) : (i >= index ? i + 1 : i);
+    next[`${type}${shifted}_${match[2]}`] = value;
     return next;
   },{});
+  return removed;
+}
+
+function removeRow(type, index){
+  if(!state[type]?.length){ render(); save(); return; }
+  const [removed] = state[type].splice(index, 1);
+  const marks = shiftFormulaMarks(type, index);
+  render(); save();
+  toast('Строка удалена', 'Вернуть', ()=>{
+    state[type].splice(index, 0, removed);
+    shiftFormulaMarks(type, index, 1);
+    Object.entries(marks).forEach(([j,value])=>{ state.formulaMarks[`${type}${index}_${j}`] = value; });
+    render(); save();
+  });
 }
 
 function loadPortrait(file){
@@ -762,7 +838,7 @@ function loadPortrait(file){
     if(!persist()) state.portrait = previous;
     renderDashboard();
   };
-  img.onerror = () => { URL.revokeObjectURL(url); alert('Не удалось загрузить изображение.'); };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('Не удалось загрузить изображение.'); };
   img.src = url;
 }
 
@@ -787,11 +863,7 @@ document.addEventListener('click',e=>{
     render();save();
   }
   const rem=e.target.closest('[data-remove]');
-  if(rem){
-    const type=rem.dataset.remove, index=Number(rem.dataset.index);
-    if(state[type]?.length){ state[type].splice(index,1); shiftFormulaMarks(type,index); }
-    render();save();
-  }
+  if(rem) removeRow(rem.dataset.remove, Number(rem.dataset.index));
   const weapon=e.target.closest('[data-weapon-attack],[data-weapon-damage],[data-weapon-reload]');
   if(weapon){
     const {weaponAttack:attack, weaponDamage:damage, weaponReload:reload} = weapon.dataset;
@@ -847,7 +919,11 @@ $('#deathSaveButton').onclick=rollDeathSave;
 $('#skillSearch').oninput=()=>{renderSkills();bindInputs();};
 $('#clearLog').onclick=()=>{state.rollHistory=[];persist();renderDashboardLog();$('#diceLog').innerHTML='';};
 $('#portraitInput').onchange=e=>{const file=e.target.files[0];if(file)loadPortrait(file);e.target.value='';};
-$('#resetBtn').onclick=()=>{if(confirm('Очистить весь лист?')){state=migrate({});localStorage.removeItem(STORAGE_KEY);render();$('#diceLog').innerHTML='';$('#diceResult').textContent='—';$('#saveStatus').textContent='ЛИСТ ОЧИЩЕН';}};
+$('#resetBtn').onclick=()=>{if(confirm('Очистить лист текущего персонажа?')){state=migrate({});clearTransient();render();persist();$('#saveStatus').textContent='ЛИСТ ОЧИЩЕН';}};
+$('#sheetSelect').onchange=e=>switchSheet(e.target.value);
+$('#newSheet').onclick=()=>{createSheet();switchTab('character');};
+$('#deleteSheet').onclick=deleteSheet;
+$('#printBtn').onclick=()=>window.print();
 $('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(state.name||'cyberpunk-red-sheet').replace(/[\\/:*?"<>|]/g,'_')+'.json';a.click();URL.revokeObjectURL(a.href);};
 $('#importInput').onchange=e=>{
   const file=e.target.files[0];
@@ -856,9 +932,11 @@ $('#importInput').onchange=e=>{
   reader.onload=()=>{
     let data;
     try{data=JSON.parse(reader.result);}catch{data=null;}
-    if(!data || typeof data!=='object' || Array.isArray(data)){alert('Не удалось прочитать JSON-файл.');return;}
-    state=migrate(data);
-    render();save();
+    if(!data || typeof data!=='object' || Array.isArray(data)){toast('Не удалось прочитать JSON-файл.');return;}
+    // Импорт добавляет нового персонажа, а не перезаписывает текущего.
+    createSheet(data);
+    save();
+    toast(`Импортирован персонаж «${state.name || 'Без имени'}»`);
   };
   reader.readAsText(file);
   e.target.value='';
