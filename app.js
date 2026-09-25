@@ -22,12 +22,18 @@ const cyberSections = {
   internal:['Внутр. киберимплант',6], external:['Внешний киберимплант',6],
   fashionware:['Стильный киберимплант',6], borgware:['Боргирование',6]
 };
+// Броня из базовой книги Cyberpunk RED: [название, SP, штраф к РЕФ/ЛВК/СКО].
+const armorPresets = {
+  leathers:['Кожа',4,0], kevlar:['Кевлар',7,0], lightArmorjack:['Лёгкий армоджек',11,0], bodyweight:['Бодивейт',11,0],
+  mediumArmorjack:['Средний армоджек',12,2], heavyArmorjack:['Тяжёлый армоджек',13,2], flak:['Флак',15,4], metalgear:['Металгир',18,4]
+};
+const penalizedStats = [1, 2, 7]; // РЕФ, ЛВК, СКО
 const rowTypes = {gear:3, weapon:5, relationship:3};
 const STORAGE_KEY = 'cyberred-sheet';
 const SKILL_POOL = 86, STAT_POOL = 62;
 // Поля строк таблиц и киберслотов хранятся только в структурированном виде (state.gear, state.cyberSlots...).
 const structuredKey = /^(gear|weapon|relationship)\d+_\d+$|^cyberSlot_/;
-const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent)$/;
+const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent|armorHeadCurrent|armorBodyCurrent)$/;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -38,6 +44,10 @@ const statAlias = name => statAliases[name] || name;
 const skillStatIndex = i => stats.indexOf(statAlias(skillEntries[i][1]));
 const skillWeight = i => skills[i].includes('(x2)') ? 2 : 1;
 const skillSpent = () => skills.reduce((sum,_,i)=>sum + numeric(`skill${i}`)*skillWeight(i),0);
+const armorPenalty = () => Math.abs(numeric('armorPenalty'));
+const statPenalty = statIndex => penalizedStats.includes(statIndex) ? armorPenalty() : 0;
+const skillTotal = i => numeric(`skill${i}`) + numeric(`stat${skillStatIndex(i)}`) - statPenalty(skillStatIndex(i));
+const maxHp = () => 10 + 5*Math.ceil((numeric('stat8') + numeric('stat5'))/2);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
 const setVal = (el, value) => { if(el !== document.activeElement) el.value = value; };
 const isSafeImage = src => /^data:image\/[\w.+-]+;base64,[A-Za-z0-9+/=]+$/.test(String(src || ''));
@@ -142,7 +152,10 @@ function refreshSkills(){
   $$('[data-key^="skill"]').forEach(el=>setVal(el, state[el.dataset.key] ?? 0));
   $$('[data-skill-total]').forEach(cell=>{
     const i = Number(cell.dataset.skillTotal);
-    cell.textContent = numeric(`skill${i}`) + numeric(`stat${skillStatIndex(i)}`);
+    const penalty = statPenalty(skillStatIndex(i));
+    cell.textContent = skillTotal(i);
+    cell.classList.toggle('is-penalized', penalty > 0);
+    cell.title = penalty > 0 ? `Штраф брони −${penalty}` : '';
   });
 }
 
@@ -156,7 +169,7 @@ function renderSkills(){
     if(activeCategory !== 'Все' && activeCategory !== category) return '';
     const visible = entries.filter(([name, stat]) => !query || `${name} ${stat}`.toLocaleLowerCase('ru').includes(query));
     if(!visible.length) return '';
-    return `<article class="skill-category"><h2>${category}</h2><table class="skill-table"><thead><tr><th>Название</th><th>Стат</th><th>Урв</th><th>Сумм</th><th></th></tr></thead><tbody>${visible.map(([name,stat])=>{const i=skills.indexOf(name);const level=numeric(`skill${i}`);return `<tr><td>${name}<button class="skill-roll" data-roll-skill="${i}" title="Бросить 1d10 + стат + навык">1d10</button></td><td>${stat}</td><td><input data-key="skill${i}" type="number" min="0" max="${maxLevel}" value="${level}"></td><td class="skill-total" data-skill-total="${i}">${level + numeric(`stat${skillStatIndex(i)}`)}</td><td></td></tr>`;}).join('')}</tbody></table></article>`;
+    return `<article class="skill-category"><h2>${category}</h2><table class="skill-table"><thead><tr><th>Название</th><th>Стат</th><th>Урв</th><th>Сумм</th><th></th></tr></thead><tbody>${visible.map(([name,stat])=>{const i=skills.indexOf(name);const level=numeric(`skill${i}`);return `<tr><td>${name}<button class="skill-roll" data-roll-skill="${i}" title="Бросить 1d10 + стат + навык">1d10</button></td><td>${stat}</td><td><input data-key="skill${i}" type="number" min="0" max="${maxLevel}" value="${level}"></td><td class="skill-total" data-skill-total="${i}">${skillTotal(i)}</td><td></td></tr>`;}).join('')}</tbody></table></article>`;
   }).join('') || '<div class="empty-search">НАВЫКИ НЕ НАЙДЕНЫ</div>';
   renderSkillFilters();
   refreshSkills();
@@ -203,7 +216,7 @@ function fillStaticInputs(){
   $$('[data-static]').forEach(el=>{
     const value = state[el.dataset.key];
     if(el.type === 'checkbox') el.checked = value === undefined ? el.defaultChecked : value === true || value === 'true';
-    else el.value = value ?? el.defaultValue;
+    else el.value = value ?? el.defaultValue ?? '';
   });
 }
 
@@ -216,12 +229,14 @@ function updateResource(key, max){
 function updateDerived(){
   const body=numeric('stat8'), will=numeric('stat5'), emp=numeric('stat9');
   // Cyberpunk RED: ХИТЫ = 10 + 5 × ⌈(ТЕЛ + ВОЛ) / 2⌉.
-  const hp=10+5*Math.ceil((body+will)/2);
+  const hp=maxHp();
   updateResource('currentHp', hp);
   $('#hpMaximum').textContent=hp;
   $('#staminaValue').textContent=body+will;
   $('#woundValue').textContent=Math.ceil(hp/2);
-  $('#speedValue').textContent=numeric('stat7');
+  $('#speedValue').textContent=Math.max(0, numeric('stat7') - statPenalty(7));
+  updateResource('armorHeadCurrent', numeric('armorHead'));
+  updateResource('armorBodyCurrent', numeric('armorBody'));
   updateResource('luckCurrent', numeric('stat6'));
   updateResource('humanityCurrent', emp * 10);
   $('#sheetName').textContent=(state.name||'НОВЫЙ ЛИСТ').toUpperCase();
@@ -287,7 +302,7 @@ function rollFormula(formula){
 }
 
 function rollSkill(index){
-  const modifier = numeric(`skill${index}`) + numeric(`stat${skillStatIndex(index)}`);
+  const modifier = skillTotal(index);
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
@@ -366,6 +381,64 @@ function save(changedKey){
   if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
 }
 
+const setInput = (key, value) => $$(`[data-key="${key}"]`).forEach(el=>{ el.value = value; });
+
+// Выбор брони из списка заполняет SP и штраф; ручная правка максимума считается сменой брони.
+function applyArmorInput(key, value){
+  const typeKey = /^armor(Head|Body)Type$/.exec(key);
+  if(typeKey){
+    const preset = armorPresets[value];
+    if(!preset) return;
+    setInput(`armor${typeKey[1]}`, preset[1]);
+    setInput(`armor${typeKey[1]}Current`, preset[1]);
+    const penalties = ['Head','Body'].map(zone=>armorPresets[$(`[data-key="armor${zone}Type"]`).value]?.[2] || 0);
+    setInput('armorPenalty', Math.max(...penalties));
+    return;
+  }
+  const maxKey = /^armor(Head|Body)$/.exec(key);
+  if(maxKey){
+    setInput(`armor${maxKey[1]}Current`, value);
+    setInput(`armor${maxKey[1]}Type`, '');
+  }
+}
+
+function armorZoneName(zone){ return zone === 'Head' ? 'голову' : 'тело'; }
+
+// Урон по правилам RED: SP вычитается из урона, прошедший урон по голове удваивается,
+// при пробитии SP уменьшается на 1; оружие ближнего боя учитывает половину SP (округление вверх).
+function applyDamage(){
+  const damage = Math.max(0, Math.floor(Number($('#damageInput').value) || 0));
+  if(!damage) return;
+  const zone = $('#damageZone').value;
+  const spKey = `armor${zone}Current`;
+  const sp = numeric(spKey);
+  const effectiveSp = $('#damageMelee').checked ? Math.ceil(sp / 2) : sp;
+  let through = Math.max(0, damage - effectiveSp);
+  if(zone === 'Head') through *= 2;
+  if(through > 0 && sp > 0) state[spKey] = sp - 1;
+  state.currentHp = Math.max(0, numeric('currentHp') - through);
+  const threshold = Math.ceil(maxHp() / 2);
+  if(state.currentHp < threshold) state.seriousWound = true;
+  if(state.currentHp === 0) state.deathSave = true;
+  fillStaticInputs();
+  updateDerived();
+  const status = state.currentHp === 0 ? ' СМЕРТЕЛЬНОЕ РАНЕНИЕ — нужны испытания против смерти.' : state.currentHp < threshold ? ' ТЯЖЁЛОЕ РАНЕНИЕ.' : '';
+  $('#damageResult').textContent = through > 0
+    ? `Урон ${damage} в ${armorZoneName(zone)}, SP ${effectiveSp}: прошло ${through}. SP ${sp} → ${state[spKey]}, ХИТЫ ${state.currentHp}/${maxHp()}.${status}`
+    : `Урон ${damage} в ${armorZoneName(zone)} остановлен бронёй (SP ${effectiveSp}).`;
+  $('#damageInput').value = '';
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+}
+
+function repairArmor(){
+  state.armorHeadCurrent = numeric('armorHead');
+  state.armorBodyCurrent = numeric('armorBody');
+  fillStaticInputs();
+  updateDerived();
+  $('#damageResult').textContent = `Броня восстановлена: голова SP ${state.armorHeadCurrent}, тело SP ${state.armorBodyCurrent}.`;
+  persist();
+}
+
 function bindInputs(){
   $$('[data-key]').forEach(el=>{
     if(el.dataset.bound) return;
@@ -380,6 +453,7 @@ function bindInputs(){
           return;
         }
       }
+      applyArmorInput(key, el.value);
       // Одно и то же значение может быть в нескольких полях (человечность).
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
       save(key);
@@ -439,7 +513,13 @@ function loadPortrait(file){
   img.src = url;
 }
 
+$$('[data-armor-zone]').forEach(select=>{
+  select.innerHTML = '<option value="">Своя / нет</option>' + Object.entries(armorPresets).map(([id,[name,sp,penalty]])=>`<option value="${id}">${name} — SP ${sp}${penalty ? `, −${penalty}` : ''}</option>`).join('');
+});
 $$('[data-key]').forEach(el=>{ el.dataset.static='true'; });
+$('#applyDamage').onclick=applyDamage;
+$('#repairArmor').onclick=repairArmor;
+$('#damageInput').onkeydown=e=>{ if(e.key==='Enter') applyDamage(); };
 $('#creationMode').onchange=()=>{state.creationMode=$('#creationMode').checked;save();render();};
 
 document.addEventListener('click',e=>{
