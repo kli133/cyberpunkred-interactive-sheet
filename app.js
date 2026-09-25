@@ -20,16 +20,27 @@ const cyberSections = {
   rightArm:['Правая киберрука',4], leftArm:['Левая киберрука',4], neural:['Нейроинтерфейс',5],
   rightLeg:['Правая кибернога',3], leftLeg:['Левая кибернога',3],
   internal:['Внутр. киберимплант',6], external:['Внешний киберимплант',6],
-  fashionware:['Стильной киберимплант',6], borgware:['Боргирование',6]
+  fashionware:['Стильный киберимплант',6], borgware:['Боргирование',6]
 };
-let state = JSON.parse(localStorage.getItem('cyberred-sheet') || '{}');
-if(state.creationMode === undefined) state.creationMode = true;
+const rowTypes = {gear:3, weapon:5, relationship:3};
+const STORAGE_KEY = 'cyberred-sheet';
+const SKILL_POOL = 86, STAT_POOL = 62;
+// Поля строк таблиц и киберслотов хранятся только в структурированном виде (state.gear, state.cyberSlots...).
+const structuredKey = /^(gear|weapon|relationship)\d+_\d+$|^cyberSlot_/;
+const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent)$/;
+
 const $ = s => document.querySelector(s);
-const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const field = (key, value='', type='text', placeholder='') => `<input data-key="${key}" type="${type}" value="${esc(value)}" placeholder="${placeholder}">`;
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const field = (key, value='', type='text', placeholder='') => `<input data-key="${key}" type="${type}" value="${esc(value)}" placeholder="${esc(placeholder)}">`;
 const numeric = key => Number(state[key]) || 0;
 const statAlias = name => statAliases[name] || name;
+const skillStatIndex = i => stats.indexOf(statAlias(skillEntries[i][1]));
+const skillWeight = i => skills[i].includes('(x2)') ? 2 : 1;
+const skillSpent = () => skills.reduce((sum,_,i)=>sum + numeric(`skill${i}`)*skillWeight(i),0);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
+const setVal = (el, value) => { if(el !== document.activeElement) el.value = value; };
+const isSafeImage = src => /^data:image\/[\w.+-]+;base64,[A-Za-z0-9+/=]+$/.test(String(src || ''));
 const formulaHtml = (key, value) => {
   const formulas = state.formulaMarks?.[key] || [];
   let html = esc(value);
@@ -39,6 +50,34 @@ const formulaHtml = (key, value) => {
   });
   return html;
 };
+
+function migrate(data){
+  const s = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  if(s.creationMode === undefined) s.creationMode = true;
+  // Раньше человечность хранилась в двух независимых полях.
+  if(s.humanityCurrent === undefined && s.humanityValue !== undefined) s.humanityCurrent = s.humanityValue;
+  delete s.humanityValue;
+  Object.keys(s).forEach(key => { if(structuredKey.test(key)) delete s[key]; });
+  if(s.portrait && !isSafeImage(s.portrait)) delete s.portrait;
+  return s;
+}
+
+function loadState(){
+  try { return migrate(JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')); }
+  catch { return migrate({}); }
+}
+
+let state = loadState();
+
+function persist(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch {
+    $('#saveStatus').textContent = 'ОШИБКА СОХРАНЕНИЯ: НЕТ МЕСТА';
+    return false;
+  }
+}
 
 function normalizeStats(){
   if(state.creationMode === false) return stats.reduce((total,_,i)=>total + numeric(`stat${i}`),0);
@@ -52,44 +91,79 @@ function normalizeStats(){
   return total;
 }
 
+function normalizeSkills(changedKey){
+  if(state.creationMode === false){
+    skills.forEach((_,i)=>{ state[`skill${i}`] = Math.max(0, numeric(`skill${i}`)); });
+    return;
+  }
+  skills.forEach((_,i)=>{ state[`skill${i}`] = Math.max(0, Math.min(6, numeric(`skill${i}`))); });
+  let excess = skillSpent() - SKILL_POOL;
+  if(excess <= 0) return;
+  // Срезаем в первую очередь навык, который только что меняли.
+  const changed = /^skill(\d+)$/.exec(changedKey || '');
+  if(changed){
+    const i = Number(changed[1]);
+    const cut = Math.min(numeric(`skill${i}`), Math.ceil(excess / skillWeight(i)));
+    state[`skill${i}`] -= cut;
+    excess -= cut * skillWeight(i);
+  }
+  for(let i = skills.length - 1; i >= 0 && excess > 0; i--){
+    while(numeric(`skill${i}`) > 0 && excess > 0){ state[`skill${i}`]--; excess -= skillWeight(i); }
+  }
+}
+
 function renderStats(){
   const oldBudget = $('.point-budget');
   if(oldBudget) oldBudget.remove();
   const total = normalizeStats();
   $('#statsGrid').innerHTML = stats.map((name,i) => {
-    const statValue = `<input class="stat-value" data-key="stat${i}" type="number" min="${state.creationMode === false ? 0 : 2}" max="${state.creationMode === false ? 99 : 8}" step="1" value="${state[`stat${i}`] || 0}" aria-label="${name}">`;
+    const statValue = `<input class="stat-value" data-key="stat${i}" type="number" min="${state.creationMode === false ? 0 : 2}" max="${state.creationMode === false ? 99 : 8}" step="1" value="${esc(state[`stat${i}`] || 0)}" aria-label="${name}">`;
     if(i === 6 || i === 9){
       const key = i === 6 ? 'luckCurrent' : 'humanityCurrent';
-      const max = i === 6 ? state.stat6 || 0 : (state.stat9 || 0) * 10;
-      const fallback = i === 6 ? state.stat6 || 0 : (state.stat9 || 0) * 10;
-      const current = `<input class="resource-value" data-key="${key}" type="number" min="0" max="${max}" value="${state[key] ?? fallback}" aria-label="Текущее ${name}">`;
+      const max = i === 6 ? numeric('stat6') : numeric('stat9') * 10;
+      const current = `<input class="resource-value" data-key="${key}" type="number" min="0" max="${max}" value="${esc(state[key] ?? max)}" aria-label="Текущее ${name}">`;
       return `<div class="stat-row has-resource"><span>${name}</span><div class="resource-pair">${current}<span class="resource-separator">из</span>${statValue}</div></div>`;
     }
     return `<div class="stat-row"><span>${name}</span>${statValue}</div>`;
   }).join('');
   if(state.creationMode !== false){
-    $('#statsGrid').insertAdjacentHTML('beforebegin', `<div class="point-budget">ПУЛ СОЗДАНИЯ: <strong>${total}</strong> / 62 <small>Минимум 2, максимум 8.</small></div>`);
+    $('#statsGrid').insertAdjacentHTML('beforebegin', `<div class="point-budget">ПУЛ СОЗДАНИЯ: <strong>${total}</strong> / ${STAT_POOL} <small>Минимум 2, максимум 8.</small></div>`);
   }
 }
 
+function refreshStats(){
+  $$('[data-key^="stat"]').forEach(el=>setVal(el, state[el.dataset.key] ?? 0));
+  const budget = $('.point-budget strong');
+  if(budget) budget.textContent = stats.reduce((sum,_,i)=>sum+numeric(`stat${i}`),0);
+}
+
+function refreshSkills(){
+  $('#skillBudget').textContent = Math.max(0, SKILL_POOL - skillSpent());
+  $$('[data-key^="skill"]').forEach(el=>setVal(el, state[el.dataset.key] ?? 0));
+  $$('[data-skill-total]').forEach(cell=>{
+    const i = Number(cell.dataset.skillTotal);
+    cell.textContent = numeric(`skill${i}`) + numeric(`stat${skillStatIndex(i)}`);
+  });
+}
+
 function renderSkills(){
-  const total = skills.reduce((sum,_,i)=>sum + numeric(`skill${i}`),0);
-  $('#skillBudget').textContent = Math.max(0,86-total);
   $('#skillBudget').closest('strong').classList.toggle('is-hidden', state.creationMode === false);
   $('.rules-note').classList.toggle('is-hidden', state.creationMode === false);
   const query = ($('#skillSearch')?.value || '').trim().toLocaleLowerCase('ru');
-  const activeCategory = document.querySelector('.skill-filter.active')?.dataset.category || 'Все';
+  const activeCategory = $('.skill-filter.active')?.dataset.category || 'Все';
+  const maxLevel = state.creationMode === false ? 10 : 6;
   $('#skillsCategories').innerHTML = Object.entries(skillCategories).map(([category, entries]) => {
     if(activeCategory !== 'Все' && activeCategory !== category) return '';
     const visible = entries.filter(([name, stat]) => !query || `${name} ${stat}`.toLocaleLowerCase('ru').includes(query));
     if(!visible.length) return '';
-    return `<article class="skill-category"><h2>${category}</h2><table class="skill-table"><thead><tr><th>Название</th><th>Стат</th><th>Урв</th><th>Сумм</th><th></th></tr></thead><tbody>${visible.map(([name,stat])=>{const i=skills.indexOf(name);const level=numeric(`skill${i}`);const statIndex=stats.indexOf(statAlias(stat)||stat);return `<tr><td>${name}<button class="skill-roll" data-roll-skill="${i}" title="Бросить 1d10 + стат + навык">1d10</button></td><td>${stat}</td><td><input data-key="skill${i}" type="number" min="0" max="${state.creationMode === false ? 10 : 6}" value="${level}"></td><td class="skill-total">${level + numeric(`stat${statIndex}`)}</td><td></td></tr>`;}).join('')}</tbody></table></article>`;
+    return `<article class="skill-category"><h2>${category}</h2><table class="skill-table"><thead><tr><th>Название</th><th>Стат</th><th>Урв</th><th>Сумм</th><th></th></tr></thead><tbody>${visible.map(([name,stat])=>{const i=skills.indexOf(name);const level=numeric(`skill${i}`);return `<tr><td>${name}<button class="skill-roll" data-roll-skill="${i}" title="Бросить 1d10 + стат + навык">1d10</button></td><td>${stat}</td><td><input data-key="skill${i}" type="number" min="0" max="${maxLevel}" value="${level}"></td><td class="skill-total" data-skill-total="${i}">${level + numeric(`stat${skillStatIndex(i)}`)}</td><td></td></tr>`;}).join('')}</tbody></table></article>`;
   }).join('') || '<div class="empty-search">НАВЫКИ НЕ НАЙДЕНЫ</div>';
   renderSkillFilters();
+  refreshSkills();
 }
 
 function renderSkillFilters(){
-  const active = document.querySelector('.skill-filter.active')?.dataset.category || 'Все';
+  const active = $('.skill-filter.active')?.dataset.category || 'Все';
   $('#skillFilters').innerHTML = ['Все', ...Object.keys(skillCategories)].map(category =>
     `<button class="skill-filter ${category === active ? 'active' : ''}" data-category="${category}">${category}</button>`
   ).join('');
@@ -113,40 +187,43 @@ function row(type,data={},index){
     return `<td>${isNote ? `<div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div>` : field(key,data[j]||'','','')}</td>`;
   }).join('')}<td><button class="remove" data-remove="${type}" data-index="${index}">×</button></td></tr>`;
 }
-function renderRows(type,selector){ const rows=state[type]||[{}]; $(selector).innerHTML=rows.map((d,i)=>row(type,d,i)).join(''); }
+function renderRows(type,selector){ const rows=state[type]?.length ? state[type] : [{}]; $(selector).innerHTML=rows.map((d,i)=>row(type,d,i)).join(''); }
 function renderCyber(){
   const saved = state.cyberSlots || {};
   if(!state.cyberSlots && Array.isArray(state.cyberware) && state.cyberware.length) saved.cranial = state.cyberware;
   Object.entries(cyberSections).forEach(([key,[title,count]]) => {
-    const target = document.querySelector(`[data-cyber-section="${key}"]`);
+    const target = $(`[data-cyber-section="${key}"]`);
     const rows = saved[key] || [];
     target.innerHTML = `<table class="cyber-slot-table"><thead><tr><th>${title}</th><th>Информация</th></tr></thead><tbody>${Array.from({length:count},(_,i)=>`<tr><td>${field(`cyberSlot_${key}_${i}_name`,rows[i]?.[0]||'')}</td><td>${field(`cyberSlot_${key}_${i}_info`,rows[i]?.[1]||'')}</td></tr>`).join('')}</tbody></table>`;
   });
 }
 
+// Поля из index.html не перерисовываются, поэтому при импорте/сбросе их значения выставляются явно.
+function fillStaticInputs(){
+  $$('[data-static]').forEach(el=>{
+    const value = state[el.dataset.key];
+    if(el.type === 'checkbox') el.checked = value === undefined ? el.defaultChecked : value === true || value === 'true';
+    else el.value = value ?? el.defaultValue;
+  });
+}
+
+function updateResource(key, max){
+  if(state[key] === undefined || state[key] === '') state[key] = max;
+  state[key] = Math.max(0, Math.min(numeric(key), max));
+  $$(`[data-key="${key}"]`).forEach(el=>{ el.max = max; setVal(el, state[key]); });
+}
+
 function updateDerived(){
-  const body=numeric('stat8'), will=numeric('stat5'), emp=numeric('stat9'), hp=10+(body*5);
-  if(state.currentHp === undefined || state.currentHp === '') state.currentHp=hp;
-  state.currentHp=Math.max(0,Math.min(numeric('currentHp'),hp));
-  const hpInput = $('#hpValue');
-  if(hpInput){ hpInput.value=state.currentHp; hpInput.max=hp; }
-  const hpMaximum = $('#hpMaximum');
-  if(hpMaximum) hpMaximum.textContent=hp;
+  const body=numeric('stat8'), will=numeric('stat5'), emp=numeric('stat9');
+  // Cyberpunk RED: ХИТЫ = 10 + 5 × ⌈(ТЕЛ + ВОЛ) / 2⌉.
+  const hp=10+5*Math.ceil((body+will)/2);
+  updateResource('currentHp', hp);
+  $('#hpMaximum').textContent=hp;
   $('#staminaValue').textContent=body+will;
   $('#woundValue').textContent=Math.ceil(hp/2);
   $('#speedValue').textContent=numeric('stat7');
-  const humanityValue = $('#humanityValue');
-  if(humanityValue){
-    const maxHumanity = emp * 10;
-    humanityValue.max = maxHumanity;
-    if(state.humanityValue === undefined || state.humanityValue === '') state.humanityValue = maxHumanity;
-    state.humanityValue = Math.max(0, Math.min(numeric('humanityValue'), maxHumanity));
-    humanityValue.value = state.humanityValue;
-  }
-  const luckInput = $('[data-key="luckCurrent"]');
-  if(luckInput){ luckInput.max=numeric('stat6'); if(state.luckCurrent === undefined) state.luckCurrent=numeric('stat6'); luckInput.value=Math.min(numeric('luckCurrent'),numeric('stat6')); }
-  const humanityInput = $('[data-key="humanityCurrent"]');
-  if(humanityInput){ humanityInput.max=emp*10; if(state.humanityCurrent === undefined) state.humanityCurrent=emp*10; humanityInput.value=Math.min(numeric('humanityCurrent'),emp*10); }
+  updateResource('luckCurrent', numeric('stat6'));
+  updateResource('humanityCurrent', emp * 10);
   $('#sheetName').textContent=(state.name||'НОВЫЙ ЛИСТ').toUpperCase();
 }
 
@@ -154,8 +231,8 @@ function normalizeDicePool(pool){
   const normalized=[];
   let totalCount=0;
   (Array.isArray(pool) ? pool : []).forEach(item=>{
-    const sides=Math.max(1,Math.min(1000,Number(item.sides)||10));
-    const count=Math.max(1,Math.min(100,Number(item.count)||1));
+    const sides=Math.max(1,Math.min(1000,Number(item?.sides)||10));
+    const count=Math.max(1,Math.min(100,Number(item?.count)||1));
     const allowed=Math.min(count,100-totalCount);
     if(allowed>0){normalized.push({sides,count:allowed});totalCount+=allowed;}
   });
@@ -173,26 +250,27 @@ function rollModeLabel(){
   return state.rollMode === 'advantage' ? 'ПРЕИМУЩЕСТВО' : state.rollMode === 'disadvantage' ? 'ПОМЕХА' : '';
 }
 
-function rollDicePool(pool, modifier, label='Свободный бросок'){
+const signed = value => value >= 0 ? String(value) : '−'+Math.abs(value);
+const diceText = item => item.diceDetails ? item.diceDetails.map(die=>`D${Number(die.sides)}: ${Number(die.value)}`).join(' + ') : (Array.isArray(item.dice) ? item.dice.map(Number).join(' + ') : Number(item.die));
+const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКАЯ НЕУДАЧА'}${item.critExtra ? ` (${item.die === 10 ? '+' : '−'}${Number(item.critExtra)})` : ''}</em>` : '';
+const logLine = item => `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
+
+// crits: по правилам RED 10 на 1d10 добавляет ещё 1d10, 1 — вычитает ещё 1d10.
+function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge}={}){
   const dicePool=normalizeDicePool(pool);
   const diceDetails=dicePool.flatMap(({sides,count})=>Array.from({length:count},()=>({sides,value:rollDie(sides)})));
-  const dice=diceDetails.map(item=>item.value);
-  const die = dice.reduce((sum,value)=>sum+value,0);
-  const total = die + modifier;
-  const critical = diceDetails.length === 1 && diceDetails[0].sides === 10 && (die === 1 || die === 10);
-  const result = `${total >= 0 ? total : '−'+Math.abs(total)}`;
-  const mode=rollModeLabel();
-  const entry = {label, die, dice, diceDetails, modifier, total, critical, mode, time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})};
+  const die = diceDetails.reduce((sum,item)=>sum+item.value,0);
+  const critical = crits && diceDetails.length === 1 && diceDetails[0].sides === 10 && (die === 1 || die === 10);
+  const critExtra = critical ? Math.floor(Math.random()*10)+1 : 0;
+  const total = die + modifier + (die === 10 ? critExtra : -critExtra);
+  const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel(), time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})};
+  if(judge) entry.note = judge(entry);
   state.rollHistory = [entry, ...(state.rollHistory || [])].slice(0, 30);
-  localStorage.setItem('cyberred-sheet',JSON.stringify(state));
-  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${result}</strong>`;
-  $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${label}${mode ? ` [${mode}]` : ''}: <b>${diceDetails.map(item=>`D${item.sides}: ${item.value}`).join(' + ')}</b> + ${modifier} = <strong>${result}</strong>${critical ? ` <em>${die === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКАЯ ЕДИНИЦА'}</em>` : ''}</div>`);
+  persist();
+  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry)}${entry.note ? ` <em>${esc(entry.note)}</em>` : ''}`;
+  $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${logLine(entry)}</div>`);
   renderDashboardLog();
   $('#diceDrawer').classList.add('open');
-}
-
-function rollDice(sides, modifier, label='Свободный бросок', count=1){
-  rollDicePool([{sides,count}],modifier,label);
 }
 
 function parseFormula(value){
@@ -204,27 +282,23 @@ function parseFormula(value){
 }
 
 function rollFormula(formula){
-  const dice = Array.from({length:formula.count},()=>rollDie(formula.sides));
-  const total = dice.reduce((sum,value)=>sum+value,0);
-  const label = `${formula.count}d${formula.sides}`;
-  const mode=rollModeLabel();
-  const entry = {label, formula:label, dice, die:total, modifier:0, total, critical:false, mode, time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})};
-  state.rollHistory = [entry, ...(state.rollHistory || [])].slice(0,30);
-  localStorage.setItem('cyberred-sheet',JSON.stringify(state));
-  $('#diceResult').innerHTML = `<div class="formula-roll-values">${dice.map((value,index)=>`<span class="formula-die" aria-label="Кубик ${index + 1}">${value}</span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${total}</strong>`;
-  $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${label}${mode ? ` [${mode}]` : ''}: <b>${dice.join(' + ')}</b> = <strong>${total}</strong></div>`);
-  renderDashboardLog();
-  $('#diceDrawer').classList.add('open');
+  if(!formula) return;
+  rollDicePool([formula], 0, `${formula.count}d${formula.sides}`, {crits:false});
 }
 
 function rollSkill(index){
-  const [name, stat] = skillEntries[index];
-  const statIndex = stats.indexOf(statAlias(stat));
-  const modifier = numeric(`skill${index}`) + numeric(`stat${statIndex}`);
+  const modifier = numeric(`skill${index}`) + numeric(`stat${skillStatIndex(index)}`);
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
-  rollDice(10, modifier, name);
+  rollDicePool([{sides:10,count:1}], modifier, skills[index]);
+}
+
+// Испытание против смерти: 1d10 должен быть меньше ТЕЛ, десятка — всегда провал.
+function rollDeathSave(){
+  const body = numeric('stat8');
+  rollDicePool([{sides:10,count:1}], 0, 'Испытание против смерти', {crits:false,
+    judge: entry => entry.die < body && entry.die !== 10 ? `УСПЕХ (нужно < ${body})` : `ПРОВАЛ (нужно < ${body})`});
 }
 
 function renderDicePool(){
@@ -246,114 +320,151 @@ function renderRollMode(){
 }
 
 function readDicePool(){
-  return [...document.querySelectorAll('.dice-pool-row')].map(row=>({
+  return $$('.dice-pool-row').map(row=>({
     sides:Number(row.querySelector('.dice-sides').value),
     count:Number(row.querySelector('.dice-count').value)
   }));
 }
 
 function renderDashboardLog(){
-  const history = state.rollHistory || [];
-  $('#dashboardLog').innerHTML = history.length ? history.map(item =>
-    `<div><span>${item.time}</span> ${item.label}${item.mode ? ` [${item.mode}]` : ''}: <b>${item.diceDetails ? item.diceDetails.map(die=>`D${die.sides}: ${die.value}`).join(' + ') : (item.dice ? item.dice.join(' + ') : item.die)}</b>${item.modifier ? ` + ${item.modifier}` : ''} = <strong>${item.total}</strong></div>`
-  ).join('') : 'Пока нет бросков.';
+  const history = Array.isArray(state.rollHistory) ? state.rollHistory : [];
+  $('#dashboardLog').innerHTML = history.length ? history.map(item => `<div><span>${esc(item.time)}</span> ${logLine(item)}</div>`).join('') : 'Пока нет бросков.';
 }
 
 function renderDashboard(){
   $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
   renderDashboardLog();
-  if(state.portrait) {
-    $('#portraitPreview').classList.add('has-image');
-    $('#portraitPreview').style.backgroundImage=`url("${state.portrait}")`;
-  } else {
-    $('#portraitPreview').classList.remove('has-image');
-    $('#portraitPreview').style.backgroundImage='';
-  }
+  const preview = $('#portraitPreview');
+  const hasImage = isSafeImage(state.portrait);
+  preview.classList.toggle('has-image', hasImage);
+  preview.style.backgroundImage = hasImage ? `url("${state.portrait}")` : '';
 }
 
-function save(){
-  document.querySelectorAll('[data-key]').forEach(el=>{state[el.dataset.key]=el.type==='checkbox'?el.checked:textValue(el)});
+function save(changedKey){
+  $$('[data-key]').forEach(el=>{
+    const key = el.dataset.key;
+    if(!structuredKey.test(key)) state[key] = el.type==='checkbox' ? el.checked : textValue(el);
+  });
   normalizeStats();
-  if(state.creationMode !== false){
-    const levels = skills.map((_,i)=>numeric(`skill${i}`));
-    let total = levels.reduce((a,b)=>a+b,0);
-    skills.forEach((_,i)=>{state[`skill${i}`]=Math.min(6,numeric(`skill${i}`));});
-    total = skills.reduce((sum,_,i)=>sum + numeric(`skill${i}`),0);
-    while(total > 86){const index=skills.findIndex((_,i)=>numeric(`skill${i}`)>0);if(index<0)break;state[`skill${index}`]--;total--;}
-  }
-  document.querySelectorAll('[data-key^="stat"]').forEach(el=>{el.value=state[el.dataset.key]});
-  const budget = $('.point-budget strong');
-  if(budget) budget.textContent=stats.reduce((sum,_,i)=>sum+numeric(`stat${i}`),0);
-  ['gear','weapon','relationship','cyberware'].forEach(type=>{
-    const elements=[...document.querySelectorAll(`[data-key^="${type}"]`)];
-    const width=type==='cyberware'?2:type==='weapon'?5:3;
+  normalizeSkills(changedKey);
+  Object.entries(rowTypes).forEach(([type,width])=>{
+    const elements=$$(`[data-key^="${type}"]`).filter(el=>structuredKey.test(el.dataset.key));
     const count=Math.ceil(elements.length/width);
     state[type]=Array.from({length:count},(_,i)=>elements.filter(el=>el.dataset.key.startsWith(`${type}${i}_`)).map(textValue));
   });
   state.cyberSlots = Object.keys(cyberSections).reduce((all,key)=>{
-    const fields = [...document.querySelectorAll(`[data-key^="cyberSlot_${key}_"]`)];
     all[key] = Array.from({length: cyberSections[key][1]},(_,i)=>[
-      fields.find(el=>el.dataset.key===`cyberSlot_${key}_${i}_name`)?.value || '',
-      fields.find(el=>el.dataset.key===`cyberSlot_${key}_${i}_info`)?.value || ''
+      $(`[data-key="cyberSlot_${key}_${i}_name"]`)?.value || '',
+      $(`[data-key="cyberSlot_${key}_${i}_info"]`)?.value || ''
     ]);
     return all;
   },{});
-  localStorage.setItem('cyberred-sheet',JSON.stringify(state));
-  $('#saveStatus').textContent='СОХРАНЕНО '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-  renderStats(); renderSkills(); bindInputs(); updateDerived();
+  delete state.cyberware;
+  // Ничего не перерисовываем целиком, чтобы не сбивать фокус в поле, которое сейчас редактируется.
+  refreshStats(); refreshSkills(); updateDerived();
+  $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
 }
 
 function bindInputs(){
-  document.querySelectorAll('[data-key]').forEach(el=>{
+  $$('[data-key]').forEach(el=>{
     if(el.dataset.bound) return;
-    const value=state[el.dataset.key];
-    if(el.type==='checkbox') el.checked=value==='true'||value===true;
-    else if(value!==undefined && !el.isContentEditable) el.value=value;
     el.dataset.bound='true';
     el.addEventListener('input',()=>{
       const key=el.dataset.key;
       if(state.creationMode !== false && /^stat\d+$/.test(key)){
         const next=Math.max(2,Math.min(8,Number(el.value)||2));
         const otherTotal=stats.reduce((sum,_,i)=>sum+(key===`stat${i}`?0:numeric(`stat${i}`)),0);
-        if(otherTotal+next>62){
+        if(otherTotal+next>STAT_POOL){
           el.value=state[key];
           return;
         }
       }
-      save();
+      // Одно и то же значение может быть в нескольких полях (человечность).
+      $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
+      save(key);
     });
+    // После окончания ввода показываем значение с учётом ограничений.
+    el.addEventListener('change',()=>{ if(clampedKey.test(el.dataset.key)) el.value = state[el.dataset.key]; });
   });
 }
 
 function render(){
-  renderStats();renderSkills();renderLife();renderRows('gear','#gearRows');renderRows('weapon','#weaponRows');renderRows('relationship','#relationshipRows');renderCyber();renderDashboard();
+  renderStats();renderSkills();renderLife();Object.keys(rowTypes).forEach(type=>renderRows(type,`#${type}Rows`));renderCyber();renderDashboard();
   $('#creationMode').checked=state.creationMode !== false;
+  renderDicePool();
   renderRollMode();
+  fillStaticInputs();
   bindInputs();
   updateDerived();
 }
 
 function switchTab(tabName){
-  document.querySelectorAll('.tab,.tab-panel').forEach(x=>x.classList.remove('active'));
-  const tab=document.querySelector(`.tab[data-tab="${tabName}"]`);
+  $$('.tab,.tab-panel').forEach(x=>x.classList.remove('active'));
+  const tab=$(`.tab[data-tab="${tabName}"]`);
   const panel=document.getElementById(tabName);
   if(tab && panel){tab.classList.add('active');panel.classList.add('active');}
 }
 
-document.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>switchTab(tab.dataset.tab));
+// При удалении строки заметки с формулами должны сдвинуться вместе со строками.
+function shiftFormulaMarks(type, index){
+  const marks = state.formulaMarks;
+  if(!marks) return;
+  const pattern = new RegExp(`^${type}(\\d+)_(\\d+)$`);
+  state.formulaMarks = Object.entries(marks).reduce((next,[key,value])=>{
+    const match = pattern.exec(key);
+    if(!match) next[key] = value;
+    else if(Number(match[1]) !== index) next[Number(match[1]) > index ? `${type}${Number(match[1]) - 1}_${match[2]}` : key] = value;
+    return next;
+  },{});
+}
+
+function loadPortrait(file){
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    // Уменьшаем портрет, чтобы не упереться в лимит localStorage (~5 МБ).
+    const scale = Math.min(1, 512 / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    const previous = state.portrait;
+    state.portrait = canvas.toDataURL('image/jpeg', 0.85);
+    if(!persist()) state.portrait = previous;
+    renderDashboard();
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); alert('Не удалось загрузить изображение.'); };
+  img.src = url;
+}
+
+$$('[data-key]').forEach(el=>{ el.dataset.static='true'; });
 $('#creationMode').onchange=()=>{state.creationMode=$('#creationMode').checked;save();render();};
 
 document.addEventListener('click',e=>{
   const tab=e.target.closest('.tab');
   if(tab) switchTab(tab.dataset.tab);
   const add=e.target.closest('[data-add]');
-  if(add){const type=add.dataset.add;(state[type]||(state[type]=[])).push({});render();save();}
+  if(add){
+    const type=add.dataset.add;
+    // Пустой лист уже показывает одну строку по умолчанию.
+    if(!state[type]?.length) state[type]=[{}];
+    state[type].push({});
+    render();save();
+  }
   const rem=e.target.closest('[data-remove]');
-  if(rem){state[rem.dataset.remove].splice(Number(rem.dataset.index),1);render();save();}
+  if(rem){
+    const type=rem.dataset.remove, index=Number(rem.dataset.index);
+    if(state[type]?.length){ state[type].splice(index,1); shiftFormulaMarks(type,index); }
+    render();save();
+  }
   const skillRoll=e.target.closest('[data-roll-skill]');
   if(skillRoll) rollSkill(Number(skillRoll.dataset.rollSkill));
   const formula=e.target.closest('[data-formula]');
   if(formula) rollFormula(parseFormula(formula.dataset.formula));
+  const filter=e.target.closest('.skill-filter');
+  if(filter){$$('.skill-filter').forEach(x=>x.classList.remove('active'));filter.classList.add('active');renderSkills();bindInputs();}
 });
 document.addEventListener('contextmenu',e=>{
   const input=e.target.closest('.formula-editor');
@@ -363,32 +474,41 @@ document.addEventListener('contextmenu',e=>{
   const formula=parseFormula(selected);
   if(!formula) return;
   e.preventDefault();
-  const range=selection.getRangeAt(0);
   const marker=document.createElement('span');
   marker.className='formula-marked';
   marker.dataset.formula=selected;
-  range.surroundContents(marker);
+  try { selection.getRangeAt(0).surroundContents(marker); } catch { return; }
   const key=input.dataset.key;
   const marks=state.formulaMarks || (state.formulaMarks={});
   marks[key]=Array.from(new Set([...(marks[key] || []),selected]));
   save();
 });
-renderDicePool();
-renderRollMode();
 $('#diceToggle').onclick=()=>$('#diceDrawer').classList.toggle('open');
 $('#diceClose').onclick=()=>$('#diceDrawer').classList.remove('open');
-$('#addDie').onclick=()=>{state.dicePool=[...readDicePool(),{sides:6,count:1}];renderDicePool();};
-$('#dicePool').oninput=()=>{state.dicePool=readDicePool();localStorage.setItem('cyberred-sheet',JSON.stringify(state));};
-$('#dicePool').onclick=e=>{const remove=e.target.closest('.remove-die');if(!remove)return;const pool=readDicePool();pool.splice(Number(remove.closest('.dice-pool-row').dataset.diceIndex),1);state.dicePool=pool;renderDicePool();};
+$('#addDie').onclick=()=>{state.dicePool=[...readDicePool(),{sides:6,count:1}];renderDicePool();persist();};
+$('#dicePool').oninput=()=>{state.dicePool=readDicePool();persist();};
+$('#dicePool').onclick=e=>{const remove=e.target.closest('.remove-die');if(!remove)return;const pool=readDicePool();pool.splice(Number(remove.closest('.dice-pool-row').dataset.diceIndex),1);state.dicePool=pool;renderDicePool();persist();};
 $('#rollDice').onclick=()=>{const pool=readDicePool();state.dicePool=pool;rollDicePool(pool,Number($('#diceModifier').value)||0,'Свободный бросок');};
-$('#advantageBtn').onclick=()=>{state.rollMode=state.rollMode==='advantage'?'':'advantage';renderRollMode();localStorage.setItem('cyberred-sheet',JSON.stringify(state));};
-$('#disadvantageBtn').onclick=()=>{state.rollMode=state.rollMode==='disadvantage'?'':'disadvantage';renderRollMode();localStorage.setItem('cyberred-sheet',JSON.stringify(state));};
-$('#deathSaveButton').onclick=()=>rollDice(10,0,'Испытание против смерти');
+$('#advantageBtn').onclick=()=>{state.rollMode=state.rollMode==='advantage'?'':'advantage';renderRollMode();persist();};
+$('#disadvantageBtn').onclick=()=>{state.rollMode=state.rollMode==='disadvantage'?'':'disadvantage';renderRollMode();persist();};
+$('#deathSaveButton').onclick=rollDeathSave;
 $('#skillSearch').oninput=()=>{renderSkills();bindInputs();};
-document.addEventListener('click',e=>{const filter=e.target.closest('.skill-filter');if(filter){document.querySelectorAll('.skill-filter').forEach(x=>x.classList.remove('active'));filter.classList.add('active');renderSkills();bindInputs();}});
-$('#clearLog').onclick=()=>{state.rollHistory=[];localStorage.setItem('cyberred-sheet',JSON.stringify(state));renderDashboardLog();};
-$('#portraitInput').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{state.portrait=reader.result;localStorage.setItem('cyberred-sheet',JSON.stringify(state));renderDashboard();};reader.readAsDataURL(file);};
-$('#resetBtn').onclick=()=>{if(confirm('Очистить весь лист?')){state={};localStorage.removeItem('cyberred-sheet');render();}};
-$('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(state.name||'cyberpunk-red-sheet')+'.json';a.click();URL.revokeObjectURL(a.href);};
-$('#importInput').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{state=JSON.parse(reader.result);render();save();}catch{alert('Не удалось прочитать JSON-файл.');}};reader.readAsText(file);};
+$('#clearLog').onclick=()=>{state.rollHistory=[];persist();renderDashboardLog();$('#diceLog').innerHTML='';};
+$('#portraitInput').onchange=e=>{const file=e.target.files[0];if(file)loadPortrait(file);e.target.value='';};
+$('#resetBtn').onclick=()=>{if(confirm('Очистить весь лист?')){state=migrate({});localStorage.removeItem(STORAGE_KEY);render();$('#diceLog').innerHTML='';$('#diceResult').textContent='—';$('#saveStatus').textContent='ЛИСТ ОЧИЩЕН';}};
+$('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(state.name||'cyberpunk-red-sheet').replace(/[\\/:*?"<>|]/g,'_')+'.json';a.click();URL.revokeObjectURL(a.href);};
+$('#importInput').onchange=e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let data;
+    try{data=JSON.parse(reader.result);}catch{data=null;}
+    if(!data || typeof data!=='object' || Array.isArray(data)){alert('Не удалось прочитать JSON-файл.');return;}
+    state=migrate(data);
+    render();save();
+  };
+  reader.readAsText(file);
+  e.target.value='';
+};
 render();
