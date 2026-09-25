@@ -81,7 +81,7 @@
 | `styles.css` | оформление |
 | `data.js` | таблицы правил: навыки, броня, критические травмы, оружейные навыки |
 | `app.js` | логика листа |
-| `fonts/` | шрифт Rajdhani (лицензия SIL OFL, см. `fonts/OFL.txt`) |
+| `fonts/` | шрифт Tektur с кириллицей (лицензия SIL OFL, см. `fonts/OFL.txt`) |
 | `release/` | старая Windows-версия |
 
 ## Планы
