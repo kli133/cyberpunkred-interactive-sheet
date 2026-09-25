@@ -535,7 +535,7 @@ button {
 
 .equipment-grid {
   display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,2fr);
+  grid-template-columns: minmax(0,1fr);
   gap: 18px;
 }
 
@@ -580,44 +580,58 @@ button {
 }
 
 .equipment-grid .weapon-table {
-  min-width: 800px;
+  min-width: 940px;
 }
 
 .equipment-grid .weapon-table th:nth-child(1), .equipment-grid .weapon-table td:nth-child(1) {
-  width: 20%;
+  width: 17%;
 }
 
 .equipment-grid .weapon-table th:nth-child(2), .equipment-grid .weapon-table td:nth-child(2) {
-  width: 118px;
+  width: 150px;
 }
 
 .equipment-grid .weapon-table th:nth-child(3), .equipment-grid .weapon-table td:nth-child(3) {
-  width: 64px;
+  width: 128px;
 }
 
-.equipment-grid .weapon-table th:nth-child(4), .equipment-grid .weapon-table td:nth-child(4),
+.equipment-grid .weapon-table th:nth-child(4), .equipment-grid .weapon-table td:nth-child(4) {
+  width: 60px;
+}
+
 .equipment-grid .weapon-table th:nth-child(5), .equipment-grid .weapon-table td:nth-child(5),
-.equipment-grid .weapon-table th:nth-child(6), .equipment-grid .weapon-table td:nth-child(6) {
+.equipment-grid .weapon-table th:nth-child(6), .equipment-grid .weapon-table td:nth-child(6),
+.equipment-grid .weapon-table th:nth-child(7), .equipment-grid .weapon-table td:nth-child(7),
+.equipment-grid .weapon-table th:nth-child(8), .equipment-grid .weapon-table td:nth-child(8) {
   width: 46px;
 }
 
-.equipment-grid .weapon-table th:nth-child(7), .equipment-grid .weapon-table td:nth-child(7) {
-  width: 52px;
-}
-
-.equipment-grid .weapon-table th:nth-child(8), .equipment-grid .weapon-table td:nth-child(8) {
+.equipment-grid .weapon-table th:nth-child(9), .equipment-grid .weapon-table td:nth-child(9) {
   width: auto;
 }
 
 .equipment-grid .weapon-table th:last-child, .equipment-grid .weapon-table td:last-child {
-  width: 164px;
+  width: 150px;
 }
 
 .equipment-grid .gear-table td:nth-child(2) input,
-.equipment-grid .weapon-table td:nth-child(n+3):nth-child(-n+6) input {
+.equipment-grid .weapon-table td:nth-child(n+4):nth-child(-n+7) input {
   padding-left: 2px;
   padding-right: 2px;
   text-align: center;
+}
+
+.weapon-table .auto-cell {
+  text-align: center;
+}
+
+.weapon-table .auto-cell input {
+  width: auto;
+  accent-color: var(--red);
+}
+
+.weapon-table tr.is-autofire td {
+  background: #fff1f1;
 }
 
 .weapon-table select {
@@ -1854,12 +1868,6 @@ footer {
   flex-wrap: wrap;
 }
 
-/* Таблице оружия нужно ~800px: на средних экранах снаряжение и оружие идут друг под другом. */
-@media(max-width:1300px) {
-  .equipment-grid {
-    grid-template-columns: minmax(0,1fr);
-  }
-}
 
 /* === Телефоны === */
 @media(max-width:560px) {
