@@ -2,7 +2,13 @@
 const skillEntries = Object.values(skillCategories).flat();
 const skills = skillEntries.map(([name]) => name);
 const penalizedStats = [1, 2, 7]; // РЕФ, ЛВК, СКО
-const rowTypes = {gear:3, weapon:5, relationship:3};
+const rowTypes = {gear:3, weapon:7, relationship:3};
+// Порядок колонок в таблицах: j — индекс значения в сохранённой строке (новые колонки оружия добавлены в конец).
+const rowColumns = {
+  gear:[{j:0},{j:1},{j:2,note:true}],
+  weapon:[{j:0},{j:5,select:true},{j:1,placeholder:'3d6'},{j:2},{j:6},{j:3},{j:4,note:true}],
+  relationship:[{j:0},{j:1},{j:2}]
+};
 const STORAGE_KEY = 'cyberred-sheet';
 const SKILL_POOL = 86, STAT_POOL = 62;
 // Поля строк таблиц и киберслотов хранятся только в структурированном виде (state.gear, state.cyberSlots...).
@@ -31,6 +37,7 @@ const skillTotal = i => numeric(`skill${i}`) + numeric(`stat${skillStatIndex(i)}
 const maxHp = () => 10 + 5*Math.ceil((numeric('stat8') + numeric('stat5'))/2);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
 const setVal = (el, value) => { if(el !== document.activeElement) el.value = value; };
+const setInput = (key, value) => $$(`[data-key="${key}"]`).forEach(el=>{ el.value = value; });
 const isSafeImage = src => /^data:image\/[\w.+-]+;base64,[A-Za-z0-9+/=]+$/.test(String(src || ''));
 const formulaHtml = (key, value) => {
   const formulas = state.formulaMarks?.[key] || [];
@@ -50,6 +57,10 @@ function migrate(data){
   delete s.humanityValue;
   Object.keys(s).forEach(key => { if(structuredKey.test(key)) delete s[key]; });
   if(s.portrait && !isSafeImage(s.portrait)) delete s.portrait;
+  Object.entries(rowTypes).forEach(([type,width])=>{
+    if(!Array.isArray(s[type])) { delete s[type]; return; }
+    s[type] = s[type].map(row=>Array.from({length:width},(_,j)=>String(row?.[j] ?? '')));
+  });
   return s;
 }
 
@@ -173,15 +184,26 @@ function renderLife(){
   const alias = `<label class="full">Псевдоним${field('lifeAlias',state.lifeAlias||'')}</label>`;
   $('#lifeFields').innerHTML = alias + lifeFields.map((name,i)=>`<label class="${i===0?'full':''}">${name}${field(`life${i}`,state[`life${i}`]||'')}</label>`).join('');
 }
-function row(type,data={},index){
-  const configs={gear:['Предмет','Кол-во','Заметка'],weapon:['Оружие','Урон','Боеприпасы','ROF','Заметки'],relationship:['Персонаж','Кто это?','Что ему нужно?']};
-  return `<tr>${configs[type].map((x,j)=>{
-    const key=`${type}${index}_${j}`;
-    const isNote=(type==='gear'&&j===2)||(type==='weapon'&&j===4);
-    return `<td>${isNote ? `<div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div>` : field(key,data[j]||'','','')}</td>`;
-  }).join('')}<td><button class="remove" data-remove="${type}" data-index="${index}">×</button></td></tr>`;
+function weaponSkillSelect(key, value){
+  const options = list => list.map(name=>`<option value="${esc(name)}"${name === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
+  return `<select data-key="${key}" aria-label="Навык оружия"><option value="">—</option><optgroup label="Дальний бой">${options(rangedWeaponSkills)}</optgroup><optgroup label="Ближний бой">${options(meleeWeaponSkills)}</optgroup></select>`;
 }
-function renderRows(type,selector){ const rows=state[type]?.length ? state[type] : [{}]; $(selector).innerHTML=rows.map((d,i)=>row(type,d,i)).join(''); }
+function row(type,data=[],index){
+  const cells = rowColumns[type].map(({j,note,select,placeholder})=>{
+    const key = `${type}${index}_${j}`;
+    if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
+    if(select) return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
+    return `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>`;
+  }).join('');
+  const weaponActions = type === 'weapon'
+    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}" title="Атака: 1d10 + стат + навык">АТК</button><button type="button" class="weapon-btn" data-weapon-damage="${index}" title="Бросок урона">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
+    : '';
+  return `<tr>${cells}<td class="row-actions">${weaponActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
+}
+function renderRows(type){
+  const rows = state[type]?.length ? state[type] : [[]];
+  $(`#${type}Rows`).innerHTML = rows.map((data,i)=>row(type,data,i)).join('');
+}
 function renderCyber(){
   const saved = state.cyberSlots || {};
   if(!state.cyberSlots && Array.isArray(state.cyberware) && state.cyberware.length) saved.cranial = state.cyberware;
@@ -306,13 +328,75 @@ function rollFormula(formula){
   rollDicePool([formula], 0, `${formula.count}d${formula.sides}`, {crits:false});
 }
 
-function rollSkill(index){
+// Проверка навыка: 1d10 + стат + навык с учётом штрафов брони и ранений.
+function rollCheck(index, label = skills[index]){
   const modifier = skillTotal(index);
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
   const wound = woundPenalty();
-  rollDicePool([{sides:10,count:1}], modifier, wound ? `${skills[index]} (ранение −${wound})` : skills[index]);
+  return rollDicePool([{sides:10,count:1}], modifier, wound ? `${label} (ранение −${wound})` : label);
+}
+const rollSkill = index => rollCheck(index);
+
+// Урон оружия: «3d6», «2d6+2», «4к6».
+function parseDamage(value){
+  const match = String(value).trim().match(/^(\d+)\s*[dдк]\s*(\d+)(?:\s*([+\-−])\s*(\d+))?$/i);
+  if(!match) return null;
+  const formula = parseFormula(`${match[1]}d${match[2]}`);
+  return formula && {...formula, bonus: match[3] ? (match[3] === '+' ? 1 : -1) * Number(match[4]) : 0};
+}
+function weaponRow(index){
+  if(!state.weapon?.[index]) save();
+  return state.weapon?.[index];
+}
+// Атака: бросок навыка оружия. Дальний бой тратит патрон (автоматический огонь — 10),
+// если в колонке «Патр.» указано число; пустая колонка — патроны не считаются.
+function weaponAttack(index){
+  const data = weaponRow(index);
+  if(!data) return;
+  const name = data[0] || 'Оружие';
+  const skill = skills.indexOf(data[5]);
+  if(skill < 0){ toast(`${name}: выберите навык оружия`); return; }
+  if(rangedWeaponSkills.includes(data[5]) && !isBlank(data[2])){
+    const need = data[5] === AUTOFIRE_SKILL ? AUTOFIRE_AMMO : 1;
+    const ammo = Number(data[2]) || 0;
+    if(ammo < need){ toast(`${name}: патронов ${ammo}, нужно ${need}. Перезарядите.`); return; }
+    data[2] = String(ammo - need);
+    setInput(`weapon${index}_2`, data[2]);
+  }
+  rollCheck(skill, `${name}: атака`);
+}
+// Две и больше шестёрок на кубиках урона — критическая травма у цели.
+function weaponDamage(index){
+  const data = weaponRow(index);
+  if(!data) return;
+  const name = data[0] || 'Оружие';
+  const damage = parseDamage(data[1]);
+  if(!damage){ toast(`${name}: укажите урон в виде 3d6 или 2d6+2`); return; }
+  rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${name}: урон`, {crits:false,
+    judge: entry => entry.diceDetails.filter(die=>die.sides === 6 && die.value === 6).length >= 2 ? `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона` : ''});
+}
+function weaponReload(index){
+  const data = weaponRow(index);
+  if(!data) return;
+  const name = data[0] || 'Оружие';
+  if(isBlank(data[6])){ toast(`${name}: укажите размер магазина`); return; }
+  data[2] = data[6];
+  setInput(`weapon${index}_2`, data[2]);
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  toast(`${name}: перезаряжено (${data[6]})`);
+}
+
+let toastTimer;
+// Короткое сообщение внизу экрана; с action — кнопка действия (например «Вернуть»).
+function toast(message, actionLabel, action){
+  const el = $('#toast');
+  el.innerHTML = `<span>${esc(message)}</span>${actionLabel ? `<button type="button">${esc(actionLabel)}</button>` : ''}`;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  if(action) el.querySelector('button').onclick = () => { el.hidden = true; clearTimeout(toastTimer); action(); };
+  toastTimer = setTimeout(()=>{ el.hidden = true; }, action ? 8000 : 4000);
 }
 
 // Испытание против смерти: 1d10 + штраф должен быть меньше ТЕЛ, десятка — всегда провал.
@@ -373,10 +457,15 @@ function save(changedKey){
   if(changedKey === 'currentHp') syncWoundsWithHp();
   normalizeStats();
   normalizeSkills(changedKey);
+  // Значения строк собираются по индексу колонки из ключа, а не по порядку в таблице.
   Object.entries(rowTypes).forEach(([type,width])=>{
-    const elements=$$(`[data-key^="${type}"]`).filter(el=>structuredKey.test(el.dataset.key));
-    const count=Math.ceil(elements.length/width);
-    state[type]=Array.from({length:count},(_,i)=>elements.filter(el=>el.dataset.key.startsWith(`${type}${i}_`)).map(textValue));
+    const pattern = new RegExp(`^${type}(\\d+)_(\\d+)$`);
+    const rows = [];
+    $$(`[data-key^="${type}"]`).forEach(el=>{
+      const match = pattern.exec(el.dataset.key);
+      if(match) (rows[Number(match[1])] ||= Array(width).fill(''))[Number(match[2])] = textValue(el);
+    });
+    state[type] = Array.from(rows, data=>data || Array(width).fill(''));
   });
   state.cyberSlots = Object.keys(cyberSections).reduce((all,key)=>{
     all[key] = Array.from({length: cyberSections[key][1]},(_,i)=>[
@@ -391,8 +480,6 @@ function save(changedKey){
   $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
   if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
 }
-
-const setInput = (key, value) => $$(`[data-key="${key}"]`).forEach(el=>{ el.value = value; });
 
 // Выбор брони из списка заполняет SP и штраф; ручная правка максимума считается сменой брони.
 function applyArmorInput(key, value){
@@ -488,7 +575,7 @@ function bindInputs(){
 }
 
 function render(){
-  renderStats();renderSkills();renderLife();Object.keys(rowTypes).forEach(type=>renderRows(type,`#${type}Rows`));renderCyber();renderDashboard();
+  renderStats();renderSkills();renderLife();Object.keys(rowTypes).forEach(type=>renderRows(type));renderCyber();renderDashboard();
   $('#creationMode').checked=state.creationMode !== false;
   renderDicePool();
   renderRollMode();
@@ -553,8 +640,8 @@ document.addEventListener('click',e=>{
   if(add){
     const type=add.dataset.add;
     // Пустой лист уже показывает одну строку по умолчанию.
-    if(!state[type]?.length) state[type]=[{}];
-    state[type].push({});
+    if(!state[type]?.length) state[type]=[[]];
+    state[type].push([]);
     render();save();
   }
   const rem=e.target.closest('[data-remove]');
@@ -562,6 +649,13 @@ document.addEventListener('click',e=>{
     const type=rem.dataset.remove, index=Number(rem.dataset.index);
     if(state[type]?.length){ state[type].splice(index,1); shiftFormulaMarks(type,index); }
     render();save();
+  }
+  const weapon=e.target.closest('[data-weapon-attack],[data-weapon-damage],[data-weapon-reload]');
+  if(weapon){
+    const {weaponAttack:attack, weaponDamage:damage, weaponReload:reload} = weapon.dataset;
+    if(attack !== undefined) weaponAttack(Number(attack));
+    if(damage !== undefined) weaponDamage(Number(damage));
+    if(reload !== undefined) weaponReload(Number(reload));
   }
   const skillRoll=e.target.closest('[data-roll-skill]');
   if(skillRoll) rollSkill(Number(skillRoll.dataset.rollSkill));
