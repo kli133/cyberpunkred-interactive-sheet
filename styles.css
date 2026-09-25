@@ -535,7 +535,7 @@ button {
 
 .equipment-grid {
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
+  grid-template-columns: minmax(0,1fr) minmax(0,2fr);
   gap: 18px;
 }
 
@@ -580,7 +580,7 @@ button {
 }
 
 .equipment-grid .weapon-table {
-  min-width: 720px;
+  min-width: 800px;
 }
 
 .equipment-grid .weapon-table th:nth-child(1), .equipment-grid .weapon-table td:nth-child(1) {
@@ -602,11 +602,15 @@ button {
 }
 
 .equipment-grid .weapon-table th:nth-child(7), .equipment-grid .weapon-table td:nth-child(7) {
+  width: 52px;
+}
+
+.equipment-grid .weapon-table th:nth-child(8), .equipment-grid .weapon-table td:nth-child(8) {
   width: auto;
 }
 
 .equipment-grid .weapon-table th:last-child, .equipment-grid .weapon-table td:last-child {
-  width: 128px;
+  width: 164px;
 }
 
 .equipment-grid .gear-table td:nth-child(2) input,
@@ -1850,6 +1854,13 @@ footer {
   flex-wrap: wrap;
 }
 
+/* Таблице оружия нужно ~800px: на средних экранах снаряжение и оружие идут друг под другом. */
+@media(max-width:1300px) {
+  .equipment-grid {
+    grid-template-columns: minmax(0,1fr);
+  }
+}
+
 /* === Телефоны === */
 @media(max-width:560px) {
   .topbar {
@@ -1948,4 +1959,24 @@ footer {
   .equipment-grid .weapon-table {
     min-width: 0;
   }
+}
+
+.target-dv {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #3b3a39;
+}
+
+.target-dv input {
+  width: 64px;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: #f8f7f4;
+  padding: 5px;
+  text-align: center;
+  outline: 0;
 }

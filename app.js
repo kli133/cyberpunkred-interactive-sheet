@@ -2,11 +2,11 @@
 const skillEntries = Object.values(skillCategories).flat();
 const skills = skillEntries.map(([name]) => name);
 const penalizedStats = [1, 2, 7]; // РЕФ, ЛВК, СКО
-const rowTypes = {gear:3, weapon:7, relationship:3};
+const rowTypes = {gear:3, weapon:8, relationship:3};
 // Порядок колонок в таблицах: j — индекс значения в сохранённой строке (новые колонки оружия добавлены в конец).
 const rowColumns = {
   gear:[{j:0},{j:1},{j:2,note:true}],
-  weapon:[{j:0},{j:5,select:true},{j:1,placeholder:'3d6'},{j:2},{j:6},{j:3},{j:4,note:true}],
+  weapon:[{j:0},{j:5,select:'skill'},{j:1,placeholder:'3d6'},{j:2},{j:6},{j:3},{j:7,select:'autofire'},{j:4,note:true}],
   relationship:[{j:0},{j:1},{j:2}]
 };
 const INDEX_KEY = 'cyberred-index';
@@ -305,21 +305,30 @@ function weaponSkillSelect(key, value){
   const options = list => list.map(name=>`<option value="${esc(name)}"${name === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
   return `<select data-key="${key}" aria-label="Навык оружия"><option value="">—</option><optgroup label="Дальний бой">${options(rangedWeaponSkills)}</optgroup><optgroup label="Ближний бой">${options(meleeWeaponSkills)}</optgroup></select>`;
 }
+function autofireSelect(key, value){
+  return `<select data-key="${key}" aria-label="Множитель автоматического огня" title="Максимальный множитель автоогня: ПП ×3, штурмовая винтовка ×4"><option value="">—</option>${autofireMultipliers.map(n=>`<option value="${n}"${String(n) === String(value) ? ' selected' : ''}>×${n}</option>`).join('')}</select>`;
+}
+const hasAutofire = data => Number(data?.[7]) > 0 || data?.[5] === AUTOFIRE_SKILL;
 function row(type,data=[],index){
   const cells = rowColumns[type].map(({j,note,select,placeholder})=>{
     const key = `${type}${index}_${j}`;
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
-    if(select) return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
+    if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
+    if(select === 'autofire') return `<td>${autofireSelect(key, data[j] || '')}</td>`;
     return `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>`;
   }).join('');
   const weaponActions = type === 'weapon'
-    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}" title="Атака: 1d10 + стат + навык">АТК</button><button type="button" class="weapon-btn" data-weapon-damage="${index}" title="Бросок урона">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
+    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}" title="Атака: 1d10 + стат + навык">АТК</button><button type="button" class="weapon-btn" data-weapon-autofire="${index}" title="Автоматический огонь: 10 патронов, урон 2d6 × превышение DV"${hasAutofire(data) ? '' : ' hidden'}>АВТО</button><button type="button" class="weapon-btn" data-weapon-damage="${index}" title="Бросок урона">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
     : '';
   return `<tr>${cells}<td class="row-actions">${weaponActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
 function renderRows(type){
   const rows = state[type]?.length ? state[type] : [[]];
   $(`#${type}Rows`).innerHTML = rows.map((data,i)=>row(type,data,i)).join('');
+}
+// Кнопка АВТО видна только у оружия с множителем автоогня.
+function refreshWeaponButtons(){
+  $$('[data-weapon-autofire]').forEach(button=>{ button.hidden = !hasAutofire(state.weapon?.[Number(button.dataset.weaponAutofire)]); });
 }
 function renderCyber(){
   const saved = state.cyberSlots || {};
@@ -426,7 +435,7 @@ const diceText = item => item.diceDetails ? item.diceDetails.map(die=>`D${Number
 const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКАЯ НЕУДАЧА'}${item.critExtra ? ` (${item.die === 10 ? '+' : '−'}${Number(item.critExtra)})` : ''}</em>` : '';
 const logLine = item => item.kind === 'damage'
   ? `<b class="log-tag">УРОН</b> ${esc(item.text)}`
-  : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
+  : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''}${Number(item.multiplier) > 1 ? ` × ${Number(item.multiplier)}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
 
 function addHistory(entry){
   state.rollHistory = [{...entry, time:now()}, ...(state.rollHistory || [])].slice(0, 30);
@@ -434,18 +443,18 @@ function addHistory(entry){
 }
 
 // crits: по правилам RED 10 на 1d10 добавляет ещё 1d10, 1 — вычитает ещё 1d10.
-function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge}={}){
+function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge, multiplier=1}={}){
   const dicePool=normalizeDicePool(pool);
   const diceDetails=dicePool.flatMap(({sides,count})=>Array.from({length:count},()=>({sides,value:rollDie(sides)})));
   const die = diceDetails.reduce((sum,item)=>sum+item.value,0);
   const critical = crits && diceDetails.length === 1 && diceDetails[0].sides === 10 && (die === 1 || die === 10);
   const critExtra = critical ? d(10) : 0;
-  const total = die + modifier + (die === 10 ? critExtra : -critExtra);
-  const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel()};
+  const total = (die + modifier + (die === 10 ? critExtra : -critExtra)) * multiplier;
+  const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel(), multiplier};
   if(judge) entry.note = judge(entry) || '';
   addHistory(entry);
   persist();
-  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry)}${entry.note ? ` <em>${esc(entry.note)}</em>` : ''}`;
+  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${multiplier > 1 ? `${die + modifier} × ${multiplier} = ` : ''}${signed(total)}</strong>${critText(entry)}${entry.note ? ` <em>${esc(entry.note)}</em>` : ''}`;
   $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${logLine(entry)}</div>`);
   $('#diceDrawer').classList.add('open');
   return entry;
@@ -477,14 +486,14 @@ function spendLuck(){
 const withNotes = (label, notes) => notes.filter(Boolean).length ? `${label} (${notes.filter(Boolean).join(', ')})` : label;
 
 // Проверка навыка: 1d10 + стат + навык с учётом штрафов брони и ранений (+ потраченная удача).
-function rollCheck(ref, label = refLabel(ref)){
+function rollCheck(ref, label = refLabel(ref), judge){
   const wound = woundPenalty();
   const luck = spendLuck();
   const modifier = refTotal(ref) + luck;
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
-  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, luck && `удача +${luck}`]));
+  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, luck && `удача +${luck}`]), {judge});
 }
 const rollSkill = ref => rollCheck(typeof ref === 'number' ? `b${ref}` : String(ref));
 
@@ -531,22 +540,49 @@ function weaponRow(index){
   if(!state.weapon?.[index]) save();
   return state.weapon?.[index];
 }
-// Атака: бросок навыка оружия. Дальний бой тратит патрон (автоматический огонь — 10),
-// если в колонке «Патр.» указано число; пустая колонка — патроны не считаются.
+// DV цели из поля над таблицей оружия; пусто — лист только бросает, без вердикта.
+const targetDv = () => isBlank(state.targetDv) ? null : Number(state.targetDv) || 0;
+const hitNote = dv => entry => entry.total > dv ? `ПОПАДАНИЕ (DV ${dv})` : `ПРОМАХ (DV ${dv})`;
+const isCriticalDamage = entry => entry.diceDetails.filter(die=>die.sides === 6 && die.value === 6).length >= 2;
+// Патроны списываются, только если в колонке «Патр.» указано число.
+function spendAmmo(index, data, need){
+  if(isBlank(data[2])) return true;
+  const ammo = Number(data[2]) || 0;
+  if(ammo < need){ toast(`${data[0] || 'Оружие'}: патронов ${ammo}, нужно ${need}. Перезарядите.`); return false; }
+  data[2] = String(ammo - need);
+  setInput(`weapon${index}_2`, data[2]);
+  return true;
+}
+// Атака одиночным выстрелом или ударом: 1d10 + стат + навык оружия, дальний бой тратит 1 патрон.
+// Попадание — если результат больше DV (в ближнем бою DV — бросок уклонения цели).
 function weaponAttack(index){
   const data = weaponRow(index);
   if(!data) return;
+  if(data[5] === AUTOFIRE_SKILL) return weaponAutofire(index);
   const name = data[0] || 'Оружие';
   const skill = skills.indexOf(data[5]);
   if(skill < 0){ toast(`${name}: выберите навык оружия`); return; }
-  if(rangedWeaponSkills.includes(data[5]) && !isBlank(data[2])){
-    const need = data[5] === AUTOFIRE_SKILL ? AUTOFIRE_AMMO : 1;
-    const ammo = Number(data[2]) || 0;
-    if(ammo < need){ toast(`${name}: патронов ${ammo}, нужно ${need}. Перезарядите.`); return; }
-    data[2] = String(ammo - need);
-    setInput(`weapon${index}_2`, data[2]);
-  }
-  rollCheck(`b${skill}`, `${name}: атака`);
+  if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, 1)) return;
+  const dv = targetDv();
+  rollCheck(`b${skill}`, `${name}: атака`, dv === null ? undefined : hitNote(dv));
+}
+// Автоматический огонь: 10 патронов, 1d10 + РЕФ + «Автоматический огонь» против DV.
+// При попадании урон 2d6 × (результат − DV), но не больше множителя оружия.
+function weaponAutofire(index){
+  const data = weaponRow(index);
+  if(!data) return;
+  const name = data[0] || 'Оружие';
+  const maxMultiplier = Number(data[7]) || 0;
+  if(!maxMultiplier){ toast(`${name}: выберите множитель автоогня в колонке «Авто»`); return; }
+  const dv = targetDv();
+  if(dv === null){ toast('Автоматический огонь: укажите DV цели над таблицей оружия'); return; }
+  if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
+  const attack = rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: автоогонь`,
+    entry => entry.total > dv ? `ПОПАДАНИЕ (DV ${dv}), множитель ×${Math.min(entry.total - dv, maxMultiplier)}` : `ПРОМАХ (DV ${dv})`);
+  if(attack.total <= dv) return;
+  const multiplier = Math.min(attack.total - dv, maxMultiplier);
+  rollDicePool([AUTOFIRE_DAMAGE], 0, `${name}: урон автоогня`, {crits:false, multiplier,
+    judge: entry => isCriticalDamage(entry) ? `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона` : ''});
 }
 // Две и больше шестёрок на кубиках урона — критическая травма у цели.
 function weaponDamage(index){
@@ -556,7 +592,7 @@ function weaponDamage(index){
   const damage = parseDamage(data[1]);
   if(!damage){ toast(`${name}: укажите урон в виде 3d6 или 2d6+2`); return; }
   rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${name}: урон`, {crits:false,
-    judge: entry => entry.diceDetails.filter(die=>die.sides === 6 && die.value === 6).length >= 2 ? `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона` : ''});
+    judge: entry => isCriticalDamage(entry) ? `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона` : ''});
 }
 function weaponReload(index){
   const data = weaponRow(index);
@@ -658,6 +694,7 @@ function save(changedKey){
     return all;
   },{});
   delete state.cyberware;
+  refreshWeaponButtons();
   // Ничего не перерисовываем целиком, чтобы не сбивать фокус в поле, которое сейчас редактируется.
   refreshStats(); updateDerived();
   $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
@@ -864,10 +901,11 @@ document.addEventListener('click',e=>{
   }
   const rem=e.target.closest('[data-remove]');
   if(rem) removeRow(rem.dataset.remove, Number(rem.dataset.index));
-  const weapon=e.target.closest('[data-weapon-attack],[data-weapon-damage],[data-weapon-reload]');
+  const weapon=e.target.closest('[data-weapon-attack],[data-weapon-autofire],[data-weapon-damage],[data-weapon-reload]');
   if(weapon){
-    const {weaponAttack:attack, weaponDamage:damage, weaponReload:reload} = weapon.dataset;
+    const {weaponAttack:attack, weaponAutofire:autofire, weaponDamage:damage, weaponReload:reload} = weapon.dataset;
     if(attack !== undefined) weaponAttack(Number(attack));
+    if(autofire !== undefined) weaponAutofire(Number(autofire));
     if(damage !== undefined) weaponDamage(Number(damage));
     if(reload !== undefined) weaponReload(Number(reload));
   }
