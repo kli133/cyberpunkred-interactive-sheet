@@ -87,7 +87,7 @@
           <div class="stats-grid" id="statsGrid"></div>
           <div class="derived-grid">
             <div class="metric"><span>Хиты</span><strong><input id="hpValue" data-key="currentHp" type="number" min="0" value="0" aria-label="Текущее здоровье"> / <output id="hpMaximum">0</output></strong></div>
-            <div class="metric"><span>Выносливость</span><strong id="staminaValue">0</strong></div>
+            <div class="metric" title="Испытание против смерти: 1d10 должен быть меньше ТЕЛ"><span>Испытание смерти</span><strong id="deathSaveValue">&lt; 0</strong></div>
             <div class="metric"><span>Порог ранения</span><strong id="woundValue">0</strong></div>
             <div class="metric"><span>Скорость</span><strong id="speedValue">0</strong></div>
           </div>
@@ -114,6 +114,7 @@
               <label>Куда<select id="damageZone"><option value="Body">Тело</option><option value="Head">Голова (×2)</option></select></label>
             </div>
             <label class="check-row"><input id="damageMelee" type="checkbox"> Ближний бой (SP ÷ 2)</label>
+            <label class="check-row" title="Две и больше шестёрок на кубиках урона: бросок 2d6 по таблице травм и +5 урона в хиты"><input id="damageCrit" type="checkbox"> Критическая травма (две шестёрки)</label>
             <div class="damage-actions">
               <button type="button" class="death-save-button" id="applyDamage">ПРИНЯТЬ УРОН</button>
               <button type="button" class="death-save-button" id="repairArmor">ПОЧИНИТЬ БРОНЮ</button>
@@ -216,6 +217,7 @@
     </section>
   </main>
   <footer>НЕКОММЕРЧЕСКИЙ ЛИСТ ПЕРСОНАЖА // ДАННЫЕ ХРАНЯТСЯ ТОЛЬКО В ВАШЕМ БРАУЗЕРЕ</footer>
+  <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

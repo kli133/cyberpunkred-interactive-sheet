@@ -1,32 +1,6 @@
-// Cyberpunk RED: характеристики создаются пулом из 62 очков, значения 2–8.
-const stats = ['ИНТ','РЕФ','ЛВК','ТЕХ','ХАР','ВОЛ','УДЧ','СКО','ТЕЛ','ЭМП'];
-const statAliases = { 'ВОЛЯ': 'ВОЛ', 'РЕА': 'РЕФ' };
-const skillCategories = {
-  'Навыки восприятия': [['Концентрация','ВОЛЯ'],['Скрытие/раскрытие','ИНТ'],['Чтение по губам','ИНТ'],['Внимательность','ИНТ'],['Выслеживание','ИНТ']],
-  'Физические навыки': [['Атлетика','ЛВК'],['Акробатика','ЛВК'],['Танец','ЛВК'],['Выносливость','ВОЛЯ'],['Сопрот. пыткам/наркотикам','ВОЛЯ'],['Скрытность','ЛВК']],
-  'Навыки управления': [['Вождение','РЕА'],['Пилотирование (x2)','РЕА'],['Судовождение','РЕА'],['Верховая езда','РЕА']],
-  'Навыки ближнего боя': [['Рукопашный бой','ЛВК'],['Уклонение','ЛВК'],['Боевые искусства (x2)','ЛВК'],['Оружие ближнего боя','ЛВК']],
-  'Социальные навыки': [['Подкуп','ХАР'],['Общение','ЭМП'],['Проницательность','ЭМП'],['Допрос','ХАР'],['Убеждение','ХАР'],['Уход за собой','ХАР'],['Знание улиц','ХАР'],['Торговля','ХАР'],['Гардероб и стиль','ХАР']],
-  'Образовательные навыки': [['Бухгалтерия','ИНТ'],['Обращение с животными','ИНТ'],['Бюрократия','ИНТ'],['Бизнес','ИНТ'],['Композиция','ИНТ'],['Криминология','ИНТ'],['Криптография','ИНТ'],['Дедукция','ИНТ'],['Образование','ИНТ'],['Азартные игры','ИНТ'],['Язык','ИНТ'],['Поиск информации','ИНТ'],['Знание местности','ИНТ'],['Наука','ИНТ'],['Тактика','ИНТ'],['Выживание в пустыне','ИНТ']],
-  'Сценические навыки': [['Актёрское мастерство','ХАР'],['Игра на инструментах','ТЕХ']],
-  'Навыки дальнего боя': [['Стрельба из лука','РЕА'],['Автоматический огонь (x2)','РЕА'],['Пистолеты','РЕА'],['Оружие КР-калибра (x2)','РЕА'],['Тактическое оружие','РЕА']],
-  'Технические навыки': [['Авиационные технологии','ТЕХ'],['Знания техники','ТЕХ'],['Кибертехника','ТЕХ'],['Подрывник (x2)','ТЕХ'],['Электроника/Безопасность (x2)','ТЕХ'],['Первая помощь','ТЕХ'],['Фальсификация','ТЕХ'],['Автомеханика','ТЕХ'],['Художественное ремесло','ТЕХ'],['Парамедик (x2)','ТЕХ'],['Кино и фотография','ТЕХ'],['Взлом замков','ТЕХ'],['Карманник','ТЕХ'],['Морская технология','ТЕХ'],['Оружейник','ТЕХ']]
-};
+// Логика интерактивного листа Cyberpunk RED. Справочные таблицы — в data.js.
 const skillEntries = Object.values(skillCategories).flat();
 const skills = skillEntries.map(([name]) => name);
-const lifeFields = ['Культурное наследие','Личность','Стиль одежды','Прическа','Что ты ценишь больше всего?','Отношение к людям?','Самый близкий человек','Самое ценное, чем ты обладаешь','История семьи','Среда, в которой прошло детство','Семейный кризис','Жизненные цели','Трагическая любовь'];
-const cyberSections = {
-  cranial:['Кибераудио',3], rightEye:['Правый киберглаз',3], leftEye:['Левый киберглаз',3],
-  rightArm:['Правая киберрука',4], leftArm:['Левая киберрука',4], neural:['Нейроинтерфейс',5],
-  rightLeg:['Правая кибернога',3], leftLeg:['Левая кибернога',3],
-  internal:['Внутр. киберимплант',6], external:['Внешний киберимплант',6],
-  fashionware:['Стильный киберимплант',6], borgware:['Боргирование',6]
-};
-// Броня из базовой книги Cyberpunk RED: [название, SP, штраф к РЕФ/ЛВК/СКО].
-const armorPresets = {
-  leathers:['Кожа',4,0], kevlar:['Кевлар',7,0], lightArmorjack:['Лёгкий армоджек',11,0], bodyweight:['Бодивейт',11,0],
-  mediumArmorjack:['Средний армоджек',12,2], heavyArmorjack:['Тяжёлый армоджек',13,2], flak:['Флак',15,4], metalgear:['Металгир',18,4]
-};
 const penalizedStats = [1, 2, 7]; // РЕФ, ЛВК, СКО
 const rowTypes = {gear:3, weapon:5, relationship:3};
 const STORAGE_KEY = 'cyberred-sheet';
@@ -40,6 +14,9 @@ const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const field = (key, value='', type='text', placeholder='') => `<input data-key="${key}" type="${type}" value="${esc(value)}" placeholder="${esc(placeholder)}">`;
 const numeric = key => Number(state[key]) || 0;
+const isBlank = value => value === undefined || value === null || String(value).trim() === '';
+const d = sides => Math.floor(Math.random()*sides)+1;
+const now = () => new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
 const statAlias = name => statAliases[name] || name;
 const skillStatIndex = i => stats.indexOf(statAlias(skillEntries[i][1]));
 const skillWeight = i => skills[i].includes('(x2)') ? 2 : 1;
@@ -48,7 +25,7 @@ const armorPenalty = () => Math.abs(numeric('armorPenalty'));
 const statPenalty = statIndex => penalizedStats.includes(statIndex) ? armorPenalty() : 0;
 const isChecked = key => state[key] === true || state[key] === 'true';
 // Ранения по правилам RED: тяжёлое — −2 ко всем действиям, смертельное (0 хитов) — −4 и −6 к СКО.
-const isMortallyWounded = () => isChecked('deathSave') || (state.currentHp !== undefined && state.currentHp !== '' && numeric('currentHp') <= 0);
+const isMortallyWounded = () => isChecked('deathSave') || (!isBlank(state.currentHp) && numeric('currentHp') <= 0);
 const woundPenalty = () => isMortallyWounded() ? 4 : isChecked('seriousWound') ? 2 : 0;
 const skillTotal = i => numeric(`skill${i}`) + numeric(`stat${skillStatIndex(i)}`) - statPenalty(skillStatIndex(i)) - woundPenalty();
 const maxHp = () => 10 + 5*Math.ceil((numeric('stat8') + numeric('stat5'))/2);
@@ -225,18 +202,18 @@ function fillStaticInputs(){
 }
 
 function updateResource(key, max){
-  if(state[key] === undefined || state[key] === '') state[key] = max;
+  if(isBlank(state[key])) state[key] = max;
   state[key] = Math.max(0, Math.min(numeric(key), max));
   $$(`[data-key="${key}"]`).forEach(el=>{ el.max = max; setVal(el, state[key]); });
 }
 
 function updateDerived(){
-  const body=numeric('stat8'), will=numeric('stat5'), emp=numeric('stat9');
+  const body=numeric('stat8'), emp=numeric('stat9');
   // Cyberpunk RED: ХИТЫ = 10 + 5 × ⌈(ТЕЛ + ВОЛ) / 2⌉.
   const hp=maxHp();
   updateResource('currentHp', hp);
   $('#hpMaximum').textContent=hp;
-  $('#staminaValue').textContent=body+will;
+  $('#deathSaveValue').textContent=`< ${body}`;
   $('#woundValue').textContent=Math.ceil(hp/2);
   $('#speedValue').textContent=Math.max(0, numeric('stat7') - statPenalty(7) - (isMortallyWounded() ? 6 : 0));
   updateResource('armorHeadCurrent', numeric('armorHead'));
@@ -244,8 +221,23 @@ function updateDerived(){
   updateResource('luckCurrent', numeric('stat6'));
   updateResource('humanityCurrent', emp * 10);
   $('#sheetName').textContent=(state.name||'НОВЫЙ ЛИСТ').toUpperCase();
-  $('#woundStatus').textContent = isMortallyWounded() ? 'СМЕРТЕЛЬНОЕ РАНЕНИЕ: −4 КО ВСЕМ ДЕЙСТВИЯМ, −6 СКО' : isChecked('seriousWound') ? 'ТЯЖЁЛОЕ РАНЕНИЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ' : '';
+  // Штраф испытаний против смерти действует, пока персонаж смертельно ранен.
+  if(!isMortallyWounded()) state.deathSavePenalty = 0;
+  const deathPenalty = numeric('deathSavePenalty');
+  $('#woundStatus').textContent = isMortallyWounded()
+    ? `СМЕРТЕЛЬНОЕ РАНЕНИЕ: −4 КО ВСЕМ ДЕЙСТВИЯМ, −6 СКО${deathPenalty ? ` · ШТРАФ ИСПЫТАНИЙ +${deathPenalty}` : ''}`
+    : isChecked('seriousWound') ? 'ТЯЖЁЛОЕ РАНЕНИЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ' : '';
   refreshSkills();
+}
+
+// Галочки ранений следуют за хитами: ниже порога — тяжёлое ранение, 0 — смертельное.
+function syncWoundsWithHp(){
+  if(isBlank(state.currentHp)) return;
+  const hp = numeric('currentHp');
+  state.seriousWound = hp < Math.ceil(maxHp() / 2);
+  state.deathSave = hp <= 0;
+  $$('[data-key="seriousWound"]').forEach(el=>{ el.checked = state.seriousWound; });
+  $$('[data-key="deathSave"]').forEach(el=>{ el.checked = state.deathSave; });
 }
 
 function normalizeDicePool(pool){
@@ -274,7 +266,14 @@ function rollModeLabel(){
 const signed = value => value >= 0 ? String(value) : '−'+Math.abs(value);
 const diceText = item => item.diceDetails ? item.diceDetails.map(die=>`D${Number(die.sides)}: ${Number(die.value)}`).join(' + ') : (Array.isArray(item.dice) ? item.dice.map(Number).join(' + ') : Number(item.die));
 const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКАЯ НЕУДАЧА'}${item.critExtra ? ` (${item.die === 10 ? '+' : '−'}${Number(item.critExtra)})` : ''}</em>` : '';
-const logLine = item => `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
+const logLine = item => item.kind === 'damage'
+  ? `<b class="log-tag">УРОН</b> ${esc(item.text)}`
+  : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
+
+function addHistory(entry){
+  state.rollHistory = [{...entry, time:now()}, ...(state.rollHistory || [])].slice(0, 30);
+  renderDashboardLog();
+}
 
 // crits: по правилам RED 10 на 1d10 добавляет ещё 1d10, 1 — вычитает ещё 1d10.
 function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge}={}){
@@ -282,16 +281,16 @@ function rollDicePool(pool, modifier, label='Свободный бросок', {
   const diceDetails=dicePool.flatMap(({sides,count})=>Array.from({length:count},()=>({sides,value:rollDie(sides)})));
   const die = diceDetails.reduce((sum,item)=>sum+item.value,0);
   const critical = crits && diceDetails.length === 1 && diceDetails[0].sides === 10 && (die === 1 || die === 10);
-  const critExtra = critical ? Math.floor(Math.random()*10)+1 : 0;
+  const critExtra = critical ? d(10) : 0;
   const total = die + modifier + (die === 10 ? critExtra : -critExtra);
-  const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel(), time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})};
-  if(judge) entry.note = judge(entry);
-  state.rollHistory = [entry, ...(state.rollHistory || [])].slice(0, 30);
+  const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel()};
+  if(judge) entry.note = judge(entry) || '';
+  addHistory(entry);
   persist();
   $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry)}${entry.note ? ` <em>${esc(entry.note)}</em>` : ''}`;
   $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${logLine(entry)}</div>`);
-  renderDashboardLog();
   $('#diceDrawer').classList.add('open');
+  return entry;
 }
 
 function parseFormula(value){
@@ -316,11 +315,15 @@ function rollSkill(index){
   rollDicePool([{sides:10,count:1}], modifier, wound ? `${skills[index]} (ранение −${wound})` : skills[index]);
 }
 
-// Испытание против смерти: 1d10 должен быть меньше ТЕЛ, десятка — всегда провал.
+// Испытание против смерти: 1d10 + штраф должен быть меньше ТЕЛ, десятка — всегда провал.
+// Каждое испытание увеличивает штраф на 1, пока персонаж смертельно ранен.
 function rollDeathSave(){
-  const body = numeric('stat8');
-  rollDicePool([{sides:10,count:1}], 0, 'Испытание против смерти', {crits:false,
-    judge: entry => entry.die < body && entry.die !== 10 ? `УСПЕХ (нужно < ${body})` : `ПРОВАЛ (нужно < ${body})`});
+  const body = numeric('stat8'), penalty = numeric('deathSavePenalty');
+  rollDicePool([{sides:10,count:1}], penalty, 'Испытание против смерти', {crits:false,
+    judge: entry => `${entry.die !== 10 && entry.total < body ? 'УСПЕХ' : 'ПРОВАЛ'} (нужно < ${body}${penalty ? `, штраф +${penalty}` : ''})`});
+  state.deathSavePenalty = penalty + 1;
+  updateDerived();
+  persist();
 }
 
 function renderDicePool(){
@@ -367,6 +370,7 @@ function save(changedKey){
     const key = el.dataset.key;
     if(!structuredKey.test(key)) state[key] = el.type==='checkbox' ? el.checked : textValue(el);
   });
+  if(changedKey === 'currentHp') syncWoundsWithHp();
   normalizeStats();
   normalizeSkills(changedKey);
   Object.entries(rowTypes).forEach(([type,width])=>{
@@ -385,7 +389,7 @@ function save(changedKey){
   // Ничего не перерисовываем целиком, чтобы не сбивать фокус в поле, которое сейчас редактируется.
   refreshStats(); updateDerived();
   $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
 }
 
 const setInput = (key, value) => $$(`[data-key="${key}"]`).forEach(el=>{ el.value = value; });
@@ -409,13 +413,16 @@ function applyArmorInput(key, value){
   }
 }
 
-function armorZoneName(zone){ return zone === 'Head' ? 'голову' : 'тело'; }
+const zoneName = zone => zone === 'Head' ? 'голову' : 'тело';
+const zoneTitle = zone => zone === 'Head' ? 'голова' : 'тело';
 
 // Урон по правилам RED: SP вычитается из урона, прошедший урон по голове удваивается,
 // при пробитии SP уменьшается на 1; оружие ближнего боя учитывает половину SP (округление вверх).
+// Критическая травма: бросок 2d6 по таблице зоны и +5 урона сразу в хиты, мимо брони.
 function applyDamage(){
   const damage = Math.max(0, Math.floor(Number($('#damageInput').value) || 0));
-  if(!damage) return;
+  const crit = $('#damageCrit').checked;
+  if(!damage && !crit) return;
   const zone = $('#damageZone').value;
   const spKey = `armor${zone}Current`;
   const sp = numeric(spKey);
@@ -423,18 +430,28 @@ function applyDamage(){
   let through = Math.max(0, damage - effectiveSp);
   if(zone === 'Head') through *= 2;
   if(through > 0 && sp > 0) state[spKey] = sp - 1;
-  state.currentHp = Math.max(0, numeric('currentHp') - through);
-  const threshold = Math.ceil(maxHp() / 2);
-  if(state.currentHp < threshold) state.seriousWound = true;
-  if(state.currentHp === 0) state.deathSave = true;
+  let injury = '';
+  if(crit){
+    const roll = d(6) + d(6);
+    injury = `${criticalInjuries[zone][roll - 2]} (${zoneTitle(zone)}, 2d6 = ${roll})`;
+    state.criticalInjuries = [String(state.criticalInjuries || '').trim(), injury].filter(Boolean).join('\n');
+    through += CRITICAL_BONUS_DAMAGE;
+  }
+  const hpBefore = numeric('currentHp');
+  state.currentHp = Math.max(0, hpBefore - through);
+  syncWoundsWithHp();
   fillStaticInputs();
   updateDerived();
-  const status = state.currentHp === 0 ? ' СМЕРТЕЛЬНОЕ РАНЕНИЕ — нужны испытания против смерти.' : state.currentHp < threshold ? ' ТЯЖЁЛОЕ РАНЕНИЕ.' : '';
-  $('#damageResult').textContent = through > 0
-    ? `Урон ${damage} в ${armorZoneName(zone)}, SP ${effectiveSp}: прошло ${through}. SP ${sp} → ${state[spKey]}, ХИТЫ ${state.currentHp}/${maxHp()}.${status}`
-    : `Урон ${damage} в ${armorZoneName(zone)} остановлен бронёй (SP ${effectiveSp}).`;
+  const status = state.currentHp === 0 ? ' СМЕРТЕЛЬНОЕ РАНЕНИЕ — нужны испытания против смерти.' : isChecked('seriousWound') ? ' ТЯЖЁЛОЕ РАНЕНИЕ.' : '';
+  const ablation = sp !== numeric(spKey) ? ` SP ${sp} → ${numeric(spKey)}.` : '';
+  const text = through > 0
+    ? `${damage} в ${zoneName(zone)} (SP ${effectiveSp}): −${through} ХИТ, ${hpBefore} → ${state.currentHp}/${maxHp()}.${ablation}${injury ? ` Крит. травма: ${injury}.` : ''}${status}`
+    : `${damage} в ${zoneName(zone)} остановлено бронёй (SP ${effectiveSp}).`;
+  $('#damageResult').textContent = text;
+  addHistory({kind:'damage', text});
   $('#damageInput').value = '';
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  $('#damageCrit').checked = false;
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
 }
 
 function repairArmor(){
