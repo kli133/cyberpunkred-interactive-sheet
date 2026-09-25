@@ -10,9 +10,9 @@ const rowColumns = {
   relationship:[{j:0},{j:1},{j:2}]
 };
 const STORAGE_KEY = 'cyberred-sheet';
-const SKILL_POOL = 86, STAT_POOL = 62;
+const SKILL_POOL = 86, STAT_POOL = 62, MAX_SKILL = 10;
 // Поля строк таблиц и киберслотов хранятся только в структурированном виде (state.gear, state.cyberSlots...).
-const structuredKey = /^(gear|weapon|relationship)\d+_\d+$|^cyberSlot_/;
+const structuredKey = /^(gear|weapon|relationship)\d+_\d+$|^cyberSlot_|^cskill\d+_/;
 const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent|armorHeadCurrent|armorBodyCurrent)$/;
 
 const $ = s => document.querySelector(s);
@@ -26,7 +26,6 @@ const now = () => new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'
 const statAlias = name => statAliases[name] || name;
 const skillStatIndex = i => stats.indexOf(statAlias(skillEntries[i][1]));
 const skillWeight = i => skills[i].includes('(x2)') ? 2 : 1;
-const skillSpent = () => skills.reduce((sum,_,i)=>sum + numeric(`skill${i}`)*skillWeight(i),0);
 const armorPenalty = () => Math.abs(numeric('armorPenalty'));
 const statPenalty = statIndex => penalizedStats.includes(statIndex) ? armorPenalty() : 0;
 const isChecked = key => state[key] === true || state[key] === 'true';
@@ -37,6 +36,23 @@ const woundPenalty = () => isMortallyWounded() ? 4 : isChecked('seriousWound') ?
 const currentEmp = () => isBlank(state.humanityCurrent) ? numeric('stat9') : Math.min(numeric('stat9'), Math.floor(numeric('humanityCurrent')/10));
 const statValue = i => i === 9 ? currentEmp() : numeric(`stat${i}`);
 const skillTotal = i => numeric(`skill${i}`) + statValue(skillStatIndex(i)) - statPenalty(skillStatIndex(i)) - woundPenalty();
+// Навыки адресуются ссылкой: «b12» — навык из книги, «c3» — дополнительная специализация.
+const customSkill = ref => state.customSkills?.[Number(ref.slice(1))];
+const refBase = ref => ref[0] === 'b' ? Number(ref.slice(1)) : skills.indexOf(customSkill(ref)?.base);
+const refLevel = ref => ref[0] === 'b' ? numeric(`skill${ref.slice(1)}`) : Number(customSkill(ref)?.level) || 0;
+const refLabel = ref => ref[0] === 'b' ? skills[refBase(ref)] : `${customSkill(ref)?.base}: ${customSkill(ref)?.spec || '—'}`;
+const refWeight = ref => skillWeight(refBase(ref));
+const refMin = ref => state.creationMode !== false && ref[0] === 'b' && basicSkills.includes(skills[refBase(ref)]) ? 2 : 0;
+const refTotal = ref => { const s = skillStatIndex(refBase(ref)); return refLevel(ref) + statValue(s) - statPenalty(s) - woundPenalty(); };
+const allRefs = () => [...skills.map((_,i)=>`b${i}`), ...(state.customSkills || []).map((_,j)=>`c${j}`)];
+const skillSpent = () => allRefs().reduce((sum,ref)=>sum + refLevel(ref)*refWeight(ref),0);
+// Повышение навыка за очки улучшения: 20 × новый уровень, для (x2) — вдвое дороже.
+const upgradeCost = ref => (refLevel(ref) + 1) * 20 * refWeight(ref);
+const keyToRef = key => { const b = /^skill(\d+)$/.exec(key || ''); if(b) return `b${b[1]}`; const c = /^cskill(\d+)_level$/.exec(key || ''); return c ? `c${c[1]}` : null; };
+function setRefLevel(ref, level){
+  if(ref[0] === 'b') state[`skill${ref.slice(1)}`] = level;
+  else customSkill(ref).level = level;
+}
 const maxHp = () => 10 + 5*Math.ceil((numeric('stat8') + numeric('stat5'))/2);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
 const setVal = (el, value) => { if(el !== document.activeElement) el.value = value; };
@@ -64,6 +80,9 @@ function migrate(data){
     if(!Array.isArray(s[type])) { delete s[type]; return; }
     s[type] = s[type].map(row=>Array.from({length:width},(_,j)=>String(row?.[j] ?? '')));
   });
+  s.customSkills = (Array.isArray(s.customSkills) ? s.customSkills : [])
+    .filter(item=>variantSkills.includes(item?.base))
+    .map(item=>({base:item.base, spec:String(item.spec ?? ''), level:Number(item.level) || 0}));
   if(s.cyberSlots && typeof s.cyberSlots === 'object'){
     Object.keys(s.cyberSlots).forEach(key=>{ s.cyberSlots[key] = (Array.isArray(s.cyberSlots[key]) ? s.cyberSlots[key] : []).map(row=>[0,1,2].map(j=>String(row?.[j] ?? ''))); });
   }
@@ -105,23 +124,15 @@ function normalizeStats(){
 }
 
 function normalizeSkills(changedKey){
-  if(state.creationMode === false){
-    skills.forEach((_,i)=>{ state[`skill${i}`] = Math.max(0, numeric(`skill${i}`)); });
-    return;
-  }
-  skills.forEach((_,i)=>{ state[`skill${i}`] = Math.max(0, Math.min(6, numeric(`skill${i}`))); });
+  const maxLevel = state.creationMode === false ? MAX_SKILL : 6;
+  allRefs().forEach(ref=>setRefLevel(ref, Math.max(refMin(ref), Math.min(maxLevel, refLevel(ref)))));
+  if(state.creationMode === false) return;
   let excess = skillSpent() - SKILL_POOL;
-  if(excess <= 0) return;
-  // Срезаем в первую очередь навык, который только что меняли.
-  const changed = /^skill(\d+)$/.exec(changedKey || '');
-  if(changed){
-    const i = Number(changed[1]);
-    const cut = Math.min(numeric(`skill${i}`), Math.ceil(excess / skillWeight(i)));
-    state[`skill${i}`] -= cut;
-    excess -= cut * skillWeight(i);
-  }
-  for(let i = skills.length - 1; i >= 0 && excess > 0; i--){
-    while(numeric(`skill${i}`) > 0 && excess > 0){ state[`skill${i}`]--; excess -= skillWeight(i); }
+  // Срезаем в первую очередь навык, который только что меняли, затем — с конца списка.
+  const changed = keyToRef(changedKey);
+  for(const ref of changed ? [changed, ...allRefs().reverse()] : allRefs().reverse()){
+    while(excess > 0 && refLevel(ref) > refMin(ref)){ setRefLevel(ref, refLevel(ref) - 1); excess -= refWeight(ref); }
+    if(excess <= 0) break;
   }
 }
 
@@ -151,29 +162,65 @@ function refreshStats(){
 }
 
 function refreshSkills(){
+  const creation = state.creationMode !== false;
   $('#skillBudget').textContent = Math.max(0, SKILL_POOL - skillSpent());
+  $('#ipInfo').textContent = numeric('ip');
   $$('[data-key^="skill"]').forEach(el=>setVal(el, state[el.dataset.key] ?? 0));
+  $$('[data-key^="cskill"][data-key$="_level"]').forEach(el=>setVal(el, refLevel(keyToRef(el.dataset.key))));
   $$('[data-skill-total]').forEach(cell=>{
-    const i = Number(cell.dataset.skillTotal);
-    const armor = statPenalty(skillStatIndex(i)), wound = woundPenalty();
-    cell.textContent = skillTotal(i);
-    const empNote = skillStatIndex(i) === 9 && currentEmp() < numeric('stat9') && `ЭМП снижена человечностью до ${currentEmp()}`;
+    const ref = cell.dataset.skillTotal;
+    const s = skillStatIndex(refBase(ref));
+    const armor = statPenalty(s), wound = woundPenalty();
+    const empNote = s === 9 && currentEmp() < numeric('stat9') && `ЭМП снижена человечностью до ${currentEmp()}`;
+    cell.textContent = refTotal(ref);
     cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`, empNote].filter(Boolean).join(', ');
     cell.classList.toggle('is-penalized', armor + wound > 0 || Boolean(empNote));
   });
+  $$('[data-upgrade]').forEach(button=>{
+    const ref = button.dataset.upgrade;
+    const cost = upgradeCost(ref);
+    button.hidden = creation || refLevel(ref) >= MAX_SKILL;
+    button.textContent = `↑${cost}`;
+    button.disabled = numeric('ip') < cost;
+    button.title = `Повысить до ${refLevel(ref) + 1} за ${cost} IP`;
+  });
+}
+
+function skillRowHtml(ref, maxLevel){
+  const base = refBase(ref);
+  const custom = ref[0] === 'c';
+  const j = ref.slice(1);
+  const name = skills[base];
+  const title = custom
+    ? `<span class="skill-variant">${esc(name)}:</span><input class="skill-spec" data-key="cskill${j}_spec" value="${esc(customSkill(ref).spec)}" placeholder="специализация" aria-label="Специализация">`
+    : `${esc(name)}${basicSkills.includes(name) ? '<span class="basic-mark" title="Базовый навык: при создании не ниже 2">Б</span>' : ''}`;
+  const actions = [
+    `<button type="button" class="skill-upgrade" data-upgrade="${ref}" hidden></button>`,
+    !custom && variantSkills.includes(name) ? `<button type="button" class="skill-add-variant" data-add-variant="${esc(name)}" title="Добавить специализацию">+</button>` : '',
+    custom ? `<button type="button" class="remove" data-remove-skill="${j}" title="Удалить специализацию">×</button>` : ''
+  ].join('');
+  return `<tr class="${custom ? 'is-variant' : ''}"><td>${title}<button class="skill-roll" data-roll-skill="${ref}" title="Бросить 1d10 + стат + навык">1d10</button></td><td>${esc(skillEntries[base][1])}</td><td><input data-key="${custom ? `cskill${j}_level` : `skill${base}`}" type="number" min="${refMin(ref)}" max="${maxLevel}" value="${refLevel(ref)}" aria-label="Уровень навыка"></td><td class="skill-total" data-skill-total="${ref}">${refTotal(ref)}</td><td class="skill-actions">${actions}</td></tr>`;
 }
 
 function renderSkills(){
-  $('#skillBudget').closest('strong').classList.toggle('is-hidden', state.creationMode === false);
-  $('.rules-note').classList.toggle('is-hidden', state.creationMode === false);
+  const creation = state.creationMode !== false;
+  $('#skillBudget').closest('strong').classList.toggle('is-hidden', !creation);
+  $('#ipInfo').closest('strong').classList.toggle('is-hidden', creation);
+  $('.rules-note').classList.toggle('is-hidden', !creation);
   const query = ($('#skillSearch')?.value || '').trim().toLocaleLowerCase('ru');
   const activeCategory = $('.skill-filter.active')?.dataset.category || 'Все';
-  const maxLevel = state.creationMode === false ? 10 : 6;
+  const maxLevel = creation ? 6 : MAX_SKILL;
+  const matches = text => !query || text.toLocaleLowerCase('ru').includes(query);
   $('#skillsCategories').innerHTML = Object.entries(skillCategories).map(([category, entries]) => {
     if(activeCategory !== 'Все' && activeCategory !== category) return '';
-    const visible = entries.filter(([name, stat]) => !query || `${name} ${stat}`.toLocaleLowerCase('ru').includes(query));
-    if(!visible.length) return '';
-    return `<article class="skill-category"><h2>${category}</h2><table class="skill-table"><thead><tr><th>Название</th><th>Стат</th><th>Урв</th><th>Сумм</th><th></th></tr></thead><tbody>${visible.map(([name,stat])=>{const i=skills.indexOf(name);const level=numeric(`skill${i}`);return `<tr><td>${name}<button class="skill-roll" data-roll-skill="${i}" title="Бросить 1d10 + стат + навык">1d10</button></td><td>${stat}</td><td><input data-key="skill${i}" type="number" min="0" max="${maxLevel}" value="${level}"></td><td class="skill-total" data-skill-total="${i}">${skillTotal(i)}</td><td></td></tr>`;}).join('')}</tbody></table></article>`;
+    const rows = entries.flatMap(([name, stat]) => {
+      const baseVisible = matches(`${name} ${stat}`);
+      const variants = (state.customSkills || []).map((item,j)=>item.base === name ? `c${j}` : null).filter(Boolean)
+        .filter(ref=>baseVisible || matches(`${refLabel(ref)} ${stat}`));
+      return baseVisible || variants.length ? [skillRowHtml(`b${skills.indexOf(name)}`, maxLevel), ...variants.map(ref=>skillRowHtml(ref, maxLevel))] : [];
+    });
+    if(!rows.length) return '';
+    return `<article class="skill-category"><h2>${category}</h2><table class="skill-table"><thead><tr><th>Название</th><th>Стат</th><th>Урв</th><th>Сумм</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table></article>`;
   }).join('') || '<div class="empty-search">НАВЫКИ НЕ НАЙДЕНЫ</div>';
   renderSkillFilters();
   refreshSkills();
@@ -360,16 +407,61 @@ function rollFormula(formula){
   rollDicePool([formula], 0, `${formula.count}d${formula.sides}`, {crits:false});
 }
 
-// Проверка навыка: 1d10 + стат + навык с учётом штрафов брони и ранений.
-function rollCheck(index, label = skills[index]){
-  const modifier = skillTotal(index);
+// Удача: заявленные очки добавляются к броску и списываются с текущей УДЧ.
+function spendLuck(){
+  const input = $('#luckSpend');
+  const spend = Math.max(0, Math.min(Math.floor(Number(input.value) || 0), numeric('luckCurrent')));
+  input.value = 0;
+  if(!spend) return 0;
+  state.luckCurrent = numeric('luckCurrent') - spend;
+  setInput('luckCurrent', state.luckCurrent);
+  return spend;
+}
+const withNotes = (label, notes) => notes.filter(Boolean).length ? `${label} (${notes.filter(Boolean).join(', ')})` : label;
+
+// Проверка навыка: 1d10 + стат + навык с учётом штрафов брони и ранений (+ потраченная удача).
+function rollCheck(ref, label = refLabel(ref)){
+  const wound = woundPenalty();
+  const luck = spendLuck();
+  const modifier = refTotal(ref) + luck;
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
-  const wound = woundPenalty();
-  return rollDicePool([{sides:10,count:1}], modifier, wound ? `${label} (ранение −${wound})` : label);
+  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, luck && `удача +${luck}`]));
 }
-const rollSkill = index => rollCheck(index);
+const rollSkill = ref => rollCheck(typeof ref === 'number' ? `b${ref}` : String(ref));
+
+// Инициатива: 1d10 + РЕФ (со штрафом брони).
+function rollInitiative(){
+  const luck = spendLuck();
+  const armor = statPenalty(1);
+  rollDicePool([{sides:10,count:1}], statValue(1) - armor + luck, withNotes('Инициатива', [armor && `броня −${armor}`, luck && `удача +${luck}`]), {crits:false});
+}
+
+function upgradeSkill(ref){
+  const cost = upgradeCost(ref);
+  if(refLevel(ref) >= MAX_SKILL || numeric('ip') < cost) return;
+  state.ip = numeric('ip') - cost;
+  setRefLevel(ref, refLevel(ref) + 1);
+  setInput('ip', state.ip);
+  refreshSkills();
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  toast(`${refLabel(ref)}: уровень ${refLevel(ref)} за ${cost} IP`);
+}
+
+function addVariant(base){
+  (state.customSkills ||= []).push({base, spec:'', level:0});
+  renderSkills(); bindInputs(); persist();
+  $(`[data-key="cskill${state.customSkills.length - 1}_spec"]`)?.focus();
+}
+function removeVariant(index){
+  const [removed] = state.customSkills.splice(index, 1);
+  renderSkills(); bindInputs(); save();
+  toast('Специализация удалена', 'Вернуть', ()=>{
+    state.customSkills.splice(index, 0, removed);
+    renderSkills(); bindInputs(); save();
+  });
+}
 
 // Урон оружия: «3d6», «2d6+2», «4к6».
 function parseDamage(value){
@@ -397,7 +489,7 @@ function weaponAttack(index){
     data[2] = String(ammo - need);
     setInput(`weapon${index}_2`, data[2]);
   }
-  rollCheck(skill, `${name}: атака`);
+  rollCheck(`b${skill}`, `${name}: атака`);
 }
 // Две и больше шестёрок на кубиках урона — критическая травма у цели.
 function weaponDamage(index){
@@ -484,7 +576,12 @@ function renderDashboard(){
 function save(changedKey){
   $$('[data-key]').forEach(el=>{
     const key = el.dataset.key;
-    if(!structuredKey.test(key)) state[key] = el.type==='checkbox' ? el.checked : textValue(el);
+    const custom = /^cskill(\d+)_(spec|level)$/.exec(key);
+    if(custom){
+      const item = state.customSkills?.[Number(custom[1])];
+      if(item) item[custom[2]] = custom[2] === 'level' ? Number(el.value) || 0 : el.value;
+    }
+    else if(!structuredKey.test(key)) state[key] = el.type==='checkbox' ? el.checked : textValue(el);
   });
   if(changedKey === 'currentHp') syncWoundsWithHp();
   normalizeStats();
@@ -603,6 +700,8 @@ function bindInputs(){
     el.addEventListener('change',()=>{
       const key = el.dataset.key;
       if(clampedKey.test(key)) el.value = state[key];
+      const ref = keyToRef(key);
+      if(ref && ref[0] === 'c') el.value = refLevel(ref);
       // Потерю человечности можно ввести формулой (2d6) — она сразу бросается.
       const formula = /_hl$/.test(key) && parseFormula(el.value);
       if(formula){
@@ -617,6 +716,7 @@ function bindInputs(){
 }
 
 function render(){
+  normalizeSkills();
   renderStats();renderSkills();renderLife();Object.keys(rowTypes).forEach(type=>renderRows(type));renderCyber();renderDashboard();
   $('#creationMode').checked=state.creationMode !== false;
   renderDicePool();
@@ -700,7 +800,13 @@ document.addEventListener('click',e=>{
     if(reload !== undefined) weaponReload(Number(reload));
   }
   const skillRoll=e.target.closest('[data-roll-skill]');
-  if(skillRoll) rollSkill(Number(skillRoll.dataset.rollSkill));
+  if(skillRoll) rollSkill(skillRoll.dataset.rollSkill);
+  const upgrade=e.target.closest('[data-upgrade]');
+  if(upgrade) upgradeSkill(upgrade.dataset.upgrade);
+  const addSkill=e.target.closest('[data-add-variant]');
+  if(addSkill) addVariant(addSkill.dataset.addVariant);
+  const removeSkill=e.target.closest('[data-remove-skill]');
+  if(removeSkill) removeVariant(Number(removeSkill.dataset.removeSkill));
   const formula=e.target.closest('[data-formula]');
   if(formula) rollFormula(parseFormula(formula.dataset.formula));
   const filter=e.target.closest('.skill-filter');
@@ -728,7 +834,13 @@ $('#diceClose').onclick=()=>$('#diceDrawer').classList.remove('open');
 $('#addDie').onclick=()=>{state.dicePool=[...readDicePool(),{sides:6,count:1}];renderDicePool();persist();};
 $('#dicePool').oninput=()=>{state.dicePool=readDicePool();persist();};
 $('#dicePool').onclick=e=>{const remove=e.target.closest('.remove-die');if(!remove)return;const pool=readDicePool();pool.splice(Number(remove.closest('.dice-pool-row').dataset.diceIndex),1);state.dicePool=pool;renderDicePool();persist();};
-$('#rollDice').onclick=()=>{const pool=readDicePool();state.dicePool=pool;rollDicePool(pool,Number($('#diceModifier').value)||0,'Свободный бросок');};
+$('#rollDice').onclick=()=>{
+  const pool=readDicePool();
+  state.dicePool=pool;
+  const luck=spendLuck();
+  rollDicePool(pool,(Number($('#diceModifier').value)||0)+luck,withNotes('Свободный бросок',[luck && `удача +${luck}`]));
+};
+$('#initiativeBtn').onclick=rollInitiative;
 $('#advantageBtn').onclick=()=>{state.rollMode=state.rollMode==='advantage'?'':'advantage';renderRollMode();persist();};
 $('#disadvantageBtn').onclick=()=>{state.rollMode=state.rollMode==='disadvantage'?'':'disadvantage';renderRollMode();persist();};
 $('#deathSaveButton').onclick=rollDeathSave;

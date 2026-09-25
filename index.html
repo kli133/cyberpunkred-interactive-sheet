@@ -33,6 +33,7 @@
       <span><i class="dot"></i> SYSTEM ONLINE</span>
       <span id="saveStatus">АВТОСОХРАНЕНИЕ ВКЛ.</span>
       <span id="sheetName">НОВЫЙ ЛИСТ</span>
+      <button class="dice-toggle" id="initiativeBtn" type="button" title="1d10 + РЕФ">ИНИЦИАТИВА</button>
       <button class="dice-toggle" id="diceToggle">КУБИК // 1D10</button>
     </section>
     <aside class="dice-drawer" id="diceDrawer" aria-label="Кубик Cyberpunk RED">
@@ -41,6 +42,7 @@
         <div class="dice-pool" id="dicePool"></div>
         <button type="button" class="add-die-button" id="addDie">+ ДОБАВИТЬ КУБИК</button>
         <label>МОДИФИКАТОР<input id="diceModifier" type="number" value="0"></label>
+        <label title="Очки Удачи добавляются к следующему броску и списываются с текущей УДЧ">УДАЧА<input id="luckSpend" type="number" min="0" value="0"></label>
         <button class="primary roll-button" id="rollDice">БРОСИТЬ</button>
       </div>
       <div class="dice-result" id="diceResult">—</div>
@@ -80,6 +82,7 @@
           <div class="character-resources">
             <label>Репутация<input data-key="reputation" type="number" value="0"></label>
             <label>Евродоллары<input data-key="eddies" type="number" value="0"></label>
+            <label title="Очки улучшения: в режиме игры тратятся на повышение навыков">Очки улучшения (IP)<input data-key="ip" type="number" min="0" value="0"></label>
           </div>
         </div>
         <div class="stats-card">
@@ -144,9 +147,10 @@
         <div class="creation-controls">
           <label><input id="creationMode" type="checkbox" checked> РЕЖИМ СОЗДАНИЯ</label>
           <strong>ОСТАЛОСЬ ОЧКОВ: <span id="skillBudget">86</span></strong>
+          <strong class="is-hidden">ОЧКИ УЛУЧШЕНИЯ: <span id="ipInfo">0</span></strong>
         </div>
       </div>
-      <div class="rules-note">В режиме создания уровень навыка ограничен 6, общий пул — 86 очков, навыки с пометкой (x2) стоят 2 очка за уровень. В режиме игры ограничения снимаются.</div>
+      <div class="rules-note">В режиме создания уровень навыка ограничен 6, общий пул — 86 очков, навыки с пометкой (x2) стоят 2 очка за уровень, базовые навыки (Б) — не ниже 2. Кнопка «+» добавляет ещё один язык, знание местности, боевое искусство, инструмент или науку. В режиме игры навыки повышаются за очки улучшения (IP).</div>
       <div class="skill-search panel">
         <label>ПОИСК НАВЫКА<input id="skillSearch" type="search" placeholder="Например: скрытность, техника, стрельба..."></label>
         <div id="skillFilters" class="skill-filters"></div>
