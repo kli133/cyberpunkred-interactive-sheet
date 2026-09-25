@@ -46,7 +46,11 @@ const skillWeight = i => skills[i].includes('(x2)') ? 2 : 1;
 const skillSpent = () => skills.reduce((sum,_,i)=>sum + numeric(`skill${i}`)*skillWeight(i),0);
 const armorPenalty = () => Math.abs(numeric('armorPenalty'));
 const statPenalty = statIndex => penalizedStats.includes(statIndex) ? armorPenalty() : 0;
-const skillTotal = i => numeric(`skill${i}`) + numeric(`stat${skillStatIndex(i)}`) - statPenalty(skillStatIndex(i));
+const isChecked = key => state[key] === true || state[key] === 'true';
+// Ранения по правилам RED: тяжёлое — −2 ко всем действиям, смертельное (0 хитов) — −4 и −6 к СКО.
+const isMortallyWounded = () => isChecked('deathSave') || (state.currentHp !== undefined && state.currentHp !== '' && numeric('currentHp') <= 0);
+const woundPenalty = () => isMortallyWounded() ? 4 : isChecked('seriousWound') ? 2 : 0;
+const skillTotal = i => numeric(`skill${i}`) + numeric(`stat${skillStatIndex(i)}`) - statPenalty(skillStatIndex(i)) - woundPenalty();
 const maxHp = () => 10 + 5*Math.ceil((numeric('stat8') + numeric('stat5'))/2);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
 const setVal = (el, value) => { if(el !== document.activeElement) el.value = value; };
@@ -152,10 +156,10 @@ function refreshSkills(){
   $$('[data-key^="skill"]').forEach(el=>setVal(el, state[el.dataset.key] ?? 0));
   $$('[data-skill-total]').forEach(cell=>{
     const i = Number(cell.dataset.skillTotal);
-    const penalty = statPenalty(skillStatIndex(i));
+    const armor = statPenalty(skillStatIndex(i)), wound = woundPenalty();
     cell.textContent = skillTotal(i);
-    cell.classList.toggle('is-penalized', penalty > 0);
-    cell.title = penalty > 0 ? `Штраф брони −${penalty}` : '';
+    cell.classList.toggle('is-penalized', armor + wound > 0);
+    cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`].filter(Boolean).join(', ');
   });
 }
 
@@ -234,12 +238,14 @@ function updateDerived(){
   $('#hpMaximum').textContent=hp;
   $('#staminaValue').textContent=body+will;
   $('#woundValue').textContent=Math.ceil(hp/2);
-  $('#speedValue').textContent=Math.max(0, numeric('stat7') - statPenalty(7));
+  $('#speedValue').textContent=Math.max(0, numeric('stat7') - statPenalty(7) - (isMortallyWounded() ? 6 : 0));
   updateResource('armorHeadCurrent', numeric('armorHead'));
   updateResource('armorBodyCurrent', numeric('armorBody'));
   updateResource('luckCurrent', numeric('stat6'));
   updateResource('humanityCurrent', emp * 10);
   $('#sheetName').textContent=(state.name||'НОВЫЙ ЛИСТ').toUpperCase();
+  $('#woundStatus').textContent = isMortallyWounded() ? 'СМЕРТЕЛЬНОЕ РАНЕНИЕ: −4 КО ВСЕМ ДЕЙСТВИЯМ, −6 СКО' : isChecked('seriousWound') ? 'ТЯЖЁЛОЕ РАНЕНИЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ' : '';
+  refreshSkills();
 }
 
 function normalizeDicePool(pool){
@@ -306,7 +312,8 @@ function rollSkill(index){
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
-  rollDicePool([{sides:10,count:1}], modifier, skills[index]);
+  const wound = woundPenalty();
+  rollDicePool([{sides:10,count:1}], modifier, wound ? `${skills[index]} (ранение −${wound})` : skills[index]);
 }
 
 // Испытание против смерти: 1d10 должен быть меньше ТЕЛ, десятка — всегда провал.
@@ -376,7 +383,7 @@ function save(changedKey){
   },{});
   delete state.cyberware;
   // Ничего не перерисовываем целиком, чтобы не сбивать фокус в поле, которое сейчас редактируется.
-  refreshStats(); refreshSkills(); updateDerived();
+  refreshStats(); updateDerived();
   $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
   if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
 }
