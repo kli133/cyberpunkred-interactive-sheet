@@ -1756,3 +1756,58 @@ footer {
   text-align: center;
   padding: 4px 2px;
 }
+
+.skill-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.skill-upgrade, .skill-add-variant {
+  border: 1px solid #999;
+  background: transparent;
+  color: #333;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+  margin-left: 3px;
+}
+
+.skill-upgrade:not(:disabled):hover, .skill-add-variant:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.skill-upgrade:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.skill-table tr.is-variant td:first-child {
+  padding-left: 18px;
+}
+
+.skill-variant {
+  color: #777;
+  margin-right: 4px;
+}
+
+.skill-table .skill-spec {
+  width: 45%;
+  min-width: 90px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 2px;
+  text-align: left;
+}
+
+.basic-mark {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0 3px;
+  border: 1px solid #aaa;
+  color: #777;
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: middle;
+}
