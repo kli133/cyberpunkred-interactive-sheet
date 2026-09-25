@@ -33,7 +33,10 @@ const isChecked = key => state[key] === true || state[key] === 'true';
 // Ранения по правилам RED: тяжёлое — −2 ко всем действиям, смертельное (0 хитов) — −4 и −6 к СКО.
 const isMortallyWounded = () => isChecked('deathSave') || (!isBlank(state.currentHp) && numeric('currentHp') <= 0);
 const woundPenalty = () => isMortallyWounded() ? 4 : isChecked('seriousWound') ? 2 : 0;
-const skillTotal = i => numeric(`skill${i}`) + numeric(`stat${skillStatIndex(i)}`) - statPenalty(skillStatIndex(i)) - woundPenalty();
+// ЭМП падает вместе с человечностью: ЭМП = ⌊человечность / 10⌋, но не выше базового значения.
+const currentEmp = () => isBlank(state.humanityCurrent) ? numeric('stat9') : Math.min(numeric('stat9'), Math.floor(numeric('humanityCurrent')/10));
+const statValue = i => i === 9 ? currentEmp() : numeric(`stat${i}`);
+const skillTotal = i => numeric(`skill${i}`) + statValue(skillStatIndex(i)) - statPenalty(skillStatIndex(i)) - woundPenalty();
 const maxHp = () => 10 + 5*Math.ceil((numeric('stat8') + numeric('stat5'))/2);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
 const setVal = (el, value) => { if(el !== document.activeElement) el.value = value; };
@@ -61,6 +64,14 @@ function migrate(data){
     if(!Array.isArray(s[type])) { delete s[type]; return; }
     s[type] = s[type].map(row=>Array.from({length:width},(_,j)=>String(row?.[j] ?? '')));
   });
+  if(s.cyberSlots && typeof s.cyberSlots === 'object'){
+    Object.keys(s.cyberSlots).forEach(key=>{ s.cyberSlots[key] = (Array.isArray(s.cyberSlots[key]) ? s.cyberSlots[key] : []).map(row=>[0,1,2].map(j=>String(row?.[j] ?? ''))); });
+  }
+  // Сколько человечности уже списано за каждый слот — чтобы при правке списывать только разницу.
+  if(!s.cyberHlApplied || typeof s.cyberHlApplied !== 'object'){
+    s.cyberHlApplied = {};
+    Object.entries(s.cyberSlots || {}).forEach(([key,rows])=>rows.forEach((row,i)=>{ if(/^\d+$/.test(row[2])) s.cyberHlApplied[`${key}_${i}`] = Number(row[2]); }));
+  }
   return s;
 }
 
@@ -146,8 +157,9 @@ function refreshSkills(){
     const i = Number(cell.dataset.skillTotal);
     const armor = statPenalty(skillStatIndex(i)), wound = woundPenalty();
     cell.textContent = skillTotal(i);
-    cell.classList.toggle('is-penalized', armor + wound > 0);
-    cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`].filter(Boolean).join(', ');
+    const empNote = skillStatIndex(i) === 9 && currentEmp() < numeric('stat9') && `ЭМП снижена человечностью до ${currentEmp()}`;
+    cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`, empNote].filter(Boolean).join(', ');
+    cell.classList.toggle('is-penalized', armor + wound > 0 || Boolean(empNote));
   });
 }
 
@@ -210,7 +222,7 @@ function renderCyber(){
   Object.entries(cyberSections).forEach(([key,[title,count]]) => {
     const target = $(`[data-cyber-section="${key}"]`);
     const rows = saved[key] || [];
-    target.innerHTML = `<table class="cyber-slot-table"><thead><tr><th>${title}</th><th>Информация</th></tr></thead><tbody>${Array.from({length:count},(_,i)=>`<tr><td>${field(`cyberSlot_${key}_${i}_name`,rows[i]?.[0]||'')}</td><td>${field(`cyberSlot_${key}_${i}_info`,rows[i]?.[1]||'')}</td></tr>`).join('')}</tbody></table>`;
+    target.innerHTML = `<table class="cyber-slot-table"><thead><tr><th>${title}</th><th>Информация</th><th title="Потеря человечности: число или формула (2d6)">ПЧ</th></tr></thead><tbody>${Array.from({length:count},(_,i)=>`<tr><td>${field(`cyberSlot_${key}_${i}_name`,rows[i]?.[0]||'')}</td><td>${field(`cyberSlot_${key}_${i}_info`,rows[i]?.[1]||'')}</td><td class="hl-cell">${field(`cyberSlot_${key}_${i}_hl`,rows[i]?.[2]||'','text','0')}</td></tr>`).join('')}</tbody></table>`;
   });
 }
 
@@ -229,6 +241,23 @@ function updateResource(key, max){
   $$(`[data-key="${key}"]`).forEach(el=>{ el.max = max; setVal(el, state[key]); });
 }
 
+const humanityLoss = () => Object.values(state.cyberHlApplied || {}).reduce((sum,value)=>sum + (Number(value) || 0),0);
+
+// Потеря человечности от импланта: списывается разница с тем, что уже списано за этот слот.
+function applyHumanityLoss(key, value){
+  const match = /^cyberSlot_(\w+?)_(\d+)_hl$/.exec(key);
+  if(!match || !/^\d*$/.test(String(value).trim())) return;
+  const slot = `${match[1]}_${match[2]}`;
+  const applied = state.cyberHlApplied || (state.cyberHlApplied = {});
+  const next = Number(value) || 0;
+  const delta = next - (Number(applied[slot]) || 0);
+  if(!delta) return;
+  if(next) applied[slot] = next; else delete applied[slot];
+  const current = isBlank(state.humanityCurrent) ? numeric('stat9') * 10 : numeric('humanityCurrent');
+  state.humanityCurrent = Math.max(0, current - delta);
+  setInput('humanityCurrent', state.humanityCurrent);
+}
+
 function updateDerived(){
   const body=numeric('stat8'), emp=numeric('stat9');
   // Cyberpunk RED: ХИТЫ = 10 + 5 × ⌈(ТЕЛ + ВОЛ) / 2⌉.
@@ -242,6 +271,9 @@ function updateDerived(){
   updateResource('armorBodyCurrent', numeric('armorBody'));
   updateResource('luckCurrent', numeric('stat6'));
   updateResource('humanityCurrent', emp * 10);
+  const psycho = emp > 0 && numeric('humanityCurrent') <= 0;
+  $('#humanityMeta').textContent = `ПОТЕРЯ ${humanityLoss()} · ЭМП ${currentEmp()}/${emp}${psycho ? ' · КИБЕРПСИХОЗ' : ''}`;
+  $('#humanityMeta').classList.toggle('is-danger', psycho);
   $('#sheetName').textContent=(state.name||'НОВЫЙ ЛИСТ').toUpperCase();
   // Штраф испытаний против смерти действует, пока персонаж смертельно ранен.
   if(!isMortallyWounded()) state.deathSavePenalty = 0;
@@ -468,10 +500,7 @@ function save(changedKey){
     state[type] = Array.from(rows, data=>data || Array(width).fill(''));
   });
   state.cyberSlots = Object.keys(cyberSections).reduce((all,key)=>{
-    all[key] = Array.from({length: cyberSections[key][1]},(_,i)=>[
-      $(`[data-key="cyberSlot_${key}_${i}_name"]`)?.value || '',
-      $(`[data-key="cyberSlot_${key}_${i}_info"]`)?.value || ''
-    ]);
+    all[key] = Array.from({length: cyberSections[key][1]},(_,i)=>['name','info','hl'].map(part=>$(`[data-key="cyberSlot_${key}_${i}_${part}"]`)?.value || ''));
     return all;
   },{});
   delete state.cyberware;
@@ -565,12 +594,25 @@ function bindInputs(){
         }
       }
       applyArmorInput(key, el.value);
+      applyHumanityLoss(key, el.value);
       // Одно и то же значение может быть в нескольких полях (человечность).
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
       save(key);
     });
     // После окончания ввода показываем значение с учётом ограничений.
-    el.addEventListener('change',()=>{ if(clampedKey.test(el.dataset.key)) el.value = state[el.dataset.key]; });
+    el.addEventListener('change',()=>{
+      const key = el.dataset.key;
+      if(clampedKey.test(key)) el.value = state[key];
+      // Потерю человечности можно ввести формулой (2d6) — она сразу бросается.
+      const formula = /_hl$/.test(key) && parseFormula(el.value);
+      if(formula){
+        const rolled = Array.from({length:formula.count},()=>d(formula.sides)).reduce((sum,value)=>sum+value,0);
+        el.value = rolled;
+        applyHumanityLoss(key, el.value);
+        save(key);
+        toast(`Потеря человечности: ${formula.count}d${formula.sides} = ${rolled}`);
+      }
+    });
   });
 }
 
