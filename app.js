@@ -357,13 +357,24 @@ function refreshWeaponRows(){
     if(damage) damage.title = on ? 'Урон очереди: 2d6 × множитель (таблица для мастера)' : 'Бросок урона';
   });
 }
+// Многострочное поле, которое растёт по высоте вместе с текстом.
+const growField = (key, value='') => `<textarea class="grow-field" data-key="${key}" rows="1">${esc(value)}</textarea>`;
+// Chrome и Edge подгоняют высоту сами (field-sizing: content), остальным браузерам помогаем скриптом.
+const nativeGrow = typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content');
+function autoGrow(el){
+  if(nativeGrow || !el.offsetParent) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+const autoGrowAll = () => $$('.grow-field').forEach(autoGrow);
+
 function renderCyber(){
   const saved = state.cyberSlots || {};
   if(!state.cyberSlots && Array.isArray(state.cyberware) && state.cyberware.length) saved.cranial = state.cyberware;
   Object.entries(cyberSections).forEach(([key,[title,count]]) => {
     const target = $(`[data-cyber-section="${key}"]`);
     const rows = saved[key] || [];
-    target.innerHTML = `<table class="cyber-slot-table"><thead><tr><th>${title}</th><th>Информация</th><th title="Потеря человечности: число или формула (2d6)">ПЧ</th></tr></thead><tbody>${Array.from({length:count},(_,i)=>`<tr><td>${field(`cyberSlot_${key}_${i}_name`,rows[i]?.[0]||'')}</td><td>${field(`cyberSlot_${key}_${i}_info`,rows[i]?.[1]||'')}</td><td class="hl-cell">${field(`cyberSlot_${key}_${i}_hl`,rows[i]?.[2]||'')}</td></tr>`).join('')}</tbody></table>`;
+    target.innerHTML = `<table class="cyber-slot-table"><thead><tr><th>${title}</th><th>Информация</th><th title="Потеря человечности: число или формула (2d6)">ПЧ</th></tr></thead><tbody>${Array.from({length:count},(_,i)=>`<tr><td>${growField(`cyberSlot_${key}_${i}_name`,rows[i]?.[0]||'')}</td><td>${growField(`cyberSlot_${key}_${i}_info`,rows[i]?.[1]||'')}</td><td class="hl-cell">${field(`cyberSlot_${key}_${i}_hl`,rows[i]?.[2]||'')}</td></tr>`).join('')}</tbody></table>`;
   });
 }
 
@@ -823,6 +834,7 @@ function bindInputs(){
           return;
         }
       }
+      if(el.classList.contains('grow-field')) autoGrow(el);
       applyArmorInput(key, el.value);
       applyWeaponType(key, el.value);
       applyHumanityLoss(key, el.value);
@@ -922,7 +934,7 @@ function printSheetHtml(blank){
   }).join('');
   const cyberRows = Object.entries(cyberSections).flatMap(([key,[title]])=>(state.cyberSlots?.[key] || [])
     .filter(row=>row.some(cell=>!isBlank(cell)))
-    .map(row=>[esc(title), text(row[0]), text(row[1]), text(row[2])]));
+    .map(row=>[esc(title), multiline(row[0]), multiline(row[1]), text(row[2])]));
   const lifeRows = [['Псевдоним', state.lifeAlias], ...lifeFields.map((name,i)=>[name, state[`life${i}`]])];
   const portrait = !blank && isSafeImage(state.portrait) ? `<img class="p-portrait" src="${state.portrait}" alt="">` : '';
   const cyberTitle = blank ? 'Киберимпланты' : `Киберимпланты <small>человечность ${numeric('humanityCurrent')} / ${emp*10}, потеря ${humanityLoss()}</small>`;
@@ -975,6 +987,7 @@ function switchTab(tabName){
   const tab=$(`.tab[data-tab="${tabName}"]`);
   const panel=document.getElementById(tabName);
   if(tab && panel){tab.classList.add('active');panel.classList.add('active');}
+  autoGrowAll();
 }
 
 // Формулы в заметках привязаны к номеру строки: при удалении и возврате строки сдвигаем их.
@@ -1131,3 +1144,4 @@ $('#importInput').onchange=e=>{
   e.target.value='';
 };
 render();
+window.addEventListener('resize', autoGrowAll);

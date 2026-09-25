@@ -666,7 +666,7 @@ button {
 
 .cyber-core {
   display: grid;
-  grid-template-columns: 1fr 1.05fr 1fr;
+  grid-template-columns: 1fr .7fr 1fr;
   grid-template-areas: "cranial cranial cranial" "righteye body lefteye" "rightarm body leftarm" "neural neural neural" "rightleg . leftleg";
   gap: 14px;
   align-items: center;
@@ -734,16 +734,20 @@ button {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: .3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cyber-slot-table th:first-child {
-  width: 50%;
+  width: 42%;
 }
 
 .cyber-slot-table td {
   border: 1px solid var(--red);
   padding: 0;
   height: 29px;
+  vertical-align: top;
 }
 
 .cyber-slot-table input {
@@ -758,7 +762,26 @@ button {
   font-size: 12px;
 }
 
-.cyber-slot-table input:focus {
+.cyber-slot-table .grow-field {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  border: 0;
+  background: #fff;
+  padding: 6px 6px 5px;
+  outline: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  field-sizing: content;
+}
+
+.cyber-slot-table input:focus, .cyber-slot-table .grow-field:focus {
   background: #fff4f4;
   box-shadow: inset 0 -2px var(--red);
 }
@@ -784,6 +807,18 @@ button {
 
 #cyberware .cyber-core {
   grid-template-areas: "cranial cranial cranial" "righteye body lefteye" "rightarm body leftarm" "neural neural neural" "rightleg . leftleg";
+}
+
+/* На средних экранах слоты вокруг схемы идут в две колонки, чтобы описаниям хватало ширины. */
+@media(max-width:1300px) {
+  #cyberware .cyber-core {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "cranial cranial" "righteye lefteye" "rightarm leftarm" "body body" "neural neural" "rightleg leftleg";
+  }
+
+  .cyber-core .cyber-diagram {
+    min-height: 280px;
+  }
 }
 
 @media(max-width:900px) {
@@ -1782,7 +1817,7 @@ footer {
 }
 
 .cyber-slot-table th:last-child {
-  width: 44px;
+  width: 40px;
   text-align: center;
 }
 
