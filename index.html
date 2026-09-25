@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CYBERPUNK RED // Интерактивный лист</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,12 +24,12 @@
 
   <main class="app-shell">
     <nav class="tabs" aria-label="Разделы листа">
-      <button class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">00 // Панель</button>
-      <button class="tab" data-tab="character" onclick="switchTab('character')">01 // Персонаж</button>
-      <button class="tab" data-tab="skills" onclick="switchTab('skills')">02 // Навыки</button>
-      <button class="tab" data-tab="equipment" onclick="switchTab('equipment')">03 // Снаряжение</button>
-      <button class="tab" data-tab="lifepath" onclick="switchTab('lifepath')">04 // Жизненный путь</button>
-      <button class="tab" data-tab="cyberware" onclick="switchTab('cyberware')">05 // Киберимпланты</button>
+      <button class="tab active" data-tab="dashboard">00 // Панель</button>
+      <button class="tab" data-tab="character">01 // Персонаж</button>
+      <button class="tab" data-tab="skills">02 // Навыки</button>
+      <button class="tab" data-tab="equipment">03 // Снаряжение</button>
+      <button class="tab" data-tab="lifepath">04 // Жизненный путь</button>
+      <button class="tab" data-tab="cyberware">05 // Киберимпланты</button>
     </nav>
 
     <section class="status-strip">
@@ -75,7 +78,7 @@
           <div class="portrait-placeholder" id="portraitPreview">NO<br>IMAGE</div>
           <label class="portrait-upload">Загрузить портрет<input id="portraitInput" type="file" accept="image/*"></label>
           <label>Имя персонажа<input data-key="name" placeholder="Введите имя"></label>
-          <label>Роль<input data-key="role" placeholder="Соло, Нетрunner..."></label>
+          <label>Роль<input data-key="role" placeholder="Соло, Нетраннер..."></label>
           <label>Особая способность<textarea data-key="ability" rows="2"></textarea></label>
           <div class="character-resources">
             <label>Репутация<input data-key="reputation" type="number" value="0"></label>
@@ -126,7 +129,7 @@
           <strong>ОСТАЛОСЬ ОЧКОВ: <span id="skillBudget">86</span></strong>
         </div>
       </div>
-      <div class="rules-note">В режиме создания уровень навыка ограничен 6, общий пул — 86 очков. В режиме игры ограничения снимаются.</div>
+      <div class="rules-note">В режиме создания уровень навыка ограничен 6, общий пул — 86 очков, навыки с пометкой (x2) стоят 2 очка за уровень. В режиме игры ограничения снимаются.</div>
       <div class="skill-search panel">
         <label>ПОИСК НАВЫКА<input id="skillSearch" type="search" placeholder="Например: скрытность, техника, стрельба..."></label>
         <div id="skillFilters" class="skill-filters"></div>
@@ -174,7 +177,7 @@
     </section>
 
     <section class="tab-panel" id="cyberware">
-      <div class="page-heading"><div><span class="eyebrow">BODY MODIFICATION // 05</span><h1>КИБЕРИМПЛАНТЫ</h1></div><div class="human-status">HUMANITY <input id="humanityValue" data-key="humanityValue" type="number" min="0" value="0" aria-label="Человечность"></div></div>
+      <div class="page-heading"><div><span class="eyebrow">BODY MODIFICATION // 05</span><h1>КИБЕРИМПЛАНТЫ</h1></div><div class="human-status">HUMANITY <input id="humanityValue" data-key="humanityCurrent" type="number" min="0" value="0" aria-label="Человечность"></div></div>
       <div class="cyber-layout">
         <div class="cyber-core">
           <div class="cyber-table-slot slot-cranial" data-cyber-section="cranial"></div>
