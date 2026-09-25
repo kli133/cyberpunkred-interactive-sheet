@@ -1734,3 +1734,25 @@ footer {
   text-transform: uppercase;
   font-size: 11px;
 }
+
+.human-meta {
+  margin-left: 10px;
+  font-size: 11px;
+  letter-spacing: .5px;
+  color: #aaa;
+}
+
+.human-meta.is-danger {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.cyber-slot-table th:last-child {
+  width: 44px;
+  text-align: center;
+}
+
+.cyber-slot-table .hl-cell input {
+  text-align: center;
+  padding: 4px 2px;
+}
