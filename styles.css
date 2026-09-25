@@ -1960,23 +1960,3 @@ footer {
     min-width: 0;
   }
 }
-
-.target-dv {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #3b3a39;
-}
-
-.target-dv input {
-  width: 64px;
-  border: 0;
-  border-bottom: 2px solid var(--red);
-  background: #f8f7f4;
-  padding: 5px;
-  text-align: center;
-  outline: 0;
-}
