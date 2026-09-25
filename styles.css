@@ -1920,48 +1920,236 @@ footer {
   }
 }
 
-/* === Печать: все разделы подряд, без кнопок === */
+/* === Печать: вместо интерфейса печатается отдельный лист #printSheet (см. renderPrintSheet) === */
+.print-sheet {
+  display: none;
+}
+
 @media print {
   @page {
-    margin: 12mm;
+    size: A4;
+    margin: 10mm;
   }
 
-  body, .app-shell {
+  html, body {
     background: #fff !important;
-    color: #000;
   }
 
-  .scanlines, .topbar, .tabs, .status-strip, .dice-drawer, .toast, footer,
-  .skill-search, .rules-note, .creation-controls, .damage-box, .add-row, .row-actions,
-  .skill-actions, .skill-roll, .portrait-upload, .death-save-button, .clear-log {
+  body > :not(.print-sheet) {
     display: none !important;
   }
 
-  .tab-panel {
-    display: block !important;
-    margin-bottom: 8mm;
+  .print-sheet {
+    display: block;
+    color: #111;
+    font-size: 9pt;
+    line-height: 1.25;
   }
 
-  .tab-panel + .tab-panel {
+  .print-sheet * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .p-header {
+    display: flex;
+    gap: 5mm;
+    align-items: stretch;
+    border-bottom: 1.2mm solid var(--red);
+    padding-bottom: 3mm;
+    margin-bottom: 3mm;
+  }
+
+  .p-portrait {
+    width: 28mm;
+    height: 34mm;
+    object-fit: cover;
+    border: 0.3mm solid #111;
+  }
+
+  .p-title {
+    flex: 1;
+  }
+
+  .p-brand {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 1pt;
+  }
+
+  .p-brand b {
+    color: var(--red);
+  }
+
+  .p-header h1 {
+    margin: 1mm 0 2mm;
+    font-size: 20pt;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  .p-section {
+    margin-bottom: 3mm;
+    break-inside: avoid;
+  }
+
+  .p-section h2 {
+    margin: 0 0 1.5mm;
+    padding: 0.8mm 2mm;
+    font-size: 10pt;
+    text-transform: uppercase;
+    letter-spacing: .5pt;
+    border-left: 1.5mm solid var(--red);
+    border-bottom: 0.3mm solid #111;
+  }
+
+  .p-section h2 small {
+    font-size: 7.5pt;
+    font-weight: 400;
+    text-transform: none;
+    color: #555;
+    margin-left: 2mm;
+  }
+
+  .p-page-break {
     break-before: page;
   }
 
-  .app-shell {
-    max-width: none;
-    padding: 0;
-    min-height: 0;
+  .p-grid {
+    display: grid;
+    gap: 1.5mm 4mm;
+    margin-bottom: 1.5mm;
   }
 
-  .panel, .skill-category, .metric, .human-status {
+  .p-grid-1 { grid-template-columns: 1fr; }
+  .p-grid-2 { grid-template-columns: 1fr 1fr; }
+  .p-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .p-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  .p-grid > .p-section {
+    margin-bottom: 0;
+  }
+
+  .p-field {
+    border-bottom: 0.2mm solid #999;
+    padding-bottom: 0.5mm;
+    min-height: 8mm;
+  }
+
+  .p-field span {
+    display: block;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    color: #666;
+  }
+
+  .p-field strong {
+    font-size: 9.5pt;
+  }
+
+  .p-stats {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 1.5mm;
+    margin-bottom: 1.5mm;
+  }
+
+  .p-stats-derived {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .p-stat {
+    border: 0.3mm solid #111;
+    text-align: center;
+    padding: 1mm 0.5mm;
+  }
+
+  .p-stat span {
+    display: block;
+    font-size: 7pt;
+    text-transform: uppercase;
+    color: #555;
+  }
+
+  .p-stat strong {
+    font-size: 13pt;
+  }
+
+  .p-derived strong {
+    font-size: 11pt;
+  }
+
+  .p-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+  }
+
+  .p-table th {
+    text-align: left;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    color: #555;
+    border-bottom: 0.3mm solid #111;
+    padding: 0.5mm 1mm;
+  }
+
+  .p-table td {
+    border-bottom: 0.2mm solid #bbb;
+    padding: 1mm;
+    vertical-align: top;
+    height: 5mm;
+  }
+
+  .p-weapons td:nth-child(n+4):nth-child(-n+8), .p-cyber td:last-child, .p-gear td:nth-child(2) {
+    white-space: nowrap;
+  }
+
+  .p-note {
+    min-height: 16mm;
+    white-space: normal;
+    border-bottom: 0.2mm solid #999;
+  }
+
+  .p-skill-columns {
+    columns: 3;
+    column-gap: 5mm;
+  }
+
+  .p-skill-group {
     break-inside: avoid;
-    box-shadow: none !important;
+    margin-bottom: 2mm;
   }
 
-  .table-scroll {
-    overflow: visible;
+  .p-skill-group h3 {
+    margin: 0 0 0.5mm;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    color: var(--red);
   }
 
-  .equipment-grid .weapon-table {
-    min-width: 0;
+  .p-skills td {
+    height: auto;
+    padding: 0.4mm 0.8mm;
+    font-size: 7.5pt;
+  }
+
+  .p-skills td:nth-child(n+2) {
+    text-align: center;
+    white-space: nowrap;
+    width: 7mm;
+  }
+
+  .p-skills td:nth-child(2) {
+    width: 9mm;
+    color: #666;
+  }
+
+  .p-skills td:last-child {
+    font-weight: 700;
+  }
+
+  .p-skills tr.is-trained td:first-child {
+    font-weight: 700;
   }
 }
