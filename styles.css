@@ -2152,4 +2152,40 @@ footer {
   .p-skills tr.is-trained td:first-child {
     font-weight: 700;
   }
+
+  .p-wounds {
+    font-size: 9pt;
+    padding: 1mm 0;
+  }
+
+  /* Бланк: больше места для записей от руки. */
+  .p-blank .p-stat strong {
+    display: block;
+    min-height: 7mm;
+  }
+
+  .p-blank .p-field {
+    min-height: 9mm;
+  }
+
+  .p-blank .p-table td {
+    height: 6mm;
+  }
+
+  .p-blank .p-skills td {
+    height: 4.6mm;
+  }
+
+  .p-blank .p-skills td:nth-child(3), .p-blank .p-skills td:nth-child(4) {
+    border-left: 0.2mm solid #bbb;
+  }
+
+  .p-blank .p-skills small {
+    color: #888;
+    font-size: 6pt;
+  }
+
+  .p-blank .p-note {
+    min-height: 30mm;
+  }
 }
