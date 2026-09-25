@@ -1652,3 +1652,8 @@ footer {
 .wound-status:empty {
   display: none;
 }
+
+.log-tag {
+  color: var(--red);
+  letter-spacing: .5px;
+}
