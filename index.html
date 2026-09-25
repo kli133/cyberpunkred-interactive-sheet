@@ -99,11 +99,29 @@
 
       <div class="columns-3">
         <div class="panel">
-          <div class="section-title">БРОНЯ</div>
+          <div class="section-title">БРОНЯ <span>SP // ТЕКУЩЕЕ / МАКС.</span></div>
+          <div class="armor-form">
+            <label>Броня головы<select data-key="armorHeadType" data-armor-zone="Head"></select></label>
+            <label>Броня тела<select data-key="armorBodyType" data-armor-zone="Body"></select></label>
+          </div>
           <div class="armor-grid">
-            <label>Голова<input data-key="armorHead" type="number" min="0"></label>
-            <label>Тело<input data-key="armorBody" type="number" min="0"></label>
-            <label>Штраф REF/DEX<input data-key="armorPenalty" type="number" min="0"></label>
+            <label>Голова: SP<input data-key="armorHeadCurrent" type="number" min="0" aria-label="Текущее SP головы"></label>
+            <label>из<input data-key="armorHead" type="number" min="0" aria-label="Максимальное SP головы"></label>
+            <label>Тело: SP<input data-key="armorBodyCurrent" type="number" min="0" aria-label="Текущее SP тела"></label>
+            <label>из<input data-key="armorBody" type="number" min="0" aria-label="Максимальное SP тела"></label>
+            <label title="Вычитается из РЕФ, ЛВК и СКО в навыках, бросках и скорости">Штраф РЕФ/ЛВК/СКО<input data-key="armorPenalty" type="number" min="0"></label>
+          </div>
+          <div class="damage-box">
+            <div class="armor-form">
+              <label>Урон<input id="damageInput" type="number" min="0" placeholder="0"></label>
+              <label>Куда<select id="damageZone"><option value="Body">Тело</option><option value="Head">Голова (×2)</option></select></label>
+            </div>
+            <label class="check-row"><input id="damageMelee" type="checkbox"> Ближний бой (SP ÷ 2)</label>
+            <div class="damage-actions">
+              <button type="button" class="death-save-button" id="applyDamage">ПРИНЯТЬ УРОН</button>
+              <button type="button" class="death-save-button" id="repairArmor">ПОЧИНИТЬ БРОНЮ</button>
+            </div>
+            <div class="damage-result" id="damageResult"></div>
           </div>
           <div class="section-title gap-top">ЗДОРОВЬЕ</div>
           <label class="check-row"><input data-key="seriousWound" type="checkbox"> Тяжёлое ранение</label>
