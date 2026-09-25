@@ -21,3 +21,5 @@
 @media(max-width:900px){.tab{padding:11px 14px;font-size:14px}}
 @media(max-width:560px){.tabs{gap:2px}.tab{flex:1 1 calc(50% - 2px);padding:9px 8px;font-size:11px;letter-spacing:.5px}}
 .armor-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin-bottom:10px}.armor-form label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;color:#3b3a39;margin:0}.armor-form input,.armor-form select{display:block;width:100%;margin-top:5px;border:0;border-bottom:2px solid var(--red);background:#f8f7f4;padding:7px 5px;outline:0;color:var(--ink)}.damage-box{margin-top:14px;padding-top:12px;border-top:1px dashed #cfc9c2}.damage-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.damage-result{margin-top:8px;font-size:13px;color:#3b3a39}.damage-result:empty{display:none}.skill-total.is-penalized{color:var(--red)}
+.wound-status{margin-top:8px;font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--red)}.wound-status:empty{display:none}
+.wound-status{margin-top:8px;font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--red)}.wound-status:empty{display:none}
