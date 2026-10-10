@@ -2143,6 +2143,66 @@ footer {
   align-items: end;
 }
 
+.role-extra .armor-form {
+  margin-bottom: 12px;
+}
+
+.role-extra > .weapon-btn {
+  margin: 0 0 12px;
+}
+
+#roleVehiclesRows td:nth-child(3) input, #roleVehiclesRows td:nth-child(4) input, #roleTeamRows td:nth-child(4) input {
+  width: 56px;
+  text-align: center;
+}
+
+.role-extra .role-roll {
+  margin-bottom: 12px;
+}
+
+.role-info p {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+.role-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.45;
+}
+
+.role-list li {
+  margin-bottom: 4px;
+}
+
+.role-list li.is-locked, .law-table tr.is-locked td {
+  color: #aaa;
+}
+
+.role-list .is-current {
+  border-left: 3px solid var(--red);
+  padding-left: 6px;
+}
+
+[data-role-info].is-over {
+  color: var(--red);
+}
+
+.med-drugs td small {
+  display: block;
+  color: #777;
+  font-size: 11px;
+}
+
+.med-drugs td:nth-child(3) input {
+  width: 52px;
+  text-align: center;
+}
+
+.med-drugs .row-actions {
+  width: 170px;
+}
+
 @media(max-width:900px) {
   .role-grid {
     grid-template-columns: minmax(0,1fr);

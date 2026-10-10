@@ -24,6 +24,12 @@ Object.values(roles).forEach(({table})=>{
 // 7 REZ текущий, 8 включена, 9 что усиливает, 10 на сколько (скрытое поле), 11 урон.
 rowTypes.rolePrograms = 12;
 rowColumns.rolePrograms = [{j:0},{j:6,select:'program'},{j:1},{j:2},{j:3},{j:7},{j:4},{j:8,toggle:true},{j:11},{j:9,select:'boost'},{j:5}];
+// Команда корпората: 0 имя, 1 работа, 2 лояльность, 3 заметки, 4 тип подчинённого, 5 СТАТы.
+rowTypes.roleTeam = 6;
+rowColumns.roleTeam = [{j:0},{j:4,select:'teamType'},{j:1},{j:2},{j:5},{j:3}];
+// Транспорт кочевника: 0 название, 1 улучшения, 2 заметки, 3 тип, 4 ПЗТ сейчас, 5 ПЗТ макс., 6 места и скорость.
+rowTypes.roleVehicles = 7;
+rowColumns.roleVehicles = [{j:0},{j:3,select:'vehicleType'},{j:4},{j:5},{j:6},{j:1},{j:2}];
 const structuredKey = new RegExp(`^(${Object.keys(rowTypes).join('|')})\\d+_\\d+$|^cyberSlot_|^cskill\\d+_`);
 const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent|armorHeadCurrent|armorBodyCurrent|roleRank)$/;
 
@@ -55,7 +61,15 @@ const refLevel = ref => ref[0] === 'b' ? numeric(`skill${ref.slice(1)}`) : Numbe
 const refLabel = ref => ref[0] === 'b' ? skills[refBase(ref)] : `${customSkill(ref)?.base}: ${customSkill(ref)?.spec || '—'}`;
 const refWeight = ref => skillWeight(refBase(ref));
 const refMin = ref => state.creationMode !== false && ref[0] === 'b' && basicSkills.includes(skills[refBase(ref)]) ? 2 : 0;
-const refTotal = ref => { const s = skillStatIndex(refBase(ref)); return refLevel(ref) + statValue(s) - statPenalty(s) - woundPenalty() + (skills[refBase(ref)] === 'Внимательность' ? soloLevel('threat') : 0); };
+// Бонус роли к навыку: Обнаружение угроз Соло, Полевая экспертиза Техника, Мото Кочевника.
+const fieldExpertiseSkills = ['Знания техники','Кибертехника','Электроника/Безопасность (x2)','Оружейник','Автомеханика','Морская технология','Авиационные технологии'];
+function roleSkillBonus(name){
+  if(name === 'Внимательность' && soloLevel('threat')) return [soloLevel('threat'), 'Обнаружение угроз'];
+  if(state.roleId === 'tech' && fieldExpertiseSkills.includes(name) && numeric(rolePointsKey('tech','field'))) return [numeric(rolePointsKey('tech','field')), 'Полевая экспертиза (не для работ Создателя)'];
+  if(state.roleId === 'nomad' && motoSkills.includes(name)) return [roleRank(), 'Мото'];
+  return [0, ''];
+}
+const refTotal = ref => { const s = skillStatIndex(refBase(ref)); return refLevel(ref) + statValue(s) - statPenalty(s) - woundPenalty() + roleSkillBonus(skills[refBase(ref)])[0]; };
 const allRefs = () => [...skills.map((_,i)=>`b${i}`), ...(state.customSkills || []).map((_,j)=>`c${j}`)];
 const skillSpent = () => allRefs().reduce((sum,ref)=>sum + refLevel(ref)*refWeight(ref),0);
 // Повышение навыка за очки улучшения: 20 × новый уровень, для (x2) — вдвое дороже.
@@ -69,6 +83,7 @@ function setRefLevel(ref, level){
 const currentRole = () => roles[state.roleId];
 const roleRank = () => Math.max(0, Math.min(ROLE_MAX_RANK, numeric('roleRank')));
 const rolePointsKey = (roleId, key) => `rolePts_${roleId}_${key}`;
+const rolePointsBudget = () => roleRank() * (currentRole()?.pointsPerRank || 1);
 const rolePointsSpent = roleId => (roles[roleId]?.specialties || []).reduce((sum,item)=>sum + numeric(rolePointsKey(roleId, item.key)) * item.cost, 0);
 // Уровень направления Соло (Боевая готовность) — для автоматических бонусов.
 const soloLevel = key => state.roleId === 'solo' ? numeric(rolePointsKey('solo', key)) : 0;
@@ -260,9 +275,9 @@ function refreshSkills(){
     const s = skillStatIndex(refBase(ref));
     const armor = statPenalty(s), wound = woundPenalty();
     const empNote = s === 9 && currentEmp() < numeric('stat9') && `ЭМП снижена человечностью до ${currentEmp()}`;
-    const threat = skills[refBase(ref)] === 'Внимательность' && soloLevel('threat');
+    const [roleBonus, roleNote] = roleSkillBonus(skills[refBase(ref)]);
     cell.textContent = refTotal(ref);
-    cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`, empNote, threat && `Чуткость +${threat}`].filter(Boolean).join(', ');
+    cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`, empNote, roleBonus && `${roleNote} +${roleBonus}`].filter(Boolean).join(', ');
     cell.classList.toggle('is-penalized', armor + wound > 0 || Boolean(empNote));
   });
   $$('[data-upgrade]').forEach(button=>{
@@ -351,6 +366,8 @@ function row(type,data=[],index){
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
     if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
     if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;
+    if(select === 'teamType') return `<td><select data-key="${key}" aria-label="Тип подчинённого"><option value="">—</option>${Object.entries(execSubordinates).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}</select></td>`;
+    if(select === 'vehicleType') return `<td><select data-key="${key}" aria-label="Тип транспорта"><option value="">Свой</option>${Object.entries(vehicleTypes).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item[0])}</option>`).join('')}</select></td>`;
     if(select === 'program') return `<td>${programPresetSelect(key, data[j] || '')}</td>`;
     if(select === 'boost') return `<td>${programBoostSelect(key, data[j] || '', `${type}${index}_10`, data[10] || '')}</td>`;
     if(toggle && type !== 'weapon') return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Включено"${data[j] === '1' ? ' checked' : ''}></td>`;
@@ -360,10 +377,15 @@ function row(type,data=[],index){
   const programActions = type === 'rolePrograms'
     ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="Атака программой: 1d10 + ранг Интерфейса + ATK">АТК</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="Бросок урона программы">УРН</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="Восстановить REZ до максимума">↺</button>`
     : '';
+  const roleActions = type === 'roleTeam'
+    ? `<button type="button" class="weapon-btn" data-role-action="loyaltyCheck" data-index="${index}" title="Проверка лояльности: мастер бросает 1d6">1D6</button>`
+    : type === 'roleVehicles'
+      ? `<button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${index}" title="Полностью починить: ПЗТ = максимум">↺</button>`
+      : '';
   const weaponActions = type === 'weapon'
     ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">АТК</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
     : '';
-  return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
+  return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
 function renderRows(type){
   const rows = state[type]?.length ? state[type] : [[]];
@@ -885,11 +907,13 @@ function bindInputs(){
       if(key === 'roleId' && el.value && isBlank(state.roleRank)) setInput('roleRank', ROLE_START_RANK);
       applyWeaponType(key, el.value);
       applyProgramPreset(key, el.value);
+      applyVehiclePreset(key, el.value);
       applyHumanityLoss(key, el.value);
       // Одно и то же значение может быть в нескольких полях (человечность).
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
       save(key);
       if(key === 'roleId'){ renderRolePanel(); bindInputs(); }
+      else if(currentRole()) refreshRoleExtras();
     });
     // После окончания ввода показываем значение с учётом ограничений.
     el.addEventListener('change',()=>{
@@ -1023,7 +1047,7 @@ function printRoleSection(section, table, rowsOrBlank, text, multiline){
   const head = programs ? ['Программа','Класс','ATK','DEF','REZ','Вкл','Урон','Эффект'] : role.table?.columns.map(esc);
   const tableRows = (state[role.table?.key] || []).map(row=>programs
     ? [text(row[0]), text(row[1]), text(row[2]), text(row[3]), isBlank(row[4]) ? '' : `${text(isBlank(row[7]) ? row[4] : row[7])} / ${text(row[4])}`, row[8] === '1' ? '✓' : '', text(row[11]), text(row[5])]
-    : row.map(text));
+    : rowColumns[role.table.key].map(({j,select})=>select === 'teamType' ? text(execSubordinates[row[j]]?.name) : select === 'vehicleType' ? text(vehicleTypes[row[j]]?.[0]) : text(row[j])));
   const rows = role.table ? table('p-role', head, rowsOrBlank(tableRows, head.length, 2)) : '';
   const notes = multiline(state[`roleNotes_${id}`]);
   return section(`${esc(role.ability)} <small>${esc(role.name)}, ранг ${roleRank()}</small>`,
@@ -1088,7 +1112,7 @@ function renderRolePanel(){
         <p>${esc(role.text)}</p>
         ${role.roll ? `<button type="button" class="primary role-roll" data-role-roll>${esc(role.roll).toUpperCase()}: 1D10 + РАНГ</button>` : ''}
       </div>
-      ${specialties}${net}${table}
+      ${specialties}${net}${roleExtraPanels(id)}${table}
       <div class="panel role-notes">
         <div class="section-title">ЗАМЕТКИ РОЛИ</div>
         <textarea data-key="roleNotes_${id}" rows="5" placeholder="Особенности, договорённости, долги, что обещано…">${esc(state[`roleNotes_${id}`] || '')}</textarea>
@@ -1097,6 +1121,264 @@ function renderRolePanel(){
   if(role.table) renderRows(role.table.key);
   refreshRolePanel();
 }
+// ---------- Дополнительные панели ролей ----------
+const optionList = (entries, value) => entries.map(([id,name])=>`<option value="${esc(id)}"${String(id) === String(value) ? ' selected' : ''}>${esc(name)}</option>`).join('');
+const roleSelect = (key, label, entries, fallback) => `<label>${label}<select data-key="${key}">${optionList(entries, state[key] ?? fallback)}</select></label>`;
+const roleCheck = (key, label) => `<label class="check-row"><input type="checkbox" data-key="${key}"${isChecked(key) ? ' checked' : ''}> ${label}</label>`;
+const tierFor = (tiers, rank) => [...tiers].reverse().find(tier=>rank >= tier[0]) || tiers[0];
+const techSkillEntries = () => skills.map((name,i)=>[name,i]).filter(([,i])=>skillStatIndex(i) === 3).map(([name])=>[name, name]);
+// Бросок из частей: [[значение, подпись], …] + 1d10 (+ удача, если её можно тратить).
+function rollParts(label, parts, {judge, luck = true, crits = true} = {}){
+  const spent = luck ? spendLuck() : 0;
+  const all = [...parts, [spent, 'удача']].filter(([value])=>value);
+  const modifier = all.reduce((sum,[value])=>sum + value, 0);
+  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, all.map(([value,note])=>`${note} ${value >= 0 ? '+' : '−'}${Math.abs(value)}`)), {judge, crits});
+}
+const beats = dv => entry => entry.total > dv ? `УСПЕХ (СЛ ${dv})` : `ПРОВАЛ (СЛ ${dv}; при равенстве — провал)`;
+const skillPart = name => { const i = skills.indexOf(name); return [refLevel(`b${i}`), name.replace(' (x2)', '')]; };
+
+function roleExtraPanels(id){
+  const panel = (title, body, info = '') => `<div class="panel role-extra"><div class="section-title">${title}${info ? ` <span data-role-info="${info}"></span>` : ''}</div>${body}</div>`;
+  if(id === 'rockerboy') return panel('ВЛИЯНИЕ НА ФАНАТОВ', `
+    <div class="armor-form">${roleSelect('rbTarget', 'На кого', Object.entries(rockerTargets).map(([key,[name,dv]])=>[key, `${name} — СЛ ${dv}`]), 'fan')}</div>
+    <button type="button" class="primary role-roll" data-role-action="rbRoll">ХАРИЗМАТИЧЕСКОЕ ДАВЛЕНИЕ: РАНГ + 1D10</button>
+    <div class="role-info" data-role-info="rbTier"></div>`);
+  if(id === 'tech') return panel('РАБОТА СОЗДАТЕЛЯ', `
+    <div class="armor-form">
+      ${roleSelect('techWork', 'Работа', [['upgrade','Модернизация'],['fabrication','Изготовление'],['invention','Изобретение']], 'upgrade')}
+      ${roleSelect('techPrice', 'Ценовая категория', Object.entries(priceCategories).map(([key,[name,dv,time]])=>[key, `${name} — СЛ ${dv}, ${time}`]), 'costly')}
+      ${roleSelect('techSkill', 'ТЕХ-навык ремонта предмета', techSkillEntries(), 'Знания техники')}
+    </div>
+    <button type="button" class="primary role-roll" data-role-action="techRoll">БРОСОК: ТЕХ + НАВЫК + РАНГ СПЕЦИАЛИЗАЦИИ + 1D10</button>
+    <div class="role-info" data-role-info="techInfo"></div>`);
+  if(id === 'medtech') return panel('МЕДИЦИНСКИЕ НАВЫКИ', `
+    <div class="role-info" data-role-info="medSkills"></div>
+    <div class="role-buttons">
+      <button type="button" class="weapon-btn" data-role-action="medSurgery">ХИРУРГИЯ: ТЕХ + НАВЫК + 1D10</button>
+      <button type="button" class="weapon-btn" data-role-action="medTech">МЕДТЕХНОЛОГИИ: ТЕХ + НАВЫК + 1D10</button>
+    </div>`) + panel('ФАРМАЦЕВТИКА', `
+    <table class="data-table med-drugs"><thead><tr><th>Изучен</th><th>Препарат</th><th>Доз</th><th></th></tr></thead><tbody>${Object.entries(medDrugs).map(([key,[name,effect]])=>`<tr>
+      <td class="auto-cell"><input type="checkbox" data-key="medKnown_${key}"${isChecked(`medKnown_${key}`) ? ' checked' : ''} aria-label="Изучен: ${esc(name)}"></td>
+      <td><strong>${esc(name)}</strong><small>${esc(effect)}</small></td>
+      <td><input data-key="medDoses_${key}" type="number" min="0" value="${numeric(`medDoses_${key}`)}" aria-label="Доз: ${esc(name)}"></td>
+      <td class="row-actions"><button type="button" class="weapon-btn" data-role-action="drugSynth" data-drug="${key}" title="Синтез: СЛ ${MED_SYNTH_DV}, 1 час, 200eb">СИНТЕЗ</button><button type="button" class="weapon-btn" data-role-action="drugUse" data-drug="${key}" title="Ввести одну дозу (действие)">ВВЕСТИ</button>${key === 'speedheal' ? '<button type="button" class="weapon-btn" data-role-action="drugSelf" data-drug="speedheal" title="Ввести себе: +ТЕЛ + ВОЛЯ к ПЗ">СЕБЕ</button>' : ''}</td>
+    </tr>`).join('')}</tbody></table>`, 'medKnownInfo') + panel('КРИОСИСТЕМЫ', '<div class="role-info" data-role-info="cryoInfo"></div>');
+  if(id === 'media') return panel('СЛУХИ', `
+    <div class="armor-form">
+      ${roleSelect('mediaRumor', 'Слух', Object.entries(rumorTiers).map(([key,[name,,passive,active]])=>[key, `${name} — пассив ${passive}, актив ${active}`]), 'typical')}
+      ${roleSelect('mediaSkill', 'Навык поиска', mediaSkills.map(name=>[name,name]), 'Поиск информации')}
+    </div>
+    <div class="role-buttons">
+      <button type="button" class="weapon-btn" data-role-action="rumorPassive" title="Обычно бросает мастер, тайно, дважды в неделю">ПАССИВНО: ДОВЕРИЕ + 1D10</button>
+      <button type="button" class="weapon-btn" data-role-action="rumorActive">АКТИВНЫЙ ПОИСК: СТАТ + НАВЫК + 1D10</button>
+    </div>`) + panel('ПУБЛИКАЦИЯ', `
+    ${roleCheck('mediaProof1', 'Есть хотя бы одно легко проверяемое доказательство (+1)')}
+    ${roleCheck('mediaProof4', 'Больше 4 неопровержимых доказательств (+2)')}
+    <button type="button" class="primary role-roll" data-role-action="mediaPublish">ПРОВЕРКА ДОСТОВЕРНОСТИ: 1D10</button>
+    <div class="role-info" data-role-info="mediaTier"></div>`);
+  if(id === 'exec') return panel('БОНУСЫ КОРПОРАЦИИ', '<div class="role-info" data-role-info="execPerks"></div>') + panel('НАЙМ И ЛОЯЛЬНОСТЬ', `
+    <div class="armor-form">${roleSelect('execHireType', 'Тип подчинённого', Object.entries(execSubordinates).map(([key,item])=>[key, item.name]), 'bodyguard')}</div>
+    <button type="button" class="weapon-btn" data-role-action="execHire" title="СТАТы — бросок 1d6 по таблице типа, лояльность — 1d6 + 1">НАНЯТЬ: БРОСИТЬ СТАТЫ</button>
+    <div class="armor-form">
+      <label>Подчинённый<select data-role-select="execMember"></select></label>
+      ${roleSelect('execEvent', 'Событие', Object.entries(loyaltyEvents).map(([key,[name,value]])=>[key, `${value > 0 ? '+' : ''}${value}: ${name}`]), 'praise')}
+    </div>
+    <button type="button" class="weapon-btn" data-role-action="execLoyalty">ИЗМЕНИТЬ ЛОЯЛЬНОСТЬ</button>`, 'execTeamInfo');
+  if(id === 'lawman') return panel('ВЫЗОВ ПОДКРЕПЛЕНИЯ', `
+    <div class="armor-form"><label>Кого вызвать<select data-key="lawTier"></select></label></div>
+    <button type="button" class="primary role-roll" data-role-action="lawCall">ВЫЗВАТЬ: D10 НЕ БОЛЬШЕ РАНГА</button>
+    <div class="role-info" data-role-info="lawTable"></div>`);
+  if(id === 'fixer') return panel('ВОРОТИЛА', `
+    <button type="button" class="primary role-roll" data-role-action="fixerHaggle">ТОРГ: ХАР + ТОРГОВЛЯ + РАНГ + 1D10</button>
+    <div class="role-info" data-role-info="fixerTier"></div>`);
+  if(id === 'nomad') return panel('АВТОПАРК СЕМЬИ', '<div class="role-info" data-role-info="nomadFleet"></div>');
+  return '';
+}
+
+function refreshRoleExtras(){
+  const id = state.roleId, rank = roleRank();
+  const info = name => $(`[data-role-info="${name}"]`);
+  const list = items => `<ul class="role-list">${items.map(([on, html])=>`<li class="${on ? '' : 'is-locked'}">${html}</li>`).join('')}</ul>`;
+  if(id === 'rockerboy' && info('rbTier')){
+    const [, venue, ...effects] = tierFor(rockerTiers, rank);
+    const target = state.rbTarget || 'fan';
+    info('rbTier').innerHTML = `<p><strong>Где выступаете:</strong> ${esc(venue)}</p>` + list(Object.keys(rockerTargets).map((key,i)=>[true, `<span class="${key === target ? 'is-current' : ''}"><strong>${esc(rockerTargets[key][0])} (СЛ ${rockerTargets[key][1]}):</strong> ${esc(effects[i])}</span>`]));
+  }
+  if(id === 'tech' && info('techInfo')){
+    const work = state.techWork || 'upgrade', [, dv, time] = priceCategories[state.techPrice || 'costly'];
+    const notes = {upgrade:'Материалы той же ценовой категории, что и модернизируемый предмет (транспорт — как «Очень дорогое»).',
+      fabrication:'Материалы на одну ценовую категорию дешевле (Супер роскошь — половина цены).',
+      invention:'Опишите изобретение мастеру: он утверждает цену (минимум «Дорогое») и эффект.'};
+    info('techInfo').innerHTML = `<p>СЛ ${dv}, время ${esc(time)}. Ранг специализации: ${numeric(rolePointsKey('tech', work))}. ${esc(notes[work])}</p><p>Полевая экспертиза ${numeric(rolePointsKey('tech','field'))}: «подлатать» предмет на ${numeric(rolePointsKey('tech','field')) * 10} минут; бонус к ТЕХ-навыкам учтён в навыках.</p>`;
+  }
+  if(id === 'medtech' && info('medSkills')){
+    info('medSkills').innerHTML = `<p><strong>Хирургия:</strong> ${medSurgeryLevel()} (итог ${medSurgeryLevel() + statValue(3)}) · <strong>Медицинские технологии:</strong> ${medTechLevel()} (итог ${medTechLevel() + statValue(3)})</p>`;
+    const known = Object.keys(medDrugs).filter(key=>isChecked(`medKnown_${key}`)).length, allowed = numeric(rolePointsKey('medtech','pharma'));
+    info('medKnownInfo').textContent = `ИЗУЧЕНО ${known} / ${allowed}`;
+    info('medKnownInfo').classList.toggle('is-over', known > allowed);
+    const cryo = numeric(rolePointsKey('medtech','cryo'));
+    info('cryoInfo').innerHTML = list(cryoBenefits.map((text,i)=>[i < cryo, `${i + 1}: ${esc(text)}`]));
+  }
+  if(id === 'media' && info('mediaTier')){
+    const [, access, audience, chance, impact] = tierFor(mediaTiers, rank);
+    const bonus = (isChecked('mediaProof1') ? 1 : 0) + (isChecked('mediaProof4') ? 2 : 0);
+    info('mediaTier').innerHTML = `<p><strong>Аудитория поверит:</strong> ${Math.min(10, chance + bonus)} из 10${bonus ? ` (${chance} + ${bonus} за доказательства)` : ''}</p>` + list([[true, `<strong>Доступ:</strong> ${esc(access)}`],[true, `<strong>Аудитория:</strong> ${esc(audience)}`],[true, `<strong>Влияние:</strong> ${esc(impact)}`]]);
+  }
+  if(id === 'exec' && info('execPerks')){
+    info('execPerks').innerHTML = list(execPerks.map(([from, text])=>[rank >= from, `<strong>Ранг ${from}:</strong> ${esc(text)}`]));
+    const allowed = execSubordinateRanks.filter(from=>rank >= from).length, have = (state.roleTeam || []).filter(row=>!isBlank(row[0]) || !isBlank(row[4])).length;
+    info('execTeamInfo').textContent = `ПОДЧИНЁННЫХ ${have} / ${allowed}`;
+    info('execTeamInfo').classList.toggle('is-over', have > allowed);
+    const member = $('[data-role-select="execMember"]');
+    if(member){
+      const value = member.value;
+      member.innerHTML = (state.roleTeam || []).map((row,i)=>[i, row[0] || execSubordinates[row[4]]?.name || `Строка ${i + 1}`]).map(([i,name])=>`<option value="${i}"${String(i) === value ? ' selected' : ''}>${esc(name)} (лояльность ${esc(state.roleTeam[i][2] || 0)})</option>`).join('');
+    }
+  }
+  if(id === 'lawman' && info('lawTable')){
+    const select = $('[data-key="lawTier"]');
+    if(select){
+      const available = lawmanBackup.filter(([from])=>rank >= from);
+      const current = Math.min(Number(state.lawTier ?? available.length - 1), available.length - 1);
+      select.innerHTML = available.map(([from, to, who],i)=>`<option value="${i}"${i === current ? ' selected' : ''}>Ранг ${from === to ? from : `${from}–${to}`}: ${esc(who.split(':')[0])}</option>`).join('');
+    }
+    info('lawTable').innerHTML = `<div class="table-scroll"><table class="data-table law-table"><thead><tr><th>Ранг</th><th>Кто приезжает</th><th>БН</th><th>ОС</th><th>ПЗ</th><th>СКО/ТЕЛ</th></tr></thead><tbody>${lawmanBackup.map(([from,to,who,bn,sp,hp,move])=>`<tr class="${rank >= from ? '' : 'is-locked'}"><td>${from === to ? from : `${from}–${to}`}</td><td>${esc(who)}</td><td>${bn}</td><td>${sp}</td><td>${hp}</td><td>${move}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  if(id === 'fixer' && info('fixerTier')){
+    const [, contacts, goods, haggle, culture] = tierFor(fixerTiers, rank);
+    info('fixerTier').innerHTML = list([[true, `<strong>Связи и клиенты:</strong> ${esc(contacts)}`],[true, `<strong>Можно достать:</strong> ${esc(goods)}`],[true, `<strong>Торг:</strong> ${esc(haggle)}`],[true, `<strong>Свой чел:</strong> ${esc(culture)}`]]);
+  }
+  if(id === 'nomad' && info('nomadFleet')){
+    const vehicles = (state.roleVehicles || []).filter(row=>!isBlank(row[0]) || !isBlank(row[3]));
+    const upgrades = vehicles.reduce((sum,row)=>sum + String(row[1] || '').split(/[,;\n]/).filter(part=>part.trim()).length, 0);
+    info('nomadFleet').innerHTML = `<p><strong>Мото +${rank}</strong> к ${motoSkills.map(name=>name.replace(' (x2)','')).join(', ')}.</p>
+      <p><strong>Выборов автопарка:</strong> ${vehicles.length + upgrades} из ${rank} (транспорт ${vehicles.length}, улучшений ${upgrades}).</p>
+      <p><strong>Доступный транспорт:</strong> ${Object.values(vehicleTypes).filter(item=>rank >= item[5]).map(item=>esc(item[0])).join(', ')}</p>
+      <p><strong>Улучшения:</strong></p>` + list(nomadUpgrades.map(([name, from, kind])=>[rank >= from, `${esc(name)} <small>— ранг ${from}, ${esc(kind)}</small>`]));
+  }
+}
+
+const medSurgeryLevel = () => Math.min(10, numeric(rolePointsKey('medtech','surgery')) * 2);
+const medTechLevel = () => Math.min(10, numeric(rolePointsKey('medtech','pharma')) + numeric(rolePointsKey('medtech','cryo')));
+const wound = () => [-woundPenalty(), 'ранение'];
+
+function roleAction(action, data){
+  const rank = roleRank();
+  if(action === 'rbRoll'){
+    const [name, dv] = rockerTargets[state.rbTarget || 'fan'];
+    rollParts(`Харизматическое давление: ${name}`, [[rank, 'ранг']], {judge: beats(dv)});
+  }
+  if(action === 'techRoll'){
+    const work = state.techWork || 'upgrade', [price, dv, time] = priceCategories[state.techPrice || 'costly'];
+    const skill = state.techSkill || 'Знания техники';
+    const names = {upgrade:'Модернизация', fabrication:'Изготовление', invention:'Изобретение'};
+    rollParts(`${names[work]} (${price})`, [[statValue(3), 'ТЕХ'], skillPart(skill), [numeric(rolePointsKey('tech', work)), 'специализация'], wound()],
+      {judge: entry => entry.total > dv ? `УСПЕХ (СЛ ${dv}), время ${time}` : `ПРОВАЛ (СЛ ${dv}): потрачена половина времени, материалы целы`});
+  }
+  if(action === 'medSurgery') rollParts('Хирургия', [[statValue(3), 'ТЕХ'], [medSurgeryLevel(), 'Хирургия'], wound()]);
+  if(action === 'medTech') rollParts('Медицинские технологии', [[statValue(3), 'ТЕХ'], [medTechLevel(), 'Медтехнологии'], wound()]);
+  if(action === 'drugSynth'){
+    const key = data.drug, [name] = medDrugs[key];
+    if(!isChecked(`medKnown_${key}`)){ toast(`${name}: препарат не изучен`); return; }
+    const entry = rollParts(`Синтез: ${name}`, [[statValue(3), 'ТЕХ'], [medTechLevel(), 'Медтехнологии'], wound()],
+      {judge: entry => entry.total > MED_SYNTH_DV ? `УСПЕХ (СЛ ${MED_SYNTH_DV}): +${medTechLevel()} доз, 1 час, 200eb` : `ПРОВАЛ (СЛ ${MED_SYNTH_DV}): материалы пропали`});
+    if(entry.total > MED_SYNTH_DV){
+      state[`medDoses_${key}`] = numeric(`medDoses_${key}`) + medTechLevel();
+      setInput(`medDoses_${key}`, state[`medDoses_${key}`]);
+      persist();
+    }
+  }
+  if(action === 'drugUse' || action === 'drugSelf'){
+    const key = data.drug, [name, effect] = medDrugs[key];
+    if(numeric(`medDoses_${key}`) <= 0){ toast(`${name}: доз нет`); return; }
+    state[`medDoses_${key}`] = numeric(`medDoses_${key}`) - 1;
+    setInput(`medDoses_${key}`, state[`medDoses_${key}`]);
+    let text = `${name}: введена доза — ${effect}`;
+    if(action === 'drugSelf'){
+      if(isMortallyWounded()) text += '. Не действует: смертельное ранение';
+      else {
+        const heal = numeric('stat8') + numeric('stat5'), before = numeric('currentHp');
+        state.currentHp = Math.min(maxHp(), before + heal);
+        syncWoundsWithHp(); fillStaticInputs(); updateDerived();
+        text += `. ХИТЫ ${before} → ${state.currentHp}`;
+      }
+    }
+    addHistory({kind:'damage', text});
+    toast(text);
+    persist();
+  }
+  if(action === 'rumorPassive'){
+    rollParts('Слухи (пассивно)', [[rank, 'Доверие']], {luck:false, judge: entry => {
+      const found = Object.values(rumorTiers).filter(([, , passive])=>entry.total > passive).pop();
+      return found ? `мастер сообщает: ${found[0].toLowerCase()} (пассив СЛ ${found[2]})` : 'ни один слух не пойман';
+    }});
+  }
+  if(action === 'rumorActive'){
+    const [name, , , dv] = rumorTiers[state.mediaRumor || 'typical'];
+    const skill = state.mediaSkill || 'Поиск информации', i = skills.indexOf(skill);
+    rollParts(`Поиск: ${name}`, [[refTotal(`b${i}`), skill]], {judge: beats(dv)});
+  }
+  if(action === 'mediaPublish'){
+    const [, , , chance] = tierFor(mediaTiers, rank);
+    const target = Math.min(10, chance + (isChecked('mediaProof1') ? 1 : 0) + (isChecked('mediaProof4') ? 2 : 0));
+    rollDicePool([{sides:10,count:1}], 0, 'Достоверность публикации', {crits:false, judge: entry => entry.die <= target ? `ПОВЕРИЛИ (${target} из 10)` : `НЕ ПОВЕРИЛИ (${target} из 10)`});
+  }
+  if(action === 'execHire'){
+    const type = state.execHireType || 'bodyguard', item = execSubordinates[type];
+    const roll = d(6), stats = item.stats[roll - 1], loyalty = d(6) + 1;
+    if(!state.roleTeam?.some(row=>row.some(cell=>!isBlank(cell)))) state.roleTeam = [];
+    state.roleTeam.push([item.name, item.job, String(loyalty), `Прикрытие: ${item.cover}. Навыки ${item.skills}. Снаряжение: ${item.gear}`, type, stats.map((value,i)=>`${execStatNames[i]} ${value}`).join(' ')]);
+    renderRows('roleTeam'); bindInputs(); save();
+    addHistory({kind:'damage', text:`Нанят: ${item.name} (СТАТы по 1d6 = ${roll}, лояльность 1d6 + 1 = ${loyalty})`});
+    toast(`Нанят ${item.name}: лояльность ${loyalty}`);
+  }
+  if(action === 'execLoyalty'){
+    const index = Number($('[data-role-select="execMember"]')?.value);
+    const row = state.roleTeam?.[index];
+    if(!row){ toast('Сначала добавьте подчинённого'); return; }
+    const [name, change] = loyaltyEvents[state.execEvent || 'praise'];
+    const before = Number(row[2]) || 0;
+    row[2] = String(before + change);
+    setInput(`roleTeam${index}_2`, row[2]);
+    persist(); refreshRoleExtras();
+    const who = row[0] || 'Подчинённый';
+    toast(`${who}: лояльность ${before} → ${row[2]}${Number(row[2]) <= 0 ? ' — подчинённый уйдёт' : ''}`);
+    addHistory({kind:'damage', text:`${who}: ${name} (${change > 0 ? '+' : ''}${change}), лояльность ${before} → ${row[2]}`});
+  }
+  if(action === 'loyaltyCheck'){
+    if(!state.roleTeam?.[data.index]) save();
+    const row = state.roleTeam?.[data.index];
+    if(!row) return;
+    const loyalty = Number(row[2]) || 0;
+    rollDicePool([{sides:6,count:1}], 0, `Лояльность: ${row[0] || 'подчинённый'}`, {crits:false,
+      judge: entry => `${entry.die <= loyalty ? 'выполнит поручение' : 'может отказаться или провалить'} (лояльность ${loyalty}; трактовку броска уточните у мастера)`});
+  }
+  if(action === 'vehicleRepair'){
+    if(!state.roleVehicles?.[data.index]) save();
+    const row = state.roleVehicles?.[data.index];
+    if(!row || isBlank(row[5])) return;
+    row[4] = row[5];
+    setInput(`roleVehicles${data.index}_4`, row[4]);
+    persist();
+    toast(`${row[0] || 'Транспорт'}: ПЗТ восстановлены (${row[5]})`);
+  }
+  if(action === 'lawCall'){
+    const available = lawmanBackup.filter(([from])=>rank >= from);
+    const index = Math.min(Number($('[data-key="lawTier"]')?.value ?? available.length - 1), available.length - 1);
+    rollDicePool([{sides:10,count:1}], 0, 'Вызов подкрепления', {crits:false, judge: entry => {
+      if(entry.die > rank) return `никто не откликнулся (нужно не больше ${rank}); можно повторить в следующем раунде`;
+      const arrive = d(6);
+      if(arrive < 6) return `откликнулись! Прибудут через ${arrive} р.: ${available[index][2]}`;
+      if(index + 1 < lawmanBackup.length) return `откликнулись! На d6 выпало 6 — через 6 раундов прибудет подкрепление выше: ${lawmanBackup[index + 1][2]}`;
+      return `откликнулись! На d6 выпало 6 — через 6 раундов прибудут две группы: ${available[index][2]}`;
+    }});
+  }
+  if(action === 'fixerHaggle'){
+    rollParts('Торг', [[statValue(4), 'ХАР'], skillPart('Торговля'), [rank, 'Воротила'], wound()],
+      {judge: () => 'против ХАР + Торговля продавца (+ Воротила, если он фиксер) + 1d10; при равенстве побеждает защищающийся'});
+  }
+}
+
 // Обновляет числа на вкладке роли без перерисовки (чтобы не сбивать фокус).
 // ---------- Программы нетраннера ----------
 function programPresetSelect(key, value){
@@ -1117,6 +1399,18 @@ const programBoostTotal = target => programBoosts(target).reduce((sum,[value])=>
 function programRow(index){
   if(!state.rolePrograms?.[index]) save();
   return state.rolePrograms?.[index];
+}
+// Выбор транспорта из книги заполняет ПЗТ, места и скорость.
+function applyVehiclePreset(key, value){
+  const match = /^roleVehicles(\d+)_3$/.exec(key);
+  const preset = match && vehicleTypes[value];
+  if(!preset) return;
+  const i = match[1];
+  const [name, hp, seats, move, kmh] = preset;
+  if(isBlank($(`[data-key="roleVehicles${i}_0"]`)?.value)) setInput(`roleVehicles${i}_0`, name);
+  setInput(`roleVehicles${i}_4`, hp);
+  setInput(`roleVehicles${i}_5`, hp);
+  setInput(`roleVehicles${i}_6`, `${seats} мест, СКО ${move}, ${kmh} км/ч`);
 }
 // Выбор программы из книги заполняет строку.
 function applyProgramPreset(key, value){
@@ -1161,7 +1455,13 @@ function programAttack(index){
   const attack = Number(data[2]) || 0;
   const luck = spendLuck();
   rollDicePool([{sides:10,count:1}], roleRank() + attack + luck, withNotes(`${programName(data)}: атака`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`, luck && `удача +${luck}`]),
-    {judge: () => 'цель защищается: 1d10 + свой Интерфейс или DEF'});
+    {judge: () => 'цель защищается: Интерфейс + 1d10 или Защита программы + 1d10; при равенстве побеждает защищающийся'});
+  if(/^Против/i.test(data[1] || '') && isProgramOn(data)){
+    data[8] = '';
+    $$(`[data-key="rolePrograms${index}_8"]`).forEach(el=>{ el.checked = false; });
+    refreshProgramRows();
+    persist();
+  }
 }
 function programDamage(index){
   const data = programRow(index);
@@ -1204,14 +1504,15 @@ function refreshRolePanel(){
   const rank = roleRank();
   const info = $('#rolePointsInfo');
   if(info){
-    const spent = rolePointsSpent(state.roleId);
-    info.textContent = `ОЧКИ ${spent} / ${rank}`;
-    info.classList.toggle('is-over', spent > rank);
-    info.title = spent > rank ? 'Распределено больше очков, чем ранг' : '';
+    const spent = rolePointsSpent(state.roleId), budget = rolePointsBudget();
+    info.textContent = `ОЧКИ ${spent} / ${budget}`;
+    info.classList.toggle('is-over', spent > budget);
+    info.title = spent > budget ? 'Распределено больше очков, чем даёт ранг' : '';
   }
   const net = $('#netActionsInfo');
   if(net) net.textContent = `NET-ДЕЙСТВИЙ ЗА ХОД: ${netActions(rank)}`;
   refreshProgramRows();
+  refreshRoleExtras();
   const tableInfo = $('#roleTableInfo');
   if(tableInfo) tableInfo.textContent = state.roleId === 'netrunner' && !isBlank(state.netSlots) ? `ПРОГРАММ ${(state.rolePrograms || []).filter(row=>!isBlank(row[0])).length} / ${numeric('netSlots')}` : '';
   const upgrade = $('[data-role-upgrade]');
@@ -1352,6 +1653,8 @@ document.addEventListener('click',e=>{
     if(rez !== undefined) programRestore(Number(rez));
   }
   if(e.target.closest('[data-brain-damage]')) applyBrainDamage();
+  const roleButton=e.target.closest('[data-role-action]');
+  if(roleButton) roleAction(roleButton.dataset.roleAction, {...roleButton.dataset, index:Number(roleButton.dataset.index)});
   if(e.target.closest('[data-zap-damage]')) rollDicePool([{sides:6,count:1}], 0, 'Удар (Zap): урон', {crits:false});
   if(e.target.closest('[data-role-roll]')) rollRoleAbility(currentRole()?.roll || 'Способность роли');
   if(e.target.closest('[data-role-upgrade]')) upgradeRole();
