@@ -4,10 +4,11 @@ const skills = skillEntries.map(([name]) => name);
 const penalizedStats = [1, 2, 7]; // РЕФ, ЛВК, СКО
 const rowTypes = {gear:3, weapon:10, relationship:3};
 // Порядок колонок в таблицах: j — индекс значения в сохранённой строке (новые колонки оружия добавлены в конец).
+// short — короткое однострочное значение (числа, урон); остальные текстовые ячейки многострочные и растут вместе с текстом.
 const rowColumns = {
-  gear:[{j:0},{j:1},{j:2,note:true}],
+  gear:[{j:0},{j:1,short:true},{j:2,note:true}],
   // weapon: 7 — множитель автоогня (скрытое поле, заполняется типом), 8 — тип, 9 — автоогонь включён.
-  weapon:[{j:0},{j:8,select:'type'},{j:5,select:'skill'},{j:1,placeholder:'3d6'},{j:2},{j:6},{j:3},{j:9,toggle:true},{j:4,note:true}],
+  weapon:[{j:0},{j:8,select:'type'},{j:5,select:'skill'},{j:1,short:true,placeholder:'3d6'},{j:2,short:true},{j:6,short:true},{j:3,short:true},{j:9,toggle:true},{j:4,note:true}],
   relationship:[{j:0},{j:1},{j:2}]
 };
 const INDEX_KEY = 'cyberred-index';
@@ -23,13 +24,13 @@ Object.values(roles).forEach(({table})=>{
 // Программы: 0 название, 1 класс, 2 ATK, 3 DEF, 4 REZ макс., 5 эффект, 6 тип из книги,
 // 7 REZ текущий, 8 включена, 9 что усиливает, 10 на сколько (скрытое поле), 11 урон.
 rowTypes.rolePrograms = 12;
-rowColumns.rolePrograms = [{j:0},{j:6,select:'program'},{j:1},{j:2},{j:3},{j:7},{j:4},{j:8,toggle:true},{j:11},{j:9,select:'boost'},{j:5,grow:true}];
+rowColumns.rolePrograms = [{j:0},{j:6,select:'program'},{j:1},{j:2,short:true},{j:3,short:true},{j:7,short:true},{j:4,short:true},{j:8,toggle:true},{j:11,short:true},{j:9,select:'boost'},{j:5}];
 // Команда корпората: 0 имя, 1 работа, 2 лояльность, 3 заметки, 4 тип подчинённого, 5 СТАТы.
 rowTypes.roleTeam = 6;
-rowColumns.roleTeam = [{j:0},{j:4,select:'teamType'},{j:1},{j:2},{j:5},{j:3}];
+rowColumns.roleTeam = [{j:0},{j:4,select:'teamType'},{j:1},{j:2,short:true},{j:5},{j:3}];
 // Транспорт кочевника: 0 название, 1 улучшения, 2 заметки, 3 тип, 4 ПЗТ сейчас, 5 ПЗТ макс., 6 места и скорость.
 rowTypes.roleVehicles = 7;
-rowColumns.roleVehicles = [{j:0},{j:3,select:'vehicleType'},{j:4},{j:5},{j:6},{j:1},{j:2}];
+rowColumns.roleVehicles = [{j:0},{j:3,select:'vehicleType'},{j:4,short:true},{j:5,short:true},{j:6},{j:1},{j:2}];
 const structuredKey = new RegExp(`^(${Object.keys(rowTypes).join('|')})\\d+_\\d+$|^cyberSlot_|^cskill\\d+_`);
 const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent|armorHeadCurrent|armorBodyCurrent|roleRank)$/;
 
@@ -341,13 +342,13 @@ function renderSkillFilters(){
 
 function renderLife(){
   $('#lifeBasics').innerHTML = `<div class="section-title">ПОВСЕДНЕВНАЯ ЖИЗНЬ <span>LIFESTYLE</span></div><div class="life-basics-fields">
-    <label>Образ жизни${field('lifeStyle',state.lifeStyle||'', 'text', 'Например: Бродяга, Средний, Богатый')}</label>
-    <label>Арендная плата${field('lifeRent',state.lifeRent||'', 'text', 'Ежемесячная плата')}</label>
-    <label>Жильё${field('lifeHousing',state.lifeHousing||'', 'text', 'Тип и описание жилья')}</label>
-    <label>Образ и стиль${field('lifeLook',state.lifeLook||'', 'text', 'Внешний вид и стиль')}</label>
+    <label>Образ жизни${growField('lifeStyle',state.lifeStyle||'', 'Например: Бродяга, Средний, Богатый')}</label>
+    <label>Арендная плата${growField('lifeRent',state.lifeRent||'', 'Ежемесячная плата')}</label>
+    <label>Жильё${growField('lifeHousing',state.lifeHousing||'', 'Тип и описание жилья')}</label>
+    <label>Образ и стиль${growField('lifeLook',state.lifeLook||'', 'Внешний вид и стиль')}</label>
   </div>`;
   const alias = `<label class="full">Псевдоним${field('lifeAlias',state.lifeAlias||'')}</label>`;
-  $('#lifeFields').innerHTML = alias + lifeFields.map((name,i)=>`<label class="${i===0?'full':''}">${name}${field(`life${i}`,state[`life${i}`]||'')}</label>`).join('');
+  $('#lifeFields').innerHTML = alias + lifeFields.map((name,i)=>`<label class="${i===0?'full':''}">${name}${growField(`life${i}`,state[`life${i}`]||'')}</label>`).join('');
 }
 function weaponSkillSelect(key, value){
   const options = list => list.map(name=>`<option value="${esc(name)}"${name === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
@@ -361,9 +362,8 @@ function weaponTypeSelect(key, value, multiplierKey, multiplier){
 const autofireMultiplier = data => Number(data?.[7]) || 0;
 const isAutofireOn = data => autofireMultiplier(data) > 0 && data?.[9] === '1';
 function row(type,data=[],index){
-  const cells = rowColumns[type].map(({j,note,grow,select,toggle,placeholder})=>{
+  const cells = rowColumns[type].map(({j,note,short,select,toggle,placeholder})=>{
     const key = `${type}${index}_${j}`;
-    if(grow) return `<td>${growField(key, data[j] || '')}</td>`;
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
     if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
     if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;
@@ -373,7 +373,7 @@ function row(type,data=[],index){
     if(select === 'boost') return `<td>${programBoostSelect(key, data[j] || '', `${type}${index}_10`, data[10] || '')}</td>`;
     if(toggle && type !== 'weapon') return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Включено"${data[j] === '1' ? ' checked' : ''}></td>`;
     if(toggle) return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Автоматический огонь"${isAutofireOn(data) ? ' checked' : ''}${autofireMultiplier(data) ? '' : ' disabled'}></td>`;
-    return `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>`;
+    return short ? `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>` : `<td>${growField(key, data[j] || '')}</td>`;
   }).join('');
   const programActions = type === 'rolePrograms'
     ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="Атака программой: 1d10 + ранг Интерфейса + ATK">АТК</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="Бросок урона программы">УРН</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="Восстановить REZ до максимума">↺</button>`
@@ -394,6 +394,7 @@ function renderRows(type){
   $(`#${type}Rows`).innerHTML = rows.map((data,i)=>row(type,data,i)).join('');
   if(type === 'weapon') refreshWeaponRows();
   if(type === 'rolePrograms') refreshProgramRows();
+  autoGrowAll();
 }
 // Галочка «Авто» доступна только оружию с автоогнём; при включённой кнопка атаки — «ОЧЕРЕДЬ».
 function refreshWeaponRows(){
@@ -418,7 +419,7 @@ function refreshWeaponRows(){
   });
 }
 // Многострочное поле, которое растёт по высоте вместе с текстом.
-const growField = (key, value='') => `<textarea class="grow-field" data-key="${key}" rows="1">${esc(value)}</textarea>`;
+const growField = (key, value='', placeholder='') => `<textarea class="grow-field" data-key="${key}" rows="1" placeholder="${esc(placeholder)}">${esc(value)}</textarea>`;
 // Chrome и Edge подгоняют высоту сами (field-sizing: content), остальным браузерам помогаем скриптом.
 const nativeGrow = typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content');
 function autoGrow(el){
@@ -1328,7 +1329,7 @@ function roleAction(action, data){
     const type = state.execHireType || 'bodyguard', item = execSubordinates[type];
     const roll = d(6), stats = item.stats[roll - 1], loyalty = d(6) + 1;
     if(!state.roleTeam?.some(row=>row.some(cell=>!isBlank(cell)))) state.roleTeam = [];
-    state.roleTeam.push([item.name, item.job, String(loyalty), `Прикрытие: ${item.cover}. Навыки ${item.skills}. Снаряжение: ${item.gear}`, type, stats.map((value,i)=>`${execStatNames[i]} ${value}`).join(' ')]);
+    state.roleTeam.push([item.name, item.job, String(loyalty), `Прикрытие: ${item.cover}\nНавыки ${item.skills.replace(/; /g, '\n')}\nСнаряжение: ${item.gear}`, type, stats.map((value,i)=>`${execStatNames[i]} ${value}`).join(' · ')]);
     renderRows('roleTeam'); bindInputs(); save();
     addHistory({kind:'damage', text:`Нанят: ${item.name} (СТАТы по 1d6 = ${roll}, лояльность 1d6 + 1 = ${loyalty})`});
     toast(`Нанят ${item.name}: лояльность ${loyalty}`);

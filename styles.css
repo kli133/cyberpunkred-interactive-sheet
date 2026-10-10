@@ -762,7 +762,7 @@ button {
   font-size: 12px;
 }
 
-.cyber-slot-table .grow-field, .program-table .grow-field {
+.cyber-slot-table .grow-field, .data-table .grow-field, .life-fields .grow-field, .life-basics .grow-field, .session-panel .grow-field {
   display: block;
   width: 100%;
   min-height: 28px;
@@ -2101,11 +2101,28 @@ footer {
   vertical-align: top;
 }
 
-.program-table .grow-field {
+/* Многострочные ячейки таблиц: выглядят как обычные поля, но растут вместе с текстом. */
+.data-table .grow-field {
+  min-height: 26px;
   background: transparent;
   border-bottom: 1px solid #aaa;
   padding: 5px 4px;
   font-size: 12px;
+}
+
+.data-table td {
+  vertical-align: top;
+}
+
+.life-fields .grow-field {
+  min-height: 32px;
+  margin-top: 4px;
+  background: #f8f7f4;
+  border-bottom: 2px solid var(--red);
+  padding: 7px 5px;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: none;
 }
 
 .program-table select {
@@ -2492,4 +2509,32 @@ footer {
   .p-blank .p-note {
     min-height: 30mm;
   }
+}
+
+/* Текстовые области на панелях растут вместе с текстом; высота по rows — минимальная. */
+.panel textarea, .portrait-card textarea {
+  field-sizing: content;
+}
+
+.panel textarea[rows="2"], .portrait-card textarea[rows="2"] { min-height: 3.6em; }
+.panel textarea[rows="3"] { min-height: 5em; }
+.panel textarea[rows="5"] { min-height: 8em; }
+.panel textarea[rows="10"] { min-height: 15em; }
+
+.life-basics .grow-field {
+  font-weight: 400;
+  text-transform: none;
+  min-height: 32px;
+  margin-top: 6px;
+  background: #f8f7f4;
+  border-bottom: 2px solid var(--red);
+  padding: 7px 5px;
+  font-size: 14px;
+}
+
+.session-panel .grow-field {
+  min-height: 36px;
+  padding: 8px;
+  margin-top: 5px;
+  font-size: 15px;
 }
