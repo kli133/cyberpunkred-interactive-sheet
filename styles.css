@@ -137,10 +137,10 @@ button {
 .tab {
   background: #d7d2cc;
   border: 0;
-  padding: 14px 22px;
+  padding: 14px 14px;
   color: #3b3a39;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: .5px;
 }
 
 .tab.active {
@@ -1952,6 +1952,141 @@ footer {
 
   .skill-table .skill-spec {
     flex-basis: 100%;
+  }
+}
+
+/* === Роль === */
+.tab[hidden] {
+  display: none;
+}
+
+.role-pick {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 70px;
+  gap: 10px;
+}
+
+.role-pick select, .role-pick input {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: #f8f7f4;
+  padding: 7px 5px;
+  outline: 0;
+  color: var(--ink);
+  font: inherit;
+  margin-top: 5px;
+}
+
+.role-rank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--black);
+  color: #fff;
+  padding: 10px 14px;
+  border-left: 7px solid var(--red);
+}
+
+.role-rank label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.role-rank input {
+  width: 58px;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: transparent;
+  color: var(--red);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  outline: 0;
+}
+
+.role-rank .skill-upgrade {
+  color: #fff;
+  border-color: #777;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.role-grid .role-table-panel, .role-grid .role-notes {
+  grid-column: 1 / -1;
+}
+
+.role-ability p {
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.role-roll {
+  border: 0;
+  background: var(--red);
+  color: #fff;
+  padding: 10px 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.role-specialties td small {
+  display: block;
+  color: #777;
+  font-size: 11px;
+}
+
+.role-specialties td:nth-child(2) {
+  width: 60px;
+  white-space: nowrap;
+  color: #555;
+}
+
+.role-specialties td:nth-child(3) {
+  width: 70px;
+}
+
+.role-specialties input {
+  width: 56px;
+  text-align: center;
+}
+
+#rolePointsInfo.is-over {
+  color: var(--red);
+}
+
+.role-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.role-buttons .weapon-btn {
+  margin: 0;
+  padding: 5px 8px;
+}
+
+.role-notes textarea {
+  width: 100%;
+}
+
+.role-table {
+  min-width: 560px;
+}
+
+@media(max-width:900px) {
+  .role-grid {
+    grid-template-columns: minmax(0,1fr);
   }
 }
 
