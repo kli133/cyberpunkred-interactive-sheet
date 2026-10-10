@@ -23,7 +23,8 @@ Object.values(roles).forEach(({table})=>{
 });
 // Программы: 0 название, 1 класс, 2 ATK, 3 DEF, 4 REZ макс., 5 эффект, 6 тип из книги,
 // 7 REZ текущий, 8 включена, 9 что усиливает, 10 на сколько (скрытое поле), 11 урон.
-rowTypes.rolePrograms = 12;
+// 12 — урон по Чёрному ЛЬДУ (если отличается), 13 — 'effect': кубики — свойство, а не урон.
+rowTypes.rolePrograms = 14;
 rowColumns.rolePrograms = [{j:0},{j:6,select:'program'},{j:1},{j:2,short:true},{j:3,short:true},{j:7,short:true},{j:4,short:true},{j:8,toggle:true},{j:11,short:true},{j:9,select:'boost'},{j:5}];
 // Команда корпората: 0 имя, 1 работа, 2 лояльность, 3 заметки, 4 тип подчинённого, 5 СТАТы.
 rowTypes.roleTeam = 6;
@@ -114,6 +115,11 @@ function migrate(data){
   delete s.humanityValue;
   Object.keys(s).forEach(key => { if(structuredKey.test(key)) delete s[key]; });
   if(s.portrait && !isSafeImage(s.portrait)) delete s.portrait;
+  if(Array.isArray(s.rolePrograms)) s.rolePrograms.forEach(row=>{
+    const preset = programPresets[row?.[6]];
+    if(!preset || !isBlank(row[12]) || !isBlank(row[13]) || (!preset[9] && !preset[10])) return;
+    row[11] = String(preset[5] ?? ''); row[12] = String(preset[9] ?? ''); row[13] = String(preset[10] ?? '');
+  });
   if(Array.isArray(s.roleTeam)) s.roleTeam.forEach(row=>{ if(row?.[4] && String(row[3] || '').startsWith('Прикрытие: ')) row[3] = ''; });
   delete s.targetDv;
   // Роль раньше была свободным текстом — узнаём её по названию.
@@ -427,10 +433,12 @@ function programCard(data, i){
         <label class="mini wide"><span>Класс</span><input data-key="${k(1)}" value="${esc(data[1] || '')}"></label>
         ${mini('ATK', 2)}${mini('ЗАЩ', 3)}
         <label class="mini rez" title="REZ сейчас / максимум"><span>REZ</span><span class="rez-pair"><input data-key="${k(7)}" value="${esc(data[7] || '')}" aria-label="REZ сейчас">/<input data-key="${k(4)}" value="${esc(data[4] || '')}" aria-label="REZ максимум"></span></label>
-        ${mini('Урон', 11)}
+        <label class="mini"><span data-program-roll-label="${i}">${data[13] === 'effect' ? 'Свойство' : !isBlank(data[12]) ? 'Урон: прогр.' : 'Урон'}</span><input data-key="${k(11)}" value="${esc(data[11] || '')}"></label>
+        <label class="mini" title="Урон по Чёрному ЛЬДУ, если он отличается"><span>Урон: Ч.ЛЁД</span><input data-key="${k(12)}" value="${esc(data[12] || '')}"></label>
+        <input type="hidden" data-key="${k(13)}" value="${esc(data[13] || '')}">
         <label class="mini wide"><span>Усиливает</span>${programBoostSelect(k(9), data[9] || '', k(10), data[10] || '')}</label>
       </div>
-      <div class="row-actions"><button type="button" class="weapon-btn" data-program-attack="${i}" title="Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-program-damage="${i}" title="Бросок урона программы (после попадания)">УРОН</button><button type="button" class="weapon-btn" data-program-rez="${i}" title="Восстановить REZ до максимума">↺</button><button type="button" class="remove" data-remove="rolePrograms" data-index="${i}" title="Удалить">×</button></div>
+      <div class="row-actions"><button type="button" class="weapon-btn" data-program-attack="${i}" title="Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-program-damage="${i}">УРОН</button><button type="button" class="weapon-btn" data-program-damage="${i}" data-target="ice" title="Урон по Чёрному ЛЬДУ (после попадания)">ПО ЧЁРНОМУ ЛЬДУ</button><button type="button" class="weapon-btn" data-program-rez="${i}" title="Восстановить REZ до максимума">↺</button><button type="button" class="remove" data-remove="rolePrograms" data-index="${i}" title="Удалить">×</button></div>
     </div>
     ${growField(k(5), data[5] || '', 'Эффект')}
   </article>`;
@@ -1015,7 +1023,7 @@ function bindInputs(){
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
       save(key);
       if(key === 'roleId'){ renderRolePanel(); bindInputs(); }
-      else if(/^role(Team\d+_4|Vehicles\d+_3)$/.test(key)){ renderRows(key.startsWith('roleTeam') ? 'roleTeam' : 'roleVehicles'); bindInputs(); refreshRolePanel(); }
+      else if(/^role(Team\d+_4|Vehicles\d+_3|Programs\d+_6)$/.test(key)){ renderRows(key.startsWith('roleTeam') ? 'roleTeam' : key.startsWith('roleVehicles') ? 'roleVehicles' : 'rolePrograms'); bindInputs(); refreshRolePanel(); }
       else if(currentRole()) refreshRoleExtras();
     });
     // После окончания ввода показываем значение с учётом ограничений.
@@ -1147,9 +1155,9 @@ function printRoleSection(section, table, rowsOrBlank, text, multiline){
     .map(item=>`${esc(item.name)} — ${numeric(rolePointsKey(id, item.key))}`).join('; ');
   const net = role.interfaceAbilities ? `NET-действий за ход: ${netActions(roleRank())}${isBlank(state.netDeck) ? '' : `; кибердека: ${text(state.netDeck)}`}${isBlank(state.netSlots) ? '' : `, слотов ${text(state.netSlots)}`}` : '';
   const programs = role.table?.key === 'rolePrograms';
-  const head = programs ? ['Программа','Класс','ATK','DEF','REZ','Вкл','Урон','Эффект'] : role.table?.columns.map(esc);
+  const head = programs ? ['Программа','Класс','ATK','DEF','REZ','Вкл','Урон / свойство','Эффект'] : role.table?.columns.map(esc);
   const tableRows = (state[role.table?.key] || []).map(row=>programs
-    ? [text(row[0]), text(row[1]), text(row[2]), text(row[3]), isBlank(row[4]) ? '' : `${text(isBlank(row[7]) ? row[4] : row[7])} / ${text(row[4])}`, row[8] === '1' ? '✓' : '', text(row[11]), text(row[5])]
+    ? [text(row[0]), text(row[1]), text(row[2]), text(row[3]), isBlank(row[4]) ? '' : `${text(isBlank(row[7]) ? row[4] : row[7])} / ${text(row[4])}`, row[8] === '1' ? '✓' : '', [text(row[11]), !isBlank(row[12]) && `Ч.ЛЁД ${text(row[12])}`].filter(Boolean).join(', '), text(row[5])]
     : rowColumns[role.table.key].map(({j,select})=>select === 'teamType' ? text(execSubordinates[row[j]]?.name) : select === 'vehicleType' ? text(vehicleTypes[row[j]]?.[0]) : text(row[j])));
   const rows = role.table ? table('p-role', head, rowsOrBlank(tableRows, head.length, 2)) : '';
   const notes = multiline(state[`roleNotes_${id}`]);
@@ -1536,9 +1544,9 @@ function applyProgramPreset(key, value){
   const preset = match && programPresets[value];
   if(!preset) return;
   const i = match[1];
-  const [name, kind, attack, defense, rez, damage, boost, amount, effect] = preset;
+  const [name, kind, attack, defense, rez, damage, boost, amount, effect, iceDamage = '', rollKind = ''] = preset;
   if(isBlank($(`[data-key="rolePrograms${i}_0"]`)?.value)) setInput(`rolePrograms${i}_0`, name);
-  [[1,kind],[2,attack],[3,defense],[4,rez],[7,rez],[11,damage],[9,boost],[10,amount],[5,effect]].forEach(([j,v])=>setInput(`rolePrograms${i}_${j}`, v));
+  [[1,kind],[2,attack],[3,defense],[4,rez],[7,rez],[11,damage],[12,iceDamage],[13,rollKind],[9,boost],[10,amount],[5,effect]].forEach(([j,v])=>setInput(`rolePrograms${i}_${j}`, v));
 }
 // Снесённая программа (REZ 0) выключается; строки подсвечиваются по состоянию.
 function refreshProgramRows(){
@@ -1556,8 +1564,17 @@ function refreshProgramRows(){
     tr.title = derezzed ? 'REZ исчерпан — программа снесена' : '';
     const attack = tr.querySelector('[data-program-attack]');
     if(attack) attack.disabled = /^(Усилит|Защит)/i.test(data[1] || '');
-    const damage = tr.querySelector('[data-program-damage]');
-    if(damage) damage.disabled = !parseDamage(data[11]);
+    const effect = data[13] === 'effect', ice = !isBlank(data[12]);
+    const damage = tr.querySelector('[data-program-damage]:not([data-target])');
+    if(damage){
+      damage.disabled = !parseDamage(data[11]);
+      damage.textContent = effect ? 'СВОЙСТВО' : ice ? 'ПО ПРОГРАММЕ' : 'УРОН';
+      damage.title = effect ? `Бросок свойства: ${data[5] || ''}` : ice ? 'Урон по обычной программе (после попадания)' : 'Бросок урона программы (после попадания)';
+    }
+    const iceButton = tr.querySelector('[data-program-damage][data-target="ice"]');
+    if(iceButton){ iceButton.hidden = !ice || effect; iceButton.disabled = !parseDamage(data[12]); }
+    const rollLabel = tr.querySelector('[data-program-roll-label]');
+    if(rollLabel) rollLabel.textContent = effect ? 'Свойство' : ice ? 'Урон: прогр.' : 'Урон';
   });
   const summary = $('#netBoostSummary');
   if(summary){
@@ -1580,12 +1597,16 @@ function programAttack(index){
     persist();
   }
 }
-function programDamage(index){
+// Урон программы: по обычной программе (или человеку) либо по Чёрному ЛЬДУ, если урон по нему отличается.
+// У программ вроде Суперклея кубики — свойство (длительность, штраф), а не урон.
+function programDamage(index, target){
   const data = programRow(index);
   if(!data) return;
-  const damage = parseDamage(data[11]);
-  if(!damage){ toast(`${programName(data)}: укажите урон в виде 3d6`); return; }
-  rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${programName(data)}: урон`, {crits:false, judge: () => data[5] || ''});
+  const effect = data[13] === 'effect', ice = target === 'ice';
+  const damage = parseDamage(ice ? data[12] : data[11]);
+  if(!damage){ toast(`${programName(data)}: укажите ${effect ? 'кубики свойства' : 'урон'} в виде 3d6`); return; }
+  const label = effect ? 'свойство' : ice ? 'урон по Чёрному ЛЬДУ' : !isBlank(data[12]) ? 'урон по программе' : 'урон';
+  rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${programName(data)}: ${label}`, {crits:false, judge: () => effect ? data[5] || '' : ''});
 }
 function programRestore(index){
   const data = programRow(index);
@@ -1769,7 +1790,7 @@ document.addEventListener('click',e=>{
   if(program){
     const {programAttack:attack, programDamage:damage, programRez:rez} = program.dataset;
     if(attack !== undefined) programAttack(Number(attack));
-    if(damage !== undefined) programDamage(Number(damage));
+    if(damage !== undefined) programDamage(Number(damage), program.dataset.target);
     if(rez !== undefined) programRestore(Number(rez));
   }
   if(e.target.closest('[data-brain-damage]')) applyBrainDamage();
