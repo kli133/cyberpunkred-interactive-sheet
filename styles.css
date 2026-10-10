@@ -1377,6 +1377,19 @@ footer {
   padding: 4px 0 10px;
 }
 
+.formula-die.is-crit {
+  border-color: #f0c040;
+  background: #fff7dc;
+}
+
+.formula-die.is-crit-source {
+  box-shadow: 0 0 0 2px #f0c040;
+}
+
+.luck-restore {
+  grid-column: 1 / -1;
+}
+
 .formula-die {
   display: grid;
   place-items: center;
