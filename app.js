@@ -626,8 +626,9 @@ function rollModeLabel(){
 }
 
 const signed = value => value >= 0 ? String(value) : '−'+Math.abs(value);
-const diceText = item => item.diceDetails ? item.diceDetails.map(die=>`D${Number(die.sides)}: ${Number(die.value)}`).join(' + ') : (Array.isArray(item.dice) ? item.dice.map(Number).join(' + ') : Number(item.die));
-const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКАЯ НЕУДАЧА'}${item.critExtra ? ` (${item.die === 10 ? '+' : '−'}${Number(item.critExtra)})` : ''}</em>` : '';
+const critPart = item => item.critical && Number(item.critExtra) ? ` ${Number(item.die) === 10 ? '+' : '−'} крит ${Number(item.critExtra)}` : '';
+const diceText = item => (item.diceDetails ? item.diceDetails.map(die=>`D${Number(die.sides)}: ${Number(die.value)}`).join(' + ') : (Array.isArray(item.dice) ? item.dice.map(Number).join(' + ') : Number(item.die))) + critPart(item);
+const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКИЙ ПРОВАЛ'}</em>` : '';
 const logLine = item => item.kind === 'damage'
   ? `<b class="log-tag">УРОН</b> ${esc(item.text)}`
   : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
@@ -637,21 +638,24 @@ function addHistory(entry){
   renderDashboardLog();
 }
 
-// crits: по правилам RED 10 на 1d10 добавляет ещё 1d10, 1 — вычитает ещё 1d10.
-function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge}={}){
+// crits: по правилам RED (стр. 130) 10 на 1d10 — критический успех: бросается ещё 1d10 и прибавляется;
+// 1 — критический провал: ещё 1d10 вычитается. Повторная 10 или 1 на втором кубике нового крита не даёт.
+// attack — бросок атаки: «Умелое обращение» Соло отменяет критический провал только на атаках (стр. 146).
+function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge, attack=false}={}){
   const dicePool=normalizeDicePool(pool);
   const diceDetails=dicePool.flatMap(({sides,count})=>Array.from({length:count},()=>({sides,value:rollDie(sides)})));
   const die = diceDetails.reduce((sum,item)=>sum+item.value,0);
-  const fumbleRecovered = crits && diceDetails.length === 1 && diceDetails[0].sides === 10 && die === 1 && soloLevel('fumble') > 0;
+  const fumbleRecovered = crits && attack && diceDetails.length === 1 && diceDetails[0].sides === 10 && die === 1 && soloLevel('fumble') > 0;
   const critical = crits && diceDetails.length === 1 && diceDetails[0].sides === 10 && (die === 10 || (die === 1 && !fumbleRecovered));
   const critExtra = critical ? d(10) : 0;
   const total = die + modifier + (die === 10 ? critExtra : -critExtra);
   const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel()};
   if(judge) entry.note = judge(entry) || '';
-  if(fumbleRecovered) entry.note = [entry.note, 'единица не провал (Без промахов)'].filter(Boolean).join('. ');
+  if(fumbleRecovered) entry.note = [entry.note, 'единица не критический провал (Умелое обращение)'].filter(Boolean).join('. ');
   addHistory(entry);
   persist();
-  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry) || entry.note ? `<div class="roll-note">${critText(entry)}${entry.note ? `<span>${esc(entry.note)}</span>` : ''}</div>` : ''}`;
+  const critDie = critical ? `<span class="formula-die is-crit" aria-label="Кубик крита">${die === 10 ? '+' : '−'}${critExtra}<small>КРИТ</small></span>` : '';
+  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die${critical && index === 0 ? ' is-crit-source' : ''}" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}${critDie}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry) || entry.note ? `<div class="roll-note">${critText(entry)}${entry.note ? `<span>${esc(entry.note)}</span>` : ''}</div>` : ''}`;
   $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${logLine(entry)}</div>`);
   $('#diceDrawer').classList.add('open');
   return entry;
@@ -683,14 +687,14 @@ function spendLuck(){
 const withNotes = (label, notes) => notes.filter(Boolean).length ? `${label} (${notes.filter(Boolean).join(', ')})` : label;
 
 // Проверка навыка: 1d10 + стат + навык с учётом штрафов брони и ранений (+ потраченная удача).
-function rollCheck(ref, label = refLabel(ref), judge, extras = []){
+function rollCheck(ref, label = refLabel(ref), judge, extras = [], {attack = false} = {}){
   const wound = woundPenalty();
   const luck = spendLuck();
   const modifier = refTotal(ref) + luck + extras.reduce((sum,[value])=>sum + value, 0);
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
-  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, luck && `удача +${luck}`, ...extras.map(([value,note])=>value && `${note} +${value}`)]), {judge});
+  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, luck && `удача +${luck}`, ...extras.map(([value,note])=>value && `${note} +${value}`)]), {judge, attack});
 }
 const rollSkill = ref => rollCheck(typeof ref === 'number' ? `b${ref}` : String(ref));
 
@@ -762,13 +766,13 @@ function weaponAttack(index){
   const name = data[0] || 'Оружие';
   if(isAutofireOn(data)){
     if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
-    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: попадание очередью`, undefined, [[soloLevel('precision'), 'точная атака']]);
+    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: попадание очередью`, undefined, [[soloLevel('precision'), 'точная атака']], {attack:true});
     return;
   }
   const skill = skills.indexOf(data[5]);
   if(skill < 0){ toast(`${name}: выберите тип или навык оружия`); return; }
   if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, data[5] === AUTOFIRE_SKILL ? AUTOFIRE_AMMO : 1)) return;
-  rollCheck(`b${skill}`, `${name}: попадание`, undefined, [[soloLevel('precision'), 'точная атака']]);
+  rollCheck(`b${skill}`, `${name}: попадание`, undefined, [[soloLevel('precision'), 'точная атака']], {attack:true});
 }
 // Урон: формула оружия. Для очереди — 2d6 и таблица множителей: DV знает мастер,
 // он берёт множитель = на сколько атака превысила DV (не больше множителя оружия).
@@ -1827,6 +1831,8 @@ $('#rollDice').onclick=()=>{
   rollDicePool(pool,(Number($('#diceModifier').value)||0)+luck,withNotes('Свободный бросок',[luck && `удача +${luck}`]));
 };
 $('#initiativeBtn').onclick=rollInitiative;
+// Удача восстанавливается до значения УДЧ в начале каждой игровой сессии (стр. 130).
+$('#restoreLuck').onclick=()=>{state.luckCurrent=numeric('stat6');setInput('luckCurrent',state.luckCurrent);persist();updateDerived();toast(`Удача восстановлена: ${state.luckCurrent}`);};
 $('#advantageBtn').onclick=()=>{state.rollMode=state.rollMode==='advantage'?'':'advantage';renderRollMode();persist();};
 $('#disadvantageBtn').onclick=()=>{state.rollMode=state.rollMode==='disadvantage'?'':'disadvantage';renderRollMode();persist();};
 $('#deathSaveButton').onclick=rollDeathSave;
