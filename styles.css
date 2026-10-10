@@ -2978,3 +2978,29 @@ footer {
   font-weight: 400;
   text-transform: none;
 }
+
+/* Панель Сети: базовая атака Разрядом отдельно от функций интерфейса. */
+.net-attack {
+  border-left: 3px solid var(--red);
+  padding-left: 10px;
+  margin: 12px 0;
+}
+
+.net-block-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: #3b3a39;
+  margin-top: 8px;
+}
+
+.net-block-title small {
+  font-weight: 400;
+  color: #888;
+  letter-spacing: 0;
+  margin-left: 6px;
+}
+
+.net-attack .role-buttons {
+  margin: 6px 0 0;
+}
