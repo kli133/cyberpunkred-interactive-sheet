@@ -1187,8 +1187,15 @@ function renderRolePanel(){
         <label>Кибердека<input data-key="netDeck" value="${esc(state.netDeck || '')}" placeholder="Модель кибердеки"></label>
         <label>Слоты программ<input data-key="netSlots" type="number" min="0" value="${esc(state.netSlots ?? '')}"></label>
       </div>
-      <div class="role-buttons">${role.interfaceAbilities.map(([key,name,hint])=>`<button type="button" class="weapon-btn" data-interface="${key}" title="1d10 + ранг: ${esc(hint)}">${esc(name)}</button>`).join('')}</div>
-      <button type="button" class="weapon-btn" data-zap-damage title="Урон способности «Удар»">УРОН «УДАРА» 1D6</button>
+      <div class="net-attack">
+        <div class="net-block-title">АТАКА РАЗРЯДОМ <small>базовая атака по программе или нетраннеру</small></div>
+        <div class="role-buttons">
+          <button type="button" class="weapon-btn" data-interface="zap" title="Бросок на попадание: Интерфейс + 1d10; результат назовите мастеру">ПОПАДАНИЕ: ИНТЕРФЕЙС + 1D10</button>
+          <button type="button" class="weapon-btn" data-zap-damage title="Урон Разряда после попадания: 1d6 программе или мозгу нетраннера">УРОН 1D6</button>
+        </div>
+      </div>
+      <div class="net-block-title">ФУНКЦИИ ИНТЕРФЕЙСА <small>проверка: Интерфейс + 1d10</small></div>
+      <div class="role-buttons">${role.interfaceAbilities.filter(([key])=>key !== 'zap').map(([key,name,hint])=>`<button type="button" class="weapon-btn" data-interface="${key}" title="Интерфейс + 1d10: ${esc(hint)}">${esc(name)}</button>`).join('')}</div>
       <div class="net-summary"><span id="netBoostSummary"></span> <strong id="netBoostExtra"></strong></div>
       <div class="armor-form net-brain">
         <label>Урон по мозгу<input id="brainDamage" type="number" min="0" placeholder="0"></label>
@@ -1757,7 +1764,7 @@ document.addEventListener('click',e=>{
   const skillRoll=e.target.closest('[data-roll-skill]');
   if(skillRoll) rollSkill(skillRoll.dataset.rollSkill);
   const interfaceRoll=e.target.closest('[data-interface]');
-  if(interfaceRoll){ const ability = currentRole()?.interfaceAbilities?.find(([key])=>key === interfaceRoll.dataset.interface); if(ability) rollRoleAbility(`Интерфейс: ${ability[1]}`, programBoosts(ability[0])); }
+  if(interfaceRoll){ const ability = currentRole()?.interfaceAbilities?.find(([key])=>key === interfaceRoll.dataset.interface); if(ability) rollRoleAbility(ability[0] === 'zap' ? 'Разряд: попадание' : `Интерфейс: ${ability[1]}`, programBoosts(ability[0])); }
   const program=e.target.closest('[data-program-attack],[data-program-damage],[data-program-rez]');
   if(program){
     const {programAttack:attack, programDamage:damage, programRez:rez} = program.dataset;
@@ -1768,7 +1775,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-brain-damage]')) applyBrainDamage();
   const roleButton=e.target.closest('[data-role-action]');
   if(roleButton) roleAction(roleButton.dataset.roleAction, {...roleButton.dataset, index:Number(roleButton.dataset.index)});
-  if(e.target.closest('[data-zap-damage]')) rollDicePool([{sides:6,count:1}], 0, 'Удар (Zap): урон', {crits:false});
+  if(e.target.closest('[data-zap-damage]')) rollDicePool([{sides:6,count:1}], 0, 'Разряд: урон', {crits:false});
   if(e.target.closest('[data-role-roll]')) rollRoleAbility(currentRole()?.roll || 'Способность роли');
   if(e.target.closest('[data-role-upgrade]')) upgradeRole();
   const upgrade=e.target.closest('[data-upgrade]');
