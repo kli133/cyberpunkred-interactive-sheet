@@ -8,7 +8,7 @@ const rowTypes = {gear:3, weapon:10, relationship:3};
 const rowColumns = {
   gear:[{j:0},{j:1,short:true},{j:2,note:true}],
   // weapon: 7 — множитель автоогня (скрытое поле, заполняется типом), 8 — тип, 9 — автоогонь включён.
-  weapon:[{j:0},{j:8,select:'type'},{j:5,select:'skill'},{j:1,short:true,placeholder:'3d6'},{j:2,short:true},{j:6,short:true},{j:3,short:true},{j:9,toggle:true},{j:4,note:true}],
+  weapon:[{j:0,label:'Оружие'},{j:8,select:'type',label:'Тип'},{j:5,select:'skill',label:'Навык'},{j:1,short:true,placeholder:'3d6',label:'Урон'},{j:2,short:true,label:'Патр.'},{j:6,short:true,label:'Маг.'},{j:3,short:true,label:'ROF'},{j:9,toggle:true,label:'Авто'},{j:4,note:true,label:'Заметки'}],
   relationship:[{j:0},{j:1},{j:2}]
 };
 const INDEX_KEY = 'cyberred-index';
@@ -363,7 +363,7 @@ function weaponTypeSelect(key, value, multiplierKey, multiplier){
 const autofireMultiplier = data => Number(data?.[7]) || 0;
 const isAutofireOn = data => autofireMultiplier(data) > 0 && data?.[9] === '1';
 function row(type,data=[],index){
-  const cells = rowColumns[type].map(({j,note,short,select,toggle,placeholder})=>{
+  const cells = rowColumns[type].map(({j,note,short,select,toggle,placeholder,label})=>{
     const key = `${type}${index}_${j}`;
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
     if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
@@ -375,7 +375,7 @@ function row(type,data=[],index){
     if(toggle && type !== 'weapon') return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Включено"${data[j] === '1' ? ' checked' : ''}></td>`;
     if(toggle) return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Автоматический огонь"${isAutofireOn(data) ? ' checked' : ''}${autofireMultiplier(data) ? '' : ' disabled'}></td>`;
     return short ? `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>` : `<td>${growField(key, data[j] || '')}</td>`;
-  }).join('');
+  }).map((html,k)=>{ const label = rowColumns[type][k].label; return label ? html.replace('<td', `<td data-label="${label}"`) : html; }).join('');
   const programActions = type === 'rolePrograms'
     ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="Атака программой: 1d10 + ранг Интерфейса + ATK">АТК</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="Бросок урона программы">УРН</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="Восстановить REZ до максимума">↺</button>`
     : '';
@@ -414,10 +414,77 @@ function teamCard(data, i){
     ${growField(`roleTeam${i}_3`, data[3] || '', 'Заметки')}
   </article>`;
 }
+// Программа кибердеки — компактная карточка: параметры в одну строку, эффект под ней.
+function programCard(data, i){
+  const k = j => `rolePrograms${i}_${j}`;
+  const mini = (label, j, title = '') => `<label class="mini"${title ? ` title="${title}"` : ''}><span>${label}</span><input data-key="${k(j)}" value="${esc(data[j] || '')}"></label>`;
+  return `<article class="program-card">
+    <div class="program-main">
+      <label class="program-on" title="Программа включена"><input type="checkbox" data-key="${k(8)}"${data[8] === '1' ? ' checked' : ''} aria-label="Включена"></label>
+      <input class="program-name" data-key="${k(0)}" value="${esc(data[0] || '')}" placeholder="Программа" aria-label="Название">
+      <div class="program-fields">
+        <label class="mini wide"><span>Из книги</span>${programPresetSelect(k(6), data[6] || '')}</label>
+        <label class="mini wide"><span>Класс</span><input data-key="${k(1)}" value="${esc(data[1] || '')}"></label>
+        ${mini('ATK', 2)}${mini('ЗАЩ', 3)}
+        <label class="mini rez" title="REZ сейчас / максимум"><span>REZ</span><span class="rez-pair"><input data-key="${k(7)}" value="${esc(data[7] || '')}" aria-label="REZ сейчас">/<input data-key="${k(4)}" value="${esc(data[4] || '')}" aria-label="REZ максимум"></span></label>
+        ${mini('Урон', 11)}
+        <label class="mini wide"><span>Усиливает</span>${programBoostSelect(k(9), data[9] || '', k(10), data[10] || '')}</label>
+      </div>
+      <div class="row-actions"><button type="button" class="weapon-btn" data-program-attack="${i}" title="Атака программой: 1d10 + ранг Интерфейса + ATK">АТК</button><button type="button" class="weapon-btn" data-program-damage="${i}" title="Бросок урона программы">УРН</button><button type="button" class="weapon-btn" data-program-rez="${i}" title="Восстановить REZ до максимума">↺</button><button type="button" class="remove" data-remove="rolePrograms" data-index="${i}" title="Удалить">×</button></div>
+    </div>
+    ${growField(k(5), data[5] || '', 'Эффект')}
+  </article>`;
+}
+// Транспорт кочевника — карточка: ПЗТ с полоской, характеристики, улучшения галочками.
+const vehicleUpgradeList = data => String(data?.[1] || '').split(/[;,\n]/).map(part=>part.trim()).filter(Boolean);
+function vehicleCard(data, i){
+  const k = j => `roleVehicles${i}_${j}`;
+  const preset = vehicleTypes[data[3]];
+  const chosen = vehicleUpgradeList(data);
+  const rank = roleRank();
+  const stats = preset
+    ? `<div class="vehicle-stats"><div><span>Мест</span><strong>${esc(preset[2])}</strong></div><div><span>СКО в бою</span><strong>${preset[3]}</strong></div><div><span>Скорость</span><strong>${preset[4]} км/ч</strong></div></div><input type="hidden" data-key="${k(6)}" value="${esc(data[6] || '')}">`
+    : growField(k(6), data[6] || '', 'Места, СКО в бою, скорость');
+  const upgrades = nomadUpgrades.map(([name, from, kind])=>`<label class="check-row${rank >= from ? '' : ' is-locked'}" title="${esc(kind)}"><input type="checkbox" data-vehicle-upgrade="${i}" value="${esc(name)}"${chosen.includes(name) ? ' checked' : ''}${rank >= from || chosen.includes(name) ? '' : ' disabled'}> ${esc(name)} <small>ранг ${from}</small></label>`).join('');
+  return `<article class="vehicle-card">
+    <div class="team-head">
+      <input class="team-name" data-key="${k(0)}" value="${esc(data[0] || '')}" placeholder="Транспорт" aria-label="Название">
+      <select data-key="${k(3)}" aria-label="Тип транспорта"><option value="">Свой</option>${Object.entries(vehicleTypes).map(([id,item])=>`<option value="${id}"${id === data[3] ? ' selected' : ''}>${esc(item[0])}</option>`).join('')}</select>
+      <button type="button" class="remove" data-remove="roleVehicles" data-index="${i}" title="Удалить">×</button>
+    </div>
+    <div class="vehicle-hp">
+      <label>ПЗТ<span class="rez-pair"><input data-key="${k(4)}" value="${esc(data[4] || '')}" aria-label="ПЗТ сейчас">/<input data-key="${k(5)}" value="${esc(data[5] || '')}" aria-label="ПЗТ максимум"></span></label>
+      <div class="hp-bar" data-vehicle-bar="${i}"><span></span></div>
+      <input class="vehicle-damage" data-vehicle-damage="${i}" type="number" min="0" placeholder="урон" aria-label="Урон транспорту">
+      <button type="button" class="weapon-btn" data-role-action="vehicleDamage" data-index="${i}" title="Снять урон с ПЗТ">УРОН</button>
+      <button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${i}" title="Полностью починить">↺</button>
+    </div>
+    ${stats}
+    <details class="team-details"><summary data-vehicle-summary="${i}">Улучшения</summary><div class="vehicle-upgrades">${upgrades}</div></details>
+    <input type="hidden" data-key="${k(1)}" value="${esc(data[1] || '')}">
+    ${growField(k(2), data[2] || '', 'Заметки')}
+  </article>`;
+}
+function refreshVehicleCards(){
+  $$('[data-vehicle-bar]').forEach(bar=>{
+    const data = state.roleVehicles?.[Number(bar.dataset.vehicleBar)];
+    const max = Number(data?.[5]) || 0, now = Math.max(0, Number(data?.[4]) || 0);
+    const share = max ? Math.min(1, now / max) : 0;
+    bar.firstElementChild.style.width = `${Math.round(share * 100)}%`;
+    bar.classList.toggle('is-low', max > 0 && share <= .5);
+    bar.title = max ? `${now} / ${max}${now === 0 ? ' — уничтожен' : ''}` : '';
+  });
+  $$('[data-vehicle-summary]').forEach(summary=>{
+    const count = vehicleUpgradeList(state.roleVehicles?.[Number(summary.dataset.vehicleSummary)]).length;
+    summary.textContent = count ? `Улучшения (${count})` : 'Улучшения';
+  });
+}
+const cardRenderers = {roleTeam:teamCard, rolePrograms:programCard, roleVehicles:vehicleCard};
 function renderRows(type){
   const rows = state[type]?.length ? state[type] : [[]];
   if(!$(`#${type}Rows`)) return;
-  $(`#${type}Rows`).innerHTML = rows.map((data,i)=>type === 'roleTeam' ? teamCard(data, i) : row(type,data,i)).join('');
+  $(`#${type}Rows`).innerHTML = rows.map((data,i)=>cardRenderers[type] ? cardRenderers[type](data, i) : row(type,data,i)).join('');
+  if(type === 'roleVehicles') refreshVehicleCards();
   if(type === 'weapon') refreshWeaponRows();
   if(type === 'rolePrograms') refreshProgramRows();
   autoGrowAll();
@@ -941,6 +1008,7 @@ function bindInputs(){
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
       save(key);
       if(key === 'roleId'){ renderRolePanel(); bindInputs(); }
+      else if(/^role(Team\d+_4|Vehicles\d+_3)$/.test(key)){ renderRows(key.startsWith('roleTeam') ? 'roleTeam' : 'roleVehicles'); bindInputs(); refreshRolePanel(); }
       else if(currentRole()) refreshRoleExtras();
     });
     // После окончания ввода показываем значение с учётом ограничений.
@@ -1123,7 +1191,7 @@ function renderRolePanel(){
     </div>` : '';
   const table = role.table ? `<div class="panel role-table-panel">
       <div class="section-title">${esc(role.table.title).toUpperCase()} <span id="roleTableInfo"></span></div>
-      ${role.table.key === 'roleTeam' ? '<div class="team-cards" id="roleTeamRows"></div>' : `<div class="table-scroll"><table class="data-table role-table${role.table.key === 'rolePrograms' ? ' program-table' : ''}"><thead><tr>${role.table.columns.map(column=>`<th>${esc(column)}</th>`).join('')}<th></th></tr></thead><tbody id="${role.table.key}Rows"></tbody></table></div>`}
+      ${cardRenderers[role.table.key] ? `<div class="${role.table.key === 'roleTeam' ? 'team-cards' : role.table.key === 'rolePrograms' ? 'program-cards' : 'team-cards'}" id="${role.table.key}Rows"></div>` : `<div class="table-scroll"><table class="data-table role-table${role.table.key === 'rolePrograms' ? ' program-table' : ''}"><thead><tr>${role.table.columns.map(column=>`<th>${esc(column)}</th>`).join('')}<th></th></tr></thead><tbody id="${role.table.key}Rows"></tbody></table></div>`}
       <button class="add-row" data-add="${role.table.key}">+ ДОБАВИТЬ</button>
     </div>` : '';
   panel.innerHTML = `
@@ -1381,13 +1449,28 @@ function roleAction(action, data){
     rollDicePool([{sides:6,count:1}], 0, `Лояльность: ${row[0] || 'подчинённый'}`, {crits:false,
       judge: entry => `${entry.die <= loyalty ? 'выполнит поручение' : 'может отказаться или провалить'} (лояльность ${loyalty}; трактовку броска уточните у мастера)`});
   }
+  if(action === 'vehicleDamage'){
+    if(!state.roleVehicles?.[data.index]) save();
+    const row = state.roleVehicles?.[data.index];
+    const input = $(`[data-vehicle-damage="${data.index}"]`);
+    const damage = Math.max(0, Math.floor(Number(input?.value) || 0));
+    if(!row || !damage) return;
+    const before = Number(row[4]) || 0;
+    row[4] = String(Math.max(0, before - damage));
+    setInput(`roleVehicles${data.index}_4`, row[4]);
+    input.value = '';
+    persist(); refreshVehicleCards(); refreshRoleExtras();
+    const text = `${row[0] || 'Транспорт'}: −${damage} ПЗТ, ${before} → ${row[4]}${row[4] === '0' ? ' — уничтожен (семья чинит неделю за 500eb)' : ''}`;
+    addHistory({kind:'damage', text});
+    toast(text);
+  }
   if(action === 'vehicleRepair'){
     if(!state.roleVehicles?.[data.index]) save();
     const row = state.roleVehicles?.[data.index];
     if(!row || isBlank(row[5])) return;
     row[4] = row[5];
     setInput(`roleVehicles${data.index}_4`, row[4]);
-    persist();
+    persist(); refreshVehicleCards();
     toast(`${row[0] || 'Транспорт'}: ПЗТ восстановлены (${row[5]})`);
   }
   if(action === 'lawCall'){
@@ -1452,7 +1535,7 @@ function applyProgramPreset(key, value){
 }
 // Снесённая программа (REZ 0) выключается; строки подсвечиваются по состоянию.
 function refreshProgramRows(){
-  $$('#roleProgramsRows tr').forEach((tr,i)=>{
+  $$('#roleProgramsRows .program-card').forEach((tr,i)=>{
     const data = state.rolePrograms?.[i];
     if(!data) return;
     const derezzed = isDerezzed(data);
@@ -1540,6 +1623,7 @@ function refreshRolePanel(){
   const net = $('#netActionsInfo');
   if(net) net.textContent = `NET-ДЕЙСТВИЙ ЗА ХОД: ${netActions(rank)}`;
   refreshProgramRows();
+  refreshVehicleCards();
   refreshRoleExtras();
   const tableInfo = $('#roleTableInfo');
   if(tableInfo) tableInfo.textContent = state.roleId === 'netrunner' && !isBlank(state.netSlots) ? `ПРОГРАММ ${(state.rolePrograms || []).filter(row=>!isBlank(row[0])).length} / ${numeric('netSlots')}` : '';
@@ -1698,6 +1782,17 @@ document.addEventListener('click',e=>{
   if(formula) rollFormula(parseFormula(formula.dataset.formula));
   const filter=e.target.closest('.skill-filter');
   if(filter){$$('.skill-filter').forEach(x=>x.classList.remove('active'));filter.classList.add('active');renderSkills();bindInputs();}
+});
+// Галочки улучшений транспорта собираются в строку (свои улучшения, вписанные текстом раньше, сохраняются).
+document.addEventListener('change',e=>{
+  const box = e.target.closest('[data-vehicle-upgrade]');
+  if(!box) return;
+  const i = box.dataset.vehicleUpgrade;
+  const known = nomadUpgrades.map(([name])=>name);
+  const custom = vehicleUpgradeList(state.roleVehicles?.[i]).filter(name=>!known.includes(name));
+  const checked = $$(`[data-vehicle-upgrade="${i}"]:checked`).map(el=>el.value);
+  setInput(`roleVehicles${i}_1`, [...checked, ...custom].join('; '));
+  save(`roleVehicles${i}_1`);
 });
 // Поля СТАТов на карточке подчинённого собираются в строку роли.
 document.addEventListener('input',e=>{

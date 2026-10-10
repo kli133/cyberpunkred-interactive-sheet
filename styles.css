@@ -2089,76 +2089,240 @@ footer {
   min-width: 560px;
 }
 
-.program-table {
-  min-width: 1180px;
+/* === Программы кибердеки: компактные карточки === */
+.program-cards {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.program-table th:nth-child(11) {
-  width: 30%;
+.program-card {
+  border: 1px solid #d1ccc6;
+  border-left: 4px solid #bbb;
+  background: #fff;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
 }
 
-.program-table td {
-  vertical-align: top;
+.program-card.is-active {
+  border-left-color: #3fa95b;
+  background: #f4fbf5;
 }
 
-/* Многострочные ячейки таблиц: выглядят как обычные поля, но растут вместе с текстом. */
-.data-table .grow-field {
-  min-height: 26px;
-  background: transparent;
-  border-bottom: 1px solid #aaa;
-  padding: 5px 4px;
-  font-size: 12px;
-}
-
-.data-table td {
-  vertical-align: top;
-}
-
-.life-fields .grow-field {
-  min-height: 32px;
-  margin-top: 4px;
-  background: #f8f7f4;
-  border-bottom: 2px solid var(--red);
-  padding: 7px 5px;
-  font-size: 14px;
-  font-weight: 400;
-  text-transform: none;
-}
-
-.program-table select {
-  width: 100%;
-  border: 0;
-  border-bottom: 1px solid #aaa;
-  background: transparent;
-  padding: 4px 0;
-  font-size: 11px;
-  outline: 0;
-}
-
-.program-table th:nth-child(1) { width: 13%; }
-.program-table th:nth-child(2) { width: 150px; }
-.program-table th:nth-child(3) { width: 160px; }
-.program-table th:nth-child(4), .program-table th:nth-child(5), .program-table th:nth-child(6), .program-table th:nth-child(7) { width: 44px; }
-.program-table th:nth-child(8) { width: 36px; }
-.program-table th:nth-child(9) { width: 54px; }
-.program-table th:nth-child(10) { width: 130px; }
-.program-table th:last-child { width: 118px; }
-
-.program-table td:nth-child(n+4):nth-child(-n+7) input, .program-table td:nth-child(9) input {
-  text-align: center;
-}
-
-.program-table tr.is-active td {
-  background: #f0faf2;
-}
-
-.program-table tr.is-derezzed td {
+.program-card.is-derezzed {
   background: #f3f1ef;
   color: #999;
 }
 
-.program-table tr.is-derezzed input {
+.program-card.is-derezzed .program-name {
   text-decoration: line-through;
+}
+
+.program-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.program-on input {
+  width: 18px;
+  height: 18px;
+  accent-color: #3fa95b;
+}
+
+.program-name {
+  flex: 1 1 170px;
+  min-width: 0;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 3px 2px;
+  outline: 0;
+}
+
+.program-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 10 1 520px;
+}
+
+.program-card .mini {
+  display: grid;
+  gap: 1px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #777;
+  text-transform: uppercase;
+}
+
+.program-card .mini input, .program-card .mini select, .rez-pair input {
+  width: 46px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink);
+  text-align: center;
+  text-transform: none;
+  padding: 3px 0;
+  outline: 0;
+}
+
+.program-card .mini.wide input, .program-card .mini.wide select {
+  width: 140px;
+  text-align: left;
+}
+
+.rez-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rez-pair input {
+  width: 34px;
+}
+
+.program-card .row-actions {
+  margin-left: auto;
+}
+
+.program-card .grow-field, .vehicle-card .grow-field {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  border: 0;
+  border-bottom: 1px dashed #ccc;
+  background: transparent;
+  padding: 3px 2px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #555;
+  resize: none;
+  overflow: hidden;
+  outline: 0;
+  field-sizing: content;
+}
+
+/* === Транспорт кочевника: карточки === */
+.vehicle-card {
+  border: 1px solid #d1ccc6;
+  border-left: 4px solid var(--red);
+  background: #fff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vehicle-card .team-head .team-name {
+  font-size: 15px;
+}
+
+.vehicle-card .team-head select {
+  max-width: 45%;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.vehicle-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vehicle-hp > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #777;
+}
+
+.hp-bar {
+  flex: 1 1 80px;
+  height: 8px;
+  background: #e6e1db;
+  overflow: hidden;
+}
+
+.hp-bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #3fa95b;
+  transition: width .2s;
+}
+
+.hp-bar.is-low span {
+  background: var(--red);
+}
+
+.vehicle-damage {
+  width: 64px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  text-align: center;
+  font: inherit;
+  padding: 3px 0;
+}
+
+.vehicle-hp .weapon-btn {
+  margin: 0;
+}
+
+.vehicle-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 6px;
+}
+
+.vehicle-stats div {
+  border: 1px solid #ddd;
+  text-align: center;
+  padding: 4px;
+}
+
+.vehicle-stats span {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #777;
+  text-transform: uppercase;
+}
+
+.vehicle-upgrades {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 0 12px;
+  margin-top: 6px;
+}
+
+.vehicle-upgrades .check-row {
+  font-size: 12px;
+  min-height: 26px;
+}
+
+.vehicle-upgrades .check-row small {
+  color: #999;
+}
+
+.vehicle-upgrades .is-locked {
+  color: #aaa;
 }
 
 .net-summary {
@@ -2183,7 +2347,7 @@ footer {
   margin: 0 0 12px;
 }
 
-#roleVehiclesRows td:nth-child(3) input, #roleVehiclesRows td:nth-child(4) input, #roleTeamRows td:nth-child(4) input {
+.role-table td.short-center input {
   width: 56px;
   text-align: center;
 }
@@ -2530,11 +2694,12 @@ footer {
 }
 
 /* Всё внутри карточки может сжиматься, чтобы карточка не вылезала за сетку. */
-.team-card, .team-card > *, .team-head > *, .team-meta > *, .team-stats label, .team-stats input {
+.team-card, .team-card > *, .team-head > *, .team-meta > *, .team-stats label, .team-stats input,
+.vehicle-card > *, .vehicle-hp > *, .vehicle-stats > *, .vehicle-upgrades > * {
   min-width: 0;
 }
 
-.team-card {
+.team-card, .vehicle-card {
   overflow: hidden;
 }
 
@@ -2698,4 +2863,59 @@ footer {
   padding: 8px;
   margin-top: 5px;
   font-size: 15px;
+}
+
+/* === Оружие на телефоне: каждая строка — карточка с подписями полей === */
+@media(max-width:560px) {
+  .equipment-grid .weapon-table {
+    min-width: 0;
+  }
+
+  .weapon-table thead {
+    display: none;
+  }
+
+  .weapon-table, .weapon-table tbody {
+    display: block;
+  }
+
+  .weapon-table tr {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 6px 8px;
+    border: 1px solid #d1ccc6;
+    border-left: 4px solid var(--red);
+    padding: 8px;
+    margin-bottom: 10px;
+  }
+
+  .equipment-grid .weapon-table td {
+    display: block;
+    width: auto !important;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+  }
+
+  .weapon-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: #777;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .weapon-table td:nth-child(1), .weapon-table td:nth-child(9), .weapon-table td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .weapon-table td:nth-child(2), .weapon-table td:nth-child(3) {
+    grid-column: span 2;
+  }
+
+  .weapon-table td:last-child {
+    text-align: left;
+  }
 }
