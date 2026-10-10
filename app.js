@@ -23,7 +23,7 @@ Object.values(roles).forEach(({table})=>{
 // Программы: 0 название, 1 класс, 2 ATK, 3 DEF, 4 REZ макс., 5 эффект, 6 тип из книги,
 // 7 REZ текущий, 8 включена, 9 что усиливает, 10 на сколько (скрытое поле), 11 урон.
 rowTypes.rolePrograms = 12;
-rowColumns.rolePrograms = [{j:0},{j:6,select:'program'},{j:1},{j:2},{j:3},{j:7},{j:4},{j:8,toggle:true},{j:11},{j:9,select:'boost'},{j:5}];
+rowColumns.rolePrograms = [{j:0},{j:6,select:'program'},{j:1},{j:2},{j:3},{j:7},{j:4},{j:8,toggle:true},{j:11},{j:9,select:'boost'},{j:5,grow:true}];
 // Команда корпората: 0 имя, 1 работа, 2 лояльность, 3 заметки, 4 тип подчинённого, 5 СТАТы.
 rowTypes.roleTeam = 6;
 rowColumns.roleTeam = [{j:0},{j:4,select:'teamType'},{j:1},{j:2},{j:5},{j:3}];
@@ -361,8 +361,9 @@ function weaponTypeSelect(key, value, multiplierKey, multiplier){
 const autofireMultiplier = data => Number(data?.[7]) || 0;
 const isAutofireOn = data => autofireMultiplier(data) > 0 && data?.[9] === '1';
 function row(type,data=[],index){
-  const cells = rowColumns[type].map(({j,note,select,toggle,placeholder})=>{
+  const cells = rowColumns[type].map(({j,note,grow,select,toggle,placeholder})=>{
     const key = `${type}${index}_${j}`;
+    if(grow) return `<td>${growField(key, data[j] || '')}</td>`;
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
     if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
     if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;

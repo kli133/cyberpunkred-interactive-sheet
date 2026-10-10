@@ -762,7 +762,7 @@ button {
   font-size: 12px;
 }
 
-.cyber-slot-table .grow-field {
+.cyber-slot-table .grow-field, .program-table .grow-field {
   display: block;
   width: 100%;
   min-height: 28px;
@@ -2090,7 +2090,22 @@ footer {
 }
 
 .program-table {
-  min-width: 1080px;
+  min-width: 1180px;
+}
+
+.program-table th:nth-child(11) {
+  width: 30%;
+}
+
+.program-table td {
+  vertical-align: top;
+}
+
+.program-table .grow-field {
+  background: transparent;
+  border-bottom: 1px solid #aaa;
+  padding: 5px 4px;
+  font-size: 12px;
 }
 
 .program-table select {
@@ -2103,9 +2118,9 @@ footer {
   outline: 0;
 }
 
-.program-table th:nth-child(1) { width: 15%; }
+.program-table th:nth-child(1) { width: 13%; }
 .program-table th:nth-child(2) { width: 150px; }
-.program-table th:nth-child(3) { width: 110px; }
+.program-table th:nth-child(3) { width: 160px; }
 .program-table th:nth-child(4), .program-table th:nth-child(5), .program-table th:nth-child(6), .program-table th:nth-child(7) { width: 44px; }
 .program-table th:nth-child(8) { width: 36px; }
 .program-table th:nth-child(9) { width: 54px; }
