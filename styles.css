@@ -1767,7 +1767,12 @@ footer {
   margin-right: 3px;
 }
 
-.weapon-btn:hover {
+.weapon-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.weapon-btn:not(:disabled):hover {
   background: var(--red);
   color: #fff;
 }
@@ -2082,6 +2087,60 @@ footer {
 
 .role-table {
   min-width: 560px;
+}
+
+.program-table {
+  min-width: 1080px;
+}
+
+.program-table select {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 4px 0;
+  font-size: 11px;
+  outline: 0;
+}
+
+.program-table th:nth-child(1) { width: 15%; }
+.program-table th:nth-child(2) { width: 150px; }
+.program-table th:nth-child(3) { width: 110px; }
+.program-table th:nth-child(4), .program-table th:nth-child(5), .program-table th:nth-child(6), .program-table th:nth-child(7) { width: 44px; }
+.program-table th:nth-child(8) { width: 36px; }
+.program-table th:nth-child(9) { width: 54px; }
+.program-table th:nth-child(10) { width: 130px; }
+.program-table th:last-child { width: 118px; }
+
+.program-table td:nth-child(n+4):nth-child(-n+7) input, .program-table td:nth-child(9) input {
+  text-align: center;
+}
+
+.program-table tr.is-active td {
+  background: #f0faf2;
+}
+
+.program-table tr.is-derezzed td {
+  background: #f3f1ef;
+  color: #999;
+}
+
+.program-table tr.is-derezzed input {
+  text-decoration: line-through;
+}
+
+.net-summary {
+  margin: 12px 0 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.net-summary strong {
+  color: var(--red);
+}
+
+.net-brain {
+  align-items: end;
 }
 
 @media(max-width:900px) {
