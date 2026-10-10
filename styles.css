@@ -2511,6 +2511,167 @@ footer {
   }
 }
 
+/* === Команда корпората: карточки подчинённых === */
+.team-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  align-items: start;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.team-card {
+  border: 1px solid #d1ccc6;
+  border-left: 4px solid var(--red);
+  background: #fff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+/* Всё внутри карточки может сжиматься, чтобы карточка не вылезала за сетку. */
+.team-card, .team-card > *, .team-head > *, .team-meta > *, .team-stats label, .team-stats input {
+  min-width: 0;
+}
+
+.team-card {
+  overflow: hidden;
+}
+
+.team-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-head .team-name {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: transparent;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 3px 2px;
+  outline: 0;
+}
+
+.team-loyalty {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #777;
+  letter-spacing: .5px;
+}
+
+.team-loyalty input {
+  width: 44px;
+  border: 1px solid #bbb;
+  text-align: center;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  padding: 2px;
+}
+
+.team-head .weapon-btn {
+  margin: 0;
+}
+
+.team-meta {
+  display: grid;
+  grid-template-columns: 170px minmax(0,1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.team-meta select {
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 5px 0;
+  font-size: 12px;
+}
+
+.team-stats {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0,1fr));
+  gap: 4px;
+}
+
+.team-stats label {
+  display: grid;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #777;
+  gap: 2px;
+}
+
+.team-stats input {
+  width: 100%;
+  border: 1px solid #bbb;
+  text-align: center;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 3px 0;
+}
+
+.team-details summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--red);
+  letter-spacing: .5px;
+}
+
+.team-details p, .team-details ul {
+  margin: 6px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #444;
+}
+
+.team-details ul {
+  padding-left: 16px;
+}
+
+.team-card .grow-field {
+  display: block;
+  width: 100%;
+  min-height: 26px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 5px 4px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  resize: none;
+  overflow: hidden;
+  outline: 0;
+  field-sizing: content;
+}
+
+@media(max-width:560px) {
+  .team-cards {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .team-meta {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .team-stats {
+    grid-template-columns: repeat(5, minmax(0,1fr));
+  }
+}
+
 /* Текстовые области на панелях растут вместе с текстом; высота по rows — минимальная. */
 .panel textarea, .portrait-card textarea {
   field-sizing: content;

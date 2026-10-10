@@ -114,6 +114,7 @@ function migrate(data){
   delete s.humanityValue;
   Object.keys(s).forEach(key => { if(structuredKey.test(key)) delete s[key]; });
   if(s.portrait && !isSafeImage(s.portrait)) delete s.portrait;
+  if(Array.isArray(s.roleTeam)) s.roleTeam.forEach(row=>{ if(row?.[4] && String(row[3] || '').startsWith('Прикрытие: ')) row[3] = ''; });
   delete s.targetDv;
   // Роль раньше была свободным текстом — узнаём её по названию.
   if(!s.roleId && !isBlank(s.role)){
@@ -388,10 +389,35 @@ function row(type,data=[],index){
     : '';
   return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
+// СТАТы подчинённого хранятся строкой «ИНТ 5 · РЕФ 7 · …»; на карточке — сеткой полей.
+const parseTeamStats = text => execStatNames.map(name=>{ const match = new RegExp(`${name}\\s*(\\d+)`).exec(String(text || '')); return match ? match[1] : ''; });
+const formatTeamStats = values => values.map((value,i)=>isBlank(value) ? '' : `${execStatNames[i]} ${value}`).filter(Boolean).join(' · ');
+// Карточка подчинённого корпората: шапка, сетка СТАТов, навыки и снаряжение из книги (свёрнуты), заметки.
+function teamCard(data, i){
+  const type = execSubordinates[data[4]];
+  const stats = parseTeamStats(data[5]);
+  const skills = type ? type.skills.split('; ').map(line=>{ const [bonus, list] = line.split(': '); return `<li><strong>${esc(bonus)}</strong> ${esc(list)}</li>`; }).join('') : '';
+  return `<article class="team-card">
+    <div class="team-head">
+      <input class="team-name" data-key="roleTeam${i}_0" value="${esc(data[0] || '')}" placeholder="Имя подчинённого" aria-label="Имя">
+      <label class="team-loyalty" title="Лояльность: проверка — 1d6 мастера">ЛОЯЛЬНОСТЬ<input data-key="roleTeam${i}_2" type="number" value="${esc(data[2] || '')}"></label>
+      <button type="button" class="weapon-btn" data-role-action="loyaltyCheck" data-index="${i}" title="Проверка лояльности: мастер бросает 1d6">1D6</button>
+      <button type="button" class="remove" data-remove="roleTeam" data-index="${i}" title="Уволить / удалить">×</button>
+    </div>
+    <div class="team-meta">
+      <select data-key="roleTeam${i}_4" aria-label="Тип подчинённого"><option value="">Тип —</option>${Object.entries(execSubordinates).map(([id,item])=>`<option value="${id}"${id === data[4] ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}</select>
+      ${growField(`roleTeam${i}_1`, data[1] || '', 'Работа')}
+    </div>
+    <div class="team-stats">${execStatNames.map((name,k)=>`<label><span>${name}</span><input data-team-stat="${i}" data-stat-index="${k}" type="number" min="0" max="10" value="${esc(stats[k])}" aria-label="${name}"></label>`).join('')}</div>
+    <input type="hidden" data-key="roleTeam${i}_5" value="${esc(data[5] || '')}">
+    ${type ? `<details class="team-details"><summary>Навыки и снаряжение</summary><p><strong>Прикрытие:</strong> ${esc(type.cover)}</p><ul>${skills}</ul><p><strong>Киберимпланты и снаряжение:</strong> ${esc(type.gear)}</p></details>` : ''}
+    ${growField(`roleTeam${i}_3`, data[3] || '', 'Заметки')}
+  </article>`;
+}
 function renderRows(type){
   const rows = state[type]?.length ? state[type] : [[]];
   if(!$(`#${type}Rows`)) return;
-  $(`#${type}Rows`).innerHTML = rows.map((data,i)=>row(type,data,i)).join('');
+  $(`#${type}Rows`).innerHTML = rows.map((data,i)=>type === 'roleTeam' ? teamCard(data, i) : row(type,data,i)).join('');
   if(type === 'weapon') refreshWeaponRows();
   if(type === 'rolePrograms') refreshProgramRows();
   autoGrowAll();
@@ -1097,7 +1123,7 @@ function renderRolePanel(){
     </div>` : '';
   const table = role.table ? `<div class="panel role-table-panel">
       <div class="section-title">${esc(role.table.title).toUpperCase()} <span id="roleTableInfo"></span></div>
-      <div class="table-scroll"><table class="data-table role-table${role.table.key === 'rolePrograms' ? ' program-table' : ''}"><thead><tr>${role.table.columns.map(column=>`<th>${esc(column)}</th>`).join('')}<th></th></tr></thead><tbody id="${role.table.key}Rows"></tbody></table></div>
+      ${role.table.key === 'roleTeam' ? '<div class="team-cards" id="roleTeamRows"></div>' : `<div class="table-scroll"><table class="data-table role-table${role.table.key === 'rolePrograms' ? ' program-table' : ''}"><thead><tr>${role.table.columns.map(column=>`<th>${esc(column)}</th>`).join('')}<th></th></tr></thead><tbody id="${role.table.key}Rows"></tbody></table></div>`}
       <button class="add-row" data-add="${role.table.key}">+ ДОБАВИТЬ</button>
     </div>` : '';
   panel.innerHTML = `
@@ -1329,7 +1355,7 @@ function roleAction(action, data){
     const type = state.execHireType || 'bodyguard', item = execSubordinates[type];
     const roll = d(6), stats = item.stats[roll - 1], loyalty = d(6) + 1;
     if(!state.roleTeam?.some(row=>row.some(cell=>!isBlank(cell)))) state.roleTeam = [];
-    state.roleTeam.push([item.name, item.job, String(loyalty), `Прикрытие: ${item.cover}\nНавыки ${item.skills.replace(/; /g, '\n')}\nСнаряжение: ${item.gear}`, type, stats.map((value,i)=>`${execStatNames[i]} ${value}`).join(' · ')]);
+    state.roleTeam.push([item.name, item.job, String(loyalty), '', type, stats.map((value,i)=>`${execStatNames[i]} ${value}`).join(' · ')]);
     renderRows('roleTeam'); bindInputs(); save();
     addHistory({kind:'damage', text:`Нанят: ${item.name} (СТАТы по 1d6 = ${roll}, лояльность 1d6 + 1 = ${loyalty})`});
     toast(`Нанят ${item.name}: лояльность ${loyalty}`);
@@ -1586,7 +1612,9 @@ function removeRow(type, index){
   const marks = shiftFormulaMarks(type, index);
   render(); save();
   toast('Строка удалена', 'Вернуть', ()=>{
-    state[type].splice(index, 0, removed);
+    // Пустая строка-заготовка, появившаяся после удаления последней строки, не нужна.
+    state[type] = (state[type] || []).filter(row=>row.some(cell=>!isBlank(cell)));
+    state[type].splice(Math.min(index, state[type].length), 0, removed);
     shiftFormulaMarks(type, index, 1);
     Object.entries(marks).forEach(([j,value])=>{ state.formulaMarks[`${type}${index}_${j}`] = value; });
     render(); save();
@@ -1670,6 +1698,15 @@ document.addEventListener('click',e=>{
   if(formula) rollFormula(parseFormula(formula.dataset.formula));
   const filter=e.target.closest('.skill-filter');
   if(filter){$$('.skill-filter').forEach(x=>x.classList.remove('active'));filter.classList.add('active');renderSkills();bindInputs();}
+});
+// Поля СТАТов на карточке подчинённого собираются в строку роли.
+document.addEventListener('input',e=>{
+  const stat = e.target.closest('[data-team-stat]');
+  if(!stat) return;
+  const i = stat.dataset.teamStat;
+  const values = $$(`[data-team-stat="${i}"]`).map(el=>el.value.trim());
+  setInput(`roleTeam${i}_5`, formatTeamStats(values));
+  save(`roleTeam${i}_5`);
 });
 document.addEventListener('contextmenu',e=>{
   const input=e.target.closest('.formula-editor');
