@@ -29,6 +29,7 @@
       <button class="tab" data-tab="equipment">03 // Снаряжение</button>
       <button class="tab" data-tab="lifepath">04 // Жизненный путь</button>
       <button class="tab" data-tab="cyberware">05 // Киберимпланты</button>
+      <button class="tab" data-tab="role" id="roleTab" hidden>06 // Роль</button>
     </nav>
 
     <section class="status-strip">
@@ -83,7 +84,10 @@
           <div class="portrait-placeholder" id="portraitPreview">NO<br>IMAGE</div>
           <label class="portrait-upload">Загрузить портрет<input id="portraitInput" type="file" accept="image/*"></label>
           <label>Имя персонажа<input data-key="name" placeholder="Введите имя"></label>
-          <label>Роль<input data-key="role" placeholder="Соло, Нетраннер..."></label>
+          <div class="role-pick">
+            <label>Роль<select data-key="roleId" id="roleSelect"></select></label>
+            <label title="Ранг способности роли: 1–10, при создании персонажа — 4">Ранг<input data-key="roleRank" type="number" min="1" max="10"></label>
+          </div>
           <label>Особая способность<textarea data-key="ability" rows="2"></textarea></label>
           <div class="character-resources">
             <label>Репутация<input data-key="reputation" type="number" value="0"></label>
@@ -229,6 +233,8 @@
         </div>
       </div>
     </section>
+
+    <section class="tab-panel" id="role"></section>
   </main>
   <div class="toast" id="toast" role="status" hidden></div>
   <div class="print-sheet" id="printSheet" aria-hidden="true"></div>
