@@ -20,6 +20,10 @@ Object.values(roles).forEach(({table})=>{
   rowTypes[table.key] = table.columns.length;
   rowColumns[table.key] = table.columns.map((_,j)=>({j}));
 });
+// Программы: 0 название, 1 класс, 2 ATK, 3 DEF, 4 REZ макс., 5 эффект, 6 тип из книги,
+// 7 REZ текущий, 8 включена, 9 что усиливает, 10 на сколько (скрытое поле), 11 урон.
+rowTypes.rolePrograms = 12;
+rowColumns.rolePrograms = [{j:0},{j:6,select:'program'},{j:1},{j:2},{j:3},{j:7},{j:4},{j:8,toggle:true},{j:11},{j:9,select:'boost'},{j:5}];
 const structuredKey = new RegExp(`^(${Object.keys(rowTypes).join('|')})\\d+_\\d+$|^cyberSlot_|^cskill\\d+_`);
 const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent|armorHeadCurrent|armorBodyCurrent|roleRank)$/;
 
@@ -347,19 +351,26 @@ function row(type,data=[],index){
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
     if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
     if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;
+    if(select === 'program') return `<td>${programPresetSelect(key, data[j] || '')}</td>`;
+    if(select === 'boost') return `<td>${programBoostSelect(key, data[j] || '', `${type}${index}_10`, data[10] || '')}</td>`;
+    if(toggle && type !== 'weapon') return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Включено"${data[j] === '1' ? ' checked' : ''}></td>`;
     if(toggle) return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Автоматический огонь"${isAutofireOn(data) ? ' checked' : ''}${autofireMultiplier(data) ? '' : ' disabled'}></td>`;
     return `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>`;
   }).join('');
+  const programActions = type === 'rolePrograms'
+    ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="Атака программой: 1d10 + ранг Интерфейса + ATK">АТК</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="Бросок урона программы">УРН</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="Восстановить REZ до максимума">↺</button>`
+    : '';
   const weaponActions = type === 'weapon'
     ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">АТК</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
     : '';
-  return `<tr>${cells}<td class="row-actions">${weaponActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
+  return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
 function renderRows(type){
   const rows = state[type]?.length ? state[type] : [[]];
   if(!$(`#${type}Rows`)) return;
   $(`#${type}Rows`).innerHTML = rows.map((data,i)=>row(type,data,i)).join('');
   if(type === 'weapon') refreshWeaponRows();
+  if(type === 'rolePrograms') refreshProgramRows();
 }
 // Галочка «Авто» доступна только оружию с автоогнём; при включённой кнопка атаки — «ОЧЕРЕДЬ».
 function refreshWeaponRows(){
@@ -873,6 +884,7 @@ function bindInputs(){
       applyArmorInput(key, el.value);
       if(key === 'roleId' && el.value && isBlank(state.roleRank)) setInput('roleRank', ROLE_START_RANK);
       applyWeaponType(key, el.value);
+      applyProgramPreset(key, el.value);
       applyHumanityLoss(key, el.value);
       // Одно и то же значение может быть в нескольких полях (человечность).
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
@@ -1007,7 +1019,12 @@ function printRoleSection(section, table, rowsOrBlank, text, multiline){
   const specialties = (role.specialties || []).filter(item=>numeric(rolePointsKey(id, item.key)))
     .map(item=>`${esc(item.name)} — ${numeric(rolePointsKey(id, item.key))}`).join('; ');
   const net = role.interfaceAbilities ? `NET-действий за ход: ${netActions(roleRank())}${isBlank(state.netDeck) ? '' : `; кибердека: ${text(state.netDeck)}`}${isBlank(state.netSlots) ? '' : `, слотов ${text(state.netSlots)}`}` : '';
-  const rows = role.table ? table('p-role', role.table.columns.map(esc), rowsOrBlank((state[role.table.key] || []).map(row=>row.map(text)), role.table.columns.length, 2)) : '';
+  const programs = role.table?.key === 'rolePrograms';
+  const head = programs ? ['Программа','Класс','ATK','DEF','REZ','Вкл','Урон','Эффект'] : role.table?.columns.map(esc);
+  const tableRows = (state[role.table?.key] || []).map(row=>programs
+    ? [text(row[0]), text(row[1]), text(row[2]), text(row[3]), isBlank(row[4]) ? '' : `${text(isBlank(row[7]) ? row[4] : row[7])} / ${text(row[4])}`, row[8] === '1' ? '✓' : '', text(row[11]), text(row[5])]
+    : row.map(text));
+  const rows = role.table ? table('p-role', head, rowsOrBlank(tableRows, head.length, 2)) : '';
   const notes = multiline(state[`roleNotes_${id}`]);
   return section(`${esc(role.ability)} <small>${esc(role.name)}, ранг ${roleRank()}</small>`,
     [specialties && `<p>${specialties}</p>`, net && `<p>${net}</p>`, rows, notes && `<div class="p-note">${notes}</div>`].filter(Boolean).join(''));
@@ -1045,10 +1062,16 @@ function renderRolePanel(){
       </div>
       <div class="role-buttons">${role.interfaceAbilities.map(([key,name,hint])=>`<button type="button" class="weapon-btn" data-interface="${key}" title="1d10 + ранг: ${esc(hint)}">${esc(name)}</button>`).join('')}</div>
       <button type="button" class="weapon-btn" data-zap-damage title="Урон способности «Удар»">УРОН «УДАРА» 1D6</button>
+      <div class="net-summary"><span id="netBoostSummary"></span> <strong id="netBoostExtra"></strong></div>
+      <div class="armor-form net-brain">
+        <label>Урон по мозгу<input id="brainDamage" type="number" min="0" placeholder="0"></label>
+        <button type="button" class="death-save-button" data-brain-damage title="Урон от ЛЁДа и программ: мимо брони, с учётом включённых защитников">ПРИНЯТЬ УРОН</button>
+      </div>
+      <div class="damage-result" id="netDamageResult"></div>
     </div>` : '';
   const table = role.table ? `<div class="panel role-table-panel">
       <div class="section-title">${esc(role.table.title).toUpperCase()} <span id="roleTableInfo"></span></div>
-      <div class="table-scroll"><table class="data-table role-table"><thead><tr>${role.table.columns.map(column=>`<th>${esc(column)}</th>`).join('')}<th></th></tr></thead><tbody id="${role.table.key}Rows"></tbody></table></div>
+      <div class="table-scroll"><table class="data-table role-table${role.table.key === 'rolePrograms' ? ' program-table' : ''}"><thead><tr>${role.table.columns.map(column=>`<th>${esc(column)}</th>`).join('')}<th></th></tr></thead><tbody id="${role.table.key}Rows"></tbody></table></div>
       <button class="add-row" data-add="${role.table.key}">+ ДОБАВИТЬ</button>
     </div>` : '';
   panel.innerHTML = `
@@ -1075,6 +1098,106 @@ function renderRolePanel(){
   refreshRolePanel();
 }
 // Обновляет числа на вкладке роли без перерисовки (чтобы не сбивать фокус).
+// ---------- Программы нетраннера ----------
+function programPresetSelect(key, value){
+  return `<select data-key="${key}" aria-label="Программа из книги"><option value="">Своя</option>${Object.entries(programPresets).map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>`;
+}
+function programBoostSelect(key, value, amountKey, amount){
+  const abilities = (roles.netrunner.interfaceAbilities || []).map(([id,name])=>[id, `+ ${name.split(' (')[0]}`]);
+  const options = [['', '—'], ...abilities, ['speed', '+ Скорость в Сети'], ['brain', '− урон по мозгу']];
+  return `<select data-key="${key}" aria-label="Что усиливает программа">${options.map(([id,name])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select><input type="hidden" data-key="${amountKey}" value="${esc(amount)}">`;
+}
+const programName = data => data?.[0] || programPresets[data?.[6]]?.[0] || 'Программа';
+const isProgramOn = data => data?.[8] === '1';
+const isDerezzed = data => !isBlank(data?.[4]) && Number(data[4]) > 0 && !isBlank(data?.[7]) && Number(data[7]) <= 0;
+// Бонус активных программ: target — ключ способности Интерфейса, 'speed' или 'brain'.
+const programBoosts = target => (state.rolePrograms || []).filter(data=>isProgramOn(data) && data[9] === target)
+  .map(data=>[Number(data[10]) || (programPresets[data[6]]?.[7] ?? 2), programName(data).split(' (')[0]]);
+const programBoostTotal = target => programBoosts(target).reduce((sum,[value])=>sum + value, 0);
+function programRow(index){
+  if(!state.rolePrograms?.[index]) save();
+  return state.rolePrograms?.[index];
+}
+// Выбор программы из книги заполняет строку.
+function applyProgramPreset(key, value){
+  const match = /^rolePrograms(\d+)_6$/.exec(key);
+  const preset = match && programPresets[value];
+  if(!preset) return;
+  const i = match[1];
+  const [name, kind, attack, defense, rez, damage, boost, amount, effect] = preset;
+  if(isBlank($(`[data-key="rolePrograms${i}_0"]`)?.value)) setInput(`rolePrograms${i}_0`, name);
+  [[1,kind],[2,attack],[3,defense],[4,rez],[7,rez],[11,damage],[9,boost],[10,amount],[5,effect]].forEach(([j,v])=>setInput(`rolePrograms${i}_${j}`, v));
+}
+// Снесённая программа (REZ 0) выключается; строки подсвечиваются по состоянию.
+function refreshProgramRows(){
+  $$('#roleProgramsRows tr').forEach((tr,i)=>{
+    const data = state.rolePrograms?.[i];
+    if(!data) return;
+    const derezzed = isDerezzed(data);
+    if(derezzed && isProgramOn(data)){
+      data[8] = '';
+      const toggle = tr.querySelector('[data-key$="_8"]');
+      if(toggle) toggle.checked = false;
+    }
+    tr.classList.toggle('is-active', isProgramOn(data));
+    tr.classList.toggle('is-derezzed', derezzed);
+    tr.title = derezzed ? 'REZ исчерпан — программа снесена' : '';
+    const attack = tr.querySelector('[data-program-attack]');
+    if(attack) attack.disabled = /^(Усилит|Защит)/i.test(data[1] || '');
+    const damage = tr.querySelector('[data-program-damage]');
+    if(damage) damage.disabled = !parseDamage(data[11]);
+  });
+  const summary = $('#netBoostSummary');
+  if(summary){
+    const active = (state.rolePrograms || []).filter(isProgramOn);
+    summary.textContent = active.length ? `Включены: ${active.map(data=>programName(data).split(' (')[0]).join(', ')}` : 'Включённых программ нет';
+    const brain = programBoostTotal('brain'), speed = programBoostTotal('speed');
+    $('#netBoostExtra').textContent = [speed && `Скорость в Сети +${speed}`, brain && `урон по мозгу −${brain}`].filter(Boolean).join(' · ');
+  }
+}
+function programAttack(index){
+  const data = programRow(index);
+  if(!data) return;
+  const attack = Number(data[2]) || 0;
+  const luck = spendLuck();
+  rollDicePool([{sides:10,count:1}], roleRank() + attack + luck, withNotes(`${programName(data)}: атака`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`, luck && `удача +${luck}`]),
+    {judge: () => 'цель защищается: 1d10 + свой Интерфейс или DEF'});
+}
+function programDamage(index){
+  const data = programRow(index);
+  if(!data) return;
+  const damage = parseDamage(data[11]);
+  if(!damage){ toast(`${programName(data)}: укажите урон в виде 3d6`); return; }
+  rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${programName(data)}: урон`, {crits:false, judge: () => data[5] || ''});
+}
+function programRestore(index){
+  const data = programRow(index);
+  if(!data || isBlank(data[4])) return;
+  data[7] = data[4];
+  setInput(`rolePrograms${index}_7`, data[7]);
+  refreshProgramRows();
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  toast(`${programName(data)}: REZ восстановлен (${data[4]})`);
+}
+// Урон по мозгу проходит мимо брони; включённые защитники вроде «Брони» уменьшают его.
+function applyBrainDamage(){
+  const damage = Math.max(0, Math.floor(Number($('#brainDamage').value) || 0));
+  if(!damage) return;
+  const reduction = programBoostTotal('brain');
+  const through = Math.max(0, damage - reduction);
+  const hpBefore = numeric('currentHp');
+  state.currentHp = Math.max(0, hpBefore - through);
+  syncWoundsWithHp();
+  fillStaticInputs();
+  updateDerived();
+  const status = state.currentHp === 0 ? ' СМЕРТЕЛЬНОЕ РАНЕНИЕ.' : isChecked('seriousWound') ? ' ТЯЖЁЛОЕ РАНЕНИЕ.' : '';
+  const text = `Урон по мозгу ${damage}${reduction ? ` (защита −${reduction})` : ''}: −${through} ХИТ, ${hpBefore} → ${state.currentHp}/${maxHp()}.${status}`;
+  $('#netDamageResult').textContent = text;
+  addHistory({kind:'damage', text});
+  $('#brainDamage').value = '';
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+}
+
 function refreshRolePanel(){
   const role = currentRole();
   if(!role || !$('#role').innerHTML) return;
@@ -1088,6 +1211,7 @@ function refreshRolePanel(){
   }
   const net = $('#netActionsInfo');
   if(net) net.textContent = `NET-ДЕЙСТВИЙ ЗА ХОД: ${netActions(rank)}`;
+  refreshProgramRows();
   const tableInfo = $('#roleTableInfo');
   if(tableInfo) tableInfo.textContent = state.roleId === 'netrunner' && !isBlank(state.netSlots) ? `ПРОГРАММ ${(state.rolePrograms || []).filter(row=>!isBlank(row[0])).length} / ${numeric('netSlots')}` : '';
   const upgrade = $('[data-role-upgrade]');
@@ -1100,9 +1224,9 @@ function refreshRolePanel(){
   }
 }
 // Проверка способности роли: 1d10 + ранг (+ потраченная удача).
-function rollRoleAbility(label){
+function rollRoleAbility(label, extras = []){
   const luck = spendLuck();
-  rollDicePool([{sides:10,count:1}], roleRank() + luck, withNotes(label, [luck && `удача +${luck}`]));
+  rollDicePool([{sides:10,count:1}], roleRank() + luck + extras.reduce((sum,[value])=>sum + value, 0), withNotes(label, [luck && `удача +${luck}`, ...extras.map(([value,note])=>value && `${note} +${value}`)]));
 }
 function upgradeRole(){
   const cost = roleUpgradeCost();
@@ -1219,7 +1343,15 @@ document.addEventListener('click',e=>{
   const skillRoll=e.target.closest('[data-roll-skill]');
   if(skillRoll) rollSkill(skillRoll.dataset.rollSkill);
   const interfaceRoll=e.target.closest('[data-interface]');
-  if(interfaceRoll){ const ability = currentRole()?.interfaceAbilities?.find(([key])=>key === interfaceRoll.dataset.interface); if(ability) rollRoleAbility(`Интерфейс: ${ability[1]}`); }
+  if(interfaceRoll){ const ability = currentRole()?.interfaceAbilities?.find(([key])=>key === interfaceRoll.dataset.interface); if(ability) rollRoleAbility(`Интерфейс: ${ability[1]}`, programBoosts(ability[0])); }
+  const program=e.target.closest('[data-program-attack],[data-program-damage],[data-program-rez]');
+  if(program){
+    const {programAttack:attack, programDamage:damage, programRez:rez} = program.dataset;
+    if(attack !== undefined) programAttack(Number(attack));
+    if(damage !== undefined) programDamage(Number(damage));
+    if(rez !== undefined) programRestore(Number(rez));
+  }
+  if(e.target.closest('[data-brain-damage]')) applyBrainDamage();
   if(e.target.closest('[data-zap-damage]')) rollDicePool([{sides:6,count:1}], 0, 'Удар (Zap): урон', {crits:false});
   if(e.target.closest('[data-role-roll]')) rollRoleAbility(currentRole()?.roll || 'Способность роли');
   if(e.target.closest('[data-role-upgrade]')) upgradeRole();
