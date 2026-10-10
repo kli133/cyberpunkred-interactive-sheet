@@ -355,6 +355,28 @@ button {
   border-bottom: 1px solid #444;
 }
 
+/* Подсказка к броску — мелко под суммой, не крупным шрифтом результата. */
+.dice-result .roll-note {
+  margin-top: 8px;
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1.4;
+  color: #ccc;
+  text-align: center;
+}
+
+.dice-result .roll-note em {
+  display: block;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--red);
+  letter-spacing: .5px;
+}
+
+.dice-result .roll-note span {
+  display: block;
+}
+
 .dice-log {
   max-height: 145px;
   overflow: auto;

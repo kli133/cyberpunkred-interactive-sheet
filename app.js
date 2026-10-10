@@ -648,7 +648,7 @@ function rollDicePool(pool, modifier, label='Свободный бросок', {
   if(fumbleRecovered) entry.note = [entry.note, 'единица не провал (Без промахов)'].filter(Boolean).join('. ');
   addHistory(entry);
   persist();
-  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry)}${entry.note ? ` <em>${esc(entry.note)}</em>` : ''}`;
+  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry) || entry.note ? `<div class="roll-note">${critText(entry)}${entry.note ? `<span>${esc(entry.note)}</span>` : ''}</div>` : ''}`;
   $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${logLine(entry)}</div>`);
   $('#diceDrawer').classList.add('open');
   return entry;
@@ -747,7 +747,7 @@ function spendAmmo(index, data, need){
 }
 const damageTable = (entry, multiplier) => [
   Array.from({length:multiplier},(_,i)=>`×${i + 1} = ${entry.total * (i + 1)}`).join(' · '),
-  `множитель = на сколько атака превысила DV, макс. ×${multiplier}`,
+  `множитель называет мастер, макс. ×${multiplier}`,
   isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`
 ].filter(Boolean).join('. ');
 // Атака: одиночный выстрел или удар — 1d10 + стат + навык оружия, дальний бой тратит 1 патрон.
@@ -1261,7 +1261,6 @@ function roleExtraPanels(id){
     </tr>`).join('')}</tbody></table>`, 'medKnownInfo') + panel('КРИОСИСТЕМЫ', '<div class="role-info" data-role-info="cryoInfo"></div>');
   if(id === 'media') return panel('СЛУХИ', `
     <div class="armor-form">
-      ${roleSelect('mediaRumor', 'Слух', Object.entries(rumorTiers).map(([key,[name,,passive,active]])=>[key, `${name} — пассив ${passive}, актив ${active}`]), 'typical')}
       ${roleSelect('mediaSkill', 'Навык поиска', mediaSkills.map(name=>[name,name]), 'Поиск информации')}
     </div>
     <div class="role-buttons">
@@ -1404,15 +1403,11 @@ function roleAction(action, data){
     persist();
   }
   if(action === 'rumorPassive'){
-    rollParts('Слухи (пассивно)', [[rank, 'Доверие']], {luck:false, judge: entry => {
-      const found = Object.values(rumorTiers).filter(([, , passive])=>entry.total > passive).pop();
-      return found ? `мастер сообщает: ${found[0].toLowerCase()} (пассив СЛ ${found[2]})` : 'ни один слух не пойман';
-    }});
+    rollParts('Слухи (пассивно)', [[rank, 'Доверие']], {luck:false});
   }
   if(action === 'rumorActive'){
-    const [name, , , dv] = rumorTiers[state.mediaRumor || 'typical'];
     const skill = state.mediaSkill || 'Поиск информации', i = skills.indexOf(skill);
-    rollParts(`Поиск: ${name}`, [[refTotal(`b${i}`), skill]], {judge: beats(dv)});
+    rollParts(`Поиск слухов: ${skill}`, [[refTotal(`b${i}`), skill]]);
   }
   if(action === 'mediaPublish'){
     const [, , , chance] = tierFor(mediaTiers, rank);
@@ -1446,8 +1441,7 @@ function roleAction(action, data){
     const row = state.roleTeam?.[data.index];
     if(!row) return;
     const loyalty = Number(row[2]) || 0;
-    rollDicePool([{sides:6,count:1}], 0, `Лояльность: ${row[0] || 'подчинённый'}`, {crits:false,
-      judge: entry => `${entry.die <= loyalty ? 'выполнит поручение' : 'может отказаться или провалить'} (лояльность ${loyalty}; трактовку броска уточните у мастера)`});
+    rollDicePool([{sides:6,count:1}], 0, `Лояльность: ${row[0] || 'подчинённый'} (${loyalty})`, {crits:false});
   }
   if(action === 'vehicleDamage'){
     if(!state.roleVehicles?.[data.index]) save();
@@ -1485,8 +1479,7 @@ function roleAction(action, data){
     }});
   }
   if(action === 'fixerHaggle'){
-    rollParts('Торг', [[statValue(4), 'ХАР'], skillPart('Торговля'), [rank, 'Воротила'], wound()],
-      {judge: () => 'против ХАР + Торговля продавца (+ Воротила, если он фиксер) + 1d10; при равенстве побеждает защищающийся'});
+    rollParts('Торг', [[statValue(4), 'ХАР'], skillPart('Торговля'), [rank, 'Воротила'], wound()]);
   }
 }
 
@@ -1565,8 +1558,7 @@ function programAttack(index){
   if(!data) return;
   const attack = Number(data[2]) || 0;
   const luck = spendLuck();
-  rollDicePool([{sides:10,count:1}], roleRank() + attack + luck, withNotes(`${programName(data)}: атака`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`, luck && `удача +${luck}`]),
-    {judge: () => 'цель защищается: Интерфейс + 1d10 или Защита программы + 1d10; при равенстве побеждает защищающийся'});
+  rollDicePool([{sides:10,count:1}], roleRank() + attack + luck, withNotes(`${programName(data)}: атака`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`, luck && `удача +${luck}`]));
   if(/^Против/i.test(data[1] || '') && isProgramOn(data)){
     data[8] = '';
     $$(`[data-key="rolePrograms${index}_8"]`).forEach(el=>{ el.checked = false; });
