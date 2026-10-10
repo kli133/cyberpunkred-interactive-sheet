@@ -2941,3 +2941,27 @@ footer {
     text-align: left;
   }
 }
+
+/* Многострочные ячейки таблиц: выглядят как обычные поля, но растут вместе с текстом. */
+.data-table .grow-field {
+  min-height: 26px;
+  background: transparent;
+  border-bottom: 1px solid #aaa;
+  padding: 5px 4px;
+  font-size: 12px;
+}
+
+.data-table td {
+  vertical-align: top;
+}
+
+.life-fields .grow-field {
+  min-height: 32px;
+  margin-top: 4px;
+  background: #f8f7f4;
+  border-bottom: 2px solid var(--red);
+  padding: 7px 5px;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: none;
+}
