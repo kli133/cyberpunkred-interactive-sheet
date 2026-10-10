@@ -589,7 +589,7 @@ button {
 }
 
 .equipment-grid .weapon-table {
-  min-width: 940px;
+  min-width: 1060px;
 }
 
 .equipment-grid .weapon-table th:nth-child(1), .equipment-grid .weapon-table td:nth-child(1) {
@@ -620,7 +620,7 @@ button {
 }
 
 .equipment-grid .weapon-table th:last-child, .equipment-grid .weapon-table td:last-child {
-  width: 150px;
+  width: 270px;
 }
 
 .equipment-grid .gear-table td:nth-child(2) input,

@@ -377,7 +377,7 @@ function row(type,data=[],index){
     return short ? `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>` : `<td>${growField(key, data[j] || '')}</td>`;
   }).map((html,k)=>{ const label = rowColumns[type][k].label; return label ? html.replace('<td', `<td data-label="${label}"`) : html; }).join('');
   const programActions = type === 'rolePrograms'
-    ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="Атака программой: 1d10 + ранг Интерфейса + ATK">АТК</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="Бросок урона программы">УРН</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="Восстановить REZ до максимума">↺</button>`
+    ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="Бросок урона программы (после попадания)">УРОН</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="Восстановить REZ до максимума">↺</button>`
     : '';
   const roleActions = type === 'roleTeam'
     ? `<button type="button" class="weapon-btn" data-role-action="loyaltyCheck" data-index="${index}" title="Проверка лояльности: мастер бросает 1d6">1D6</button>`
@@ -385,7 +385,7 @@ function row(type,data=[],index){
       ? `<button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${index}" title="Полностью починить: ПЗТ = максимум">↺</button>`
       : '';
   const weaponActions = type === 'weapon'
-    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">АТК</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
+    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРОН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
     : '';
   return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
@@ -430,7 +430,7 @@ function programCard(data, i){
         ${mini('Урон', 11)}
         <label class="mini wide"><span>Усиливает</span>${programBoostSelect(k(9), data[9] || '', k(10), data[10] || '')}</label>
       </div>
-      <div class="row-actions"><button type="button" class="weapon-btn" data-program-attack="${i}" title="Атака программой: 1d10 + ранг Интерфейса + ATK">АТК</button><button type="button" class="weapon-btn" data-program-damage="${i}" title="Бросок урона программы">УРН</button><button type="button" class="weapon-btn" data-program-rez="${i}" title="Восстановить REZ до максимума">↺</button><button type="button" class="remove" data-remove="rolePrograms" data-index="${i}" title="Удалить">×</button></div>
+      <div class="row-actions"><button type="button" class="weapon-btn" data-program-attack="${i}" title="Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-program-damage="${i}" title="Бросок урона программы (после попадания)">УРОН</button><button type="button" class="weapon-btn" data-program-rez="${i}" title="Восстановить REZ до максимума">↺</button><button type="button" class="remove" data-remove="rolePrograms" data-index="${i}" title="Удалить">×</button></div>
     </div>
     ${growField(k(5), data[5] || '', 'Эффект')}
   </article>`;
@@ -505,10 +505,13 @@ function refreshWeaponRows(){
     const attack = tr.querySelector('[data-weapon-attack]');
     const damage = tr.querySelector('[data-weapon-damage]');
     if(attack){
-      attack.textContent = on ? 'ОЧЕРЕДЬ' : 'АТК';
-      attack.title = on ? 'Очередь: 10 патронов, 1d10 + РЕФ + «Автоматический огонь»' : 'Атака: 1d10 + стат + навык';
+      attack.textContent = 'ПОПАДАНИЕ';
+      attack.title = on ? 'Бросок на попадание очередью: 10 патронов, 1d10 + РЕФ + «Автоматический огонь»; результат назовите мастеру' : 'Бросок на попадание: 1d10 + стат + навык; результат назовите мастеру';
     }
-    if(damage) damage.title = on ? 'Урон очереди: 2d6 × множитель (таблица для мастера)' : 'Бросок урона';
+    if(damage){
+      damage.textContent = on ? 'УРОН ОЧЕРЕДИ' : 'УРОН';
+      damage.title = on ? 'Урон очереди после попадания: 2d6 × множитель, который назовёт мастер' : 'Бросок урона после попадания';
+    }
   });
 }
 // Многострочное поле, которое растёт по высоте вместе с текстом.
@@ -759,13 +762,13 @@ function weaponAttack(index){
   const name = data[0] || 'Оружие';
   if(isAutofireOn(data)){
     if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
-    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: очередь`, undefined, [[soloLevel('precision'), 'точная атака']]);
+    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: попадание очередью`, undefined, [[soloLevel('precision'), 'точная атака']]);
     return;
   }
   const skill = skills.indexOf(data[5]);
   if(skill < 0){ toast(`${name}: выберите тип или навык оружия`); return; }
   if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, data[5] === AUTOFIRE_SKILL ? AUTOFIRE_AMMO : 1)) return;
-  rollCheck(`b${skill}`, `${name}: атака`, undefined, [[soloLevel('precision'), 'точная атака']]);
+  rollCheck(`b${skill}`, `${name}: попадание`, undefined, [[soloLevel('precision'), 'точная атака']]);
 }
 // Урон: формула оружия. Для очереди — 2d6 и таблица множителей: DV знает мастер,
 // он берёт множитель = на сколько атака превысила DV (не больше множителя оружия).
@@ -1558,7 +1561,7 @@ function programAttack(index){
   if(!data) return;
   const attack = Number(data[2]) || 0;
   const luck = spendLuck();
-  rollDicePool([{sides:10,count:1}], roleRank() + attack + luck, withNotes(`${programName(data)}: атака`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`, luck && `удача +${luck}`]));
+  rollDicePool([{sides:10,count:1}], roleRank() + attack + luck, withNotes(`${programName(data)}: попадание`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`, luck && `удача +${luck}`]));
   if(/^Против/i.test(data[1] || '') && isProgramOn(data)){
     data[8] = '';
     $$(`[data-key="rolePrograms${index}_8"]`).forEach(el=>{ el.checked = false; });
