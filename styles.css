@@ -3086,3 +3086,34 @@ footer {
     text-align: left;
   }
 }
+
+/* Кнопки после броска: удача к результату, «ПОПАЛ / НЕ ПОПАЛ» у умных патронов */
+.roll-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 10px;
+}
+
+.roll-actions label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.roll-actions input {
+  width: 52px;
+}
+
+.roll-actions small {
+  color: #888;
+  font-size: 11px;
+}
+
+.formula-die.is-luck {
+  border-color: #2e8b57;
+  color: #2e8b57;
+}
