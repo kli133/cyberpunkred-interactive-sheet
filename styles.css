@@ -589,34 +589,34 @@ button {
 }
 
 .equipment-grid .weapon-table {
-  min-width: 1240px;
+  min-width: 1060px;
 }
 
 .equipment-grid .weapon-table th:nth-child(1), .equipment-grid .weapon-table td:nth-child(1) {
-  width: 17%;
+  width: 18%;
 }
 
 .equipment-grid .weapon-table th:nth-child(2), .equipment-grid .weapon-table td:nth-child(2) {
-  width: 150px;
+  width: 140px;
 }
 
 .equipment-grid .weapon-table th:nth-child(3), .equipment-grid .weapon-table td:nth-child(3) {
-  width: 128px;
+  width: 118px;
 }
 
 .equipment-grid .weapon-table th:nth-child(4), .equipment-grid .weapon-table td:nth-child(4) {
-  width: 60px;
+  width: 54px;
 }
 
 .equipment-grid .weapon-table th:nth-child(5), .equipment-grid .weapon-table td:nth-child(5),
 .equipment-grid .weapon-table th:nth-child(6), .equipment-grid .weapon-table td:nth-child(6),
 .equipment-grid .weapon-table th:nth-child(7), .equipment-grid .weapon-table td:nth-child(7),
 .equipment-grid .weapon-table th:nth-child(8), .equipment-grid .weapon-table td:nth-child(8) {
-  width: 46px;
+  width: 42px;
 }
 
 .equipment-grid .weapon-table th:nth-child(9), .equipment-grid .weapon-table td:nth-child(9) {
-  width: 190px;
+  width: 170px;
 }
 
 .equipment-grid .weapon-table th:nth-child(10), .equipment-grid .weapon-table td:nth-child(10) {
@@ -624,7 +624,16 @@ button {
 }
 
 .equipment-grid .weapon-table th:last-child, .equipment-grid .weapon-table td:last-child {
-  width: 270px;
+  width: 190px;
+}
+
+/* Кнопки оружия переносятся на вторую строку, а не раздвигают таблицу. */
+.weapon-table td.row-actions {
+  white-space: normal;
+}
+
+.weapon-table td.row-actions .weapon-btn, .weapon-table td.row-actions .remove {
+  margin-bottom: 3px;
 }
 
 .equipment-grid .gear-table td:nth-child(2) input,
@@ -2905,8 +2914,8 @@ footer {
   font-size: 15px;
 }
 
-/* === Оружие на телефоне: каждая строка — карточка с подписями полей === */
-@media(max-width:560px) {
+/* === Оружие на узком экране: каждая строка — карточка с подписями полей, кнопки всегда видны === */
+@media(max-width:1320px) {
   .equipment-grid .weapon-table {
     min-width: 0;
   }
@@ -2921,7 +2930,7 @@ footer {
 
   .weapon-table tr {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0,1fr));
+    grid-template-columns: repeat(8, minmax(0,1fr));
     gap: 6px 8px;
     border: 1px solid #d1ccc6;
     border-left: 4px solid var(--red);
@@ -2947,16 +2956,28 @@ footer {
     margin-bottom: 2px;
   }
 
-  .weapon-table td:nth-child(1), .weapon-table td:nth-child(10), .weapon-table td:last-child {
-    grid-column: 1 / -1;
-  }
-
-  .weapon-table td:nth-child(2), .weapon-table td:nth-child(3), .weapon-table td:nth-child(9) {
+  /* 1-я строка: оружие, тип, навык, урон, патроны; 2-я: магазин, ROF, авто, боеприпасы, заметки; затем кнопки */
+  .weapon-table td:nth-child(1), .weapon-table td:nth-child(2), .weapon-table td:nth-child(3), .weapon-table td:nth-child(9) {
     grid-column: span 2;
   }
 
+  .weapon-table td:nth-child(10) {
+    grid-column: span 3;
+  }
+
   .weapon-table td:last-child {
+    grid-column: 1 / -1;
     text-align: left;
+  }
+}
+
+@media(max-width:560px) {
+  .weapon-table tr {
+    grid-template-columns: repeat(4, minmax(0,1fr));
+  }
+
+  .weapon-table td:nth-child(1), .weapon-table td:nth-child(10) {
+    grid-column: 1 / -1;
   }
 }
 
