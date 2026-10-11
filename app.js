@@ -528,8 +528,13 @@ function refreshWeaponRows(){
       attack.title = on ? 'Бросок на попадание очередью: 10 патронов, 1d10 + РЕФ + «Автоматический огонь»; результат назовите мастеру' : 'Бросок на попадание: 1d10 + стат + навык; результат назовите мастеру';
     }
     if(damage){
-      damage.textContent = on ? 'УРОН ОЧЕРЕДИ' : 'УРОН';
-      damage.title = on ? 'Урон очереди после попадания: 2d6 × множитель, который назовёт мастер' : 'Бросок урона после попадания';
+      const loaded = loadedAmmo(data);
+      const effect = !on && loaded && loaded.type in ammoNoDamage;
+      const shell = !on && loaded?.caliber === 'shell';
+      damage.textContent = on ? 'УРОН ОЧЕРЕДИ' : effect ? 'ЭФФЕКТ' : 'УРОН';
+      damage.title = on ? 'Урон очереди после попадания: 2d6 × множитель, который назовёт мастер'
+        : effect ? `${ammoTypes[loaded.type][0]}: урона оружия нет — ${ammoTypes[loaded.type][3]}`
+        : shell ? `Урон дробью: ${SHOTGUN_SHELL_DAMAGE} всем целям в конусе` : 'Бросок урона после попадания';
     }
   });
 }
@@ -804,10 +809,21 @@ function weaponDamage(index){
     rollDicePool([AUTOFIRE_DAMAGE], 0, `${name}: урон очереди`, {crits:false, judge: entry => [damageTable(entry, autofireMultiplier(data)), weaknessNote(), ammoNote(data)].filter(Boolean).join('. ')});
     return;
   }
-  const damage = parseDamage(data[1]);
+  const loaded = loadedAmmo(data);
+  // Яд, ЭМИ, газ и т. п. урона оружия не наносят: цель делает проверку, при провале — эффект.
+  if(loaded && loaded.type in ammoNoDamage){
+    const [ammoName,,,effect] = ammoTypes[loaded.type];
+    const dice = parseDamage(ammoNoDamage[loaded.type]);
+    if(!dice){ toast(`${name}, ${ammoName}: ${effect}`); return; }
+    rollDicePool([{sides:dice.sides,count:dice.count}], dice.bonus, `${name}: ${ammoName.toLowerCase()} — урон мимо брони`, {crits:false, judge: () => `Только если цель провалит проверку. ${effect}`});
+    return;
+  }
+  const shell = loaded?.caliber === 'shell';
+  const damage = parseDamage(shell ? SHOTGUN_SHELL_DAMAGE : data[1]);
   if(!damage){ toast(`${name}: укажите урон в виде 3d6 или 2d6+2`); return; }
-  rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${name}: урон`, {crits:false,
-    judge: entry => [isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`, weaknessNote(), ammoNote(data)].filter(Boolean).join('. ')});
+  rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${name}: ${shell ? 'урон дробью' : 'урон'}`, {crits:false,
+    judge: entry => [shell && 'Дробь: один бросок урона для всех целей в конусе перед вами, броня каждой цели уменьшает урон',
+      isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`, weaknessNote(), ammoNote(data)].filter(Boolean).join('. ')});
 }
 const ammoNote = data => { const loaded = loadedAmmo(data); return loaded && loaded.type !== 'basic' ? `${ammoTypes[loaded.type][0]}: ${ammoTypes[loaded.type][3]}` : ''; };
 const weaknessNote = () => soloLevel('weakness') ? `Слабое место: +${soloLevel('weakness')} к урону, если это первое попадание за ход` : '';
@@ -872,6 +888,7 @@ function applyWeaponAmmo(key, value){
   if(before && current) returnAmmo(before.caliber, before.type, current);
   data[10] = value;
   if(current && (before || loadedAmmo(data))){ data[2] = '0'; setInput(`weapon${index}_2`, '0'); }
+  refreshWeaponRows();
   if(loadedAmmo(data) && !isBlank(data[6])){
     const result = loadFromStock(index, data);
     toast(`${data[0] || 'Оружие'}: заряжено ${result.name} — ${result.total} / ${result.magazine}, в запасе ${result.left}`);
@@ -1206,7 +1223,10 @@ function printSheetHtml(blank){
     const attack = skill >= 0 ? `+${refTotal(`b${skill}`)}` : '';
     const autofire = multiplier ? `×${multiplier}, +${refTotal(`b${skills.indexOf(AUTOFIRE_SKILL)}`)}${isAutofireOn(data) ? ' (вкл.)' : ''}` : '';
     const ammo = isBlank(data[2]) && isBlank(data[6]) ? '' : `${text(data[2])} / ${text(data[6])}${loadedAmmo(data) ? ` ${esc(ammoTypes[loadedAmmo(data).type][0].toLowerCase())}` : ''}`;
-    return [text(data[0]), text(weaponTypes[data[8]]?.[0]), text(data[5]), attack, text(data[1]), ammo, text(data[3]), autofire, text(data[4])];
+    const loaded = loadedAmmo(data);
+    const damage = loaded && loaded.type in ammoNoDamage ? (ammoNoDamage[loaded.type] ? `${ammoNoDamage[loaded.type]} мимо брони` : 'эффект')
+      : loaded?.caliber === 'shell' ? `${SHOTGUN_SHELL_DAMAGE} дробь` : text(data[1]);
+    return [text(data[0]), text(weaponTypes[data[8]]?.[0]), text(data[5]), attack, damage, ammo, text(data[3]), autofire, text(data[4])];
   });
   const skillBlocks = Object.entries(skillCategories).map(([category, entries])=>{
     const rows = entries.flatMap(([name, stat])=>{
