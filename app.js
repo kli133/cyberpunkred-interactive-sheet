@@ -655,7 +655,7 @@ const diceText = item => (item.diceDetails ? item.diceDetails.map(die=>`D${Numbe
 const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКИЙ ПРОВАЛ'}</em>` : '';
 const logLine = item => item.kind === 'damage'
   ? `<b class="log-tag">УРОН</b> ${esc(item.text)}`
-  : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
+  : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''}${item.luck ? ` + удача ${item.luck}` : ''} = <strong>${signed(Number(item.total))}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
 
 function addHistory(entry){
   state.rollHistory = [{...entry, time:now()}, ...(state.rollHistory || [])].slice(0, 30);
@@ -665,7 +665,10 @@ function addHistory(entry){
 // crits: по правилам RED (стр. 130) 10 на 1d10 — критический успех: бросается ещё 1d10 и прибавляется;
 // 1 — критический провал: ещё 1d10 вычитается. Повторная 10 или 1 на втором кубике нового крита не даёт.
 // attack — бросок атаки: «Умелое обращение» Соло отменяет критический провал только на атаках (стр. 146).
-function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge, attack=false}={}){
+// luck — к результату можно добавить Удачу кнопкой в окне кубика; onMiss — кнопки «ПОПАЛ / НЕ ПОПАЛ»
+// (умные патроны: «НЕ ПОПАЛ» бросает второй шанс).
+let lastRoll = null;
+function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge, attack=false, luck=false, onMiss}={}){
   const dicePool=normalizeDicePool(pool);
   const diceDetails=dicePool.flatMap(({sides,count})=>Array.from({length:count},()=>({sides,value:rollDie(sides)})));
   const die = diceDetails.reduce((sum,item)=>sum+item.value,0);
@@ -674,15 +677,47 @@ function rollDicePool(pool, modifier, label='Свободный бросок', {
   const critExtra = critical ? d(10) : 0;
   const total = die + modifier + (die === 10 ? critExtra : -critExtra);
   const entry = {label, die, diceDetails, modifier, total, critical, critExtra, mode:rollModeLabel()};
-  if(judge) entry.note = judge(entry) || '';
-  if(fumbleRecovered) entry.note = [entry.note, 'единица не критический провал (Умелое обращение)'].filter(Boolean).join('. ');
+  const fumbleNote = fumbleRecovered ? 'единица не критический провал (Умелое обращение)' : '';
+  const noteFor = item => [judge?.(item), fumbleNote].filter(Boolean).join('. ');
+  entry.note = noteFor(entry);
   addHistory(entry);
   persist();
-  const critDie = critical ? `<span class="formula-die is-crit" aria-label="Кубик крита">${die === 10 ? '+' : '−'}${critExtra}<small>КРИТ</small></span>` : '';
-  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die${critical && index === 0 ? ' is-crit-source' : ''}" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}${critDie}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry) || entry.note ? `<div class="roll-note">${critText(entry)}${entry.note ? `<span>${esc(entry.note)}</span>` : ''}</div>` : ''}`;
+  lastRoll = {entry, noteFor, luck, onMiss, history:state.rollHistory[0]};
+  showRollResult();
   $('#diceLog').insertAdjacentHTML('afterbegin', `<div>${logLine(entry)}</div>`);
   $('#diceDrawer').classList.add('open');
   return entry;
+}
+function showRollResult(){
+  const {entry, luck, onMiss} = lastRoll;
+  const {diceDetails, critical, critExtra, die, total} = entry;
+  const critDie = critical ? `<span class="formula-die is-crit" aria-label="Кубик крита">${die === 10 ? '+' : '−'}${critExtra}<small>КРИТ</small></span>` : '';
+  const luckDie = entry.luck ? `<span class="formula-die is-luck" aria-label="Удача">+${entry.luck}<small>УДЧ</small></span>` : '';
+  const left = numeric('luckCurrent');
+  const luckControls = luck ? `<div class="roll-actions">${left > 0
+    ? `<label>УДАЧА<input id="luckAfter" type="number" min="1" max="${left}" value="1"></label><button type="button" class="weapon-btn" data-roll-luck>+ К РЕЗУЛЬТАТУ</button><small>осталось ${left}</small>`
+    : '<small>Удачи не осталось</small>'}</div>` : '';
+  const missControls = onMiss ? '<div class="roll-actions"><button type="button" class="weapon-btn" data-roll-hit>ПОПАЛ</button><button type="button" class="weapon-btn" data-roll-miss title="Промах на 4 или меньше: второй шанс 1d10 + 10">НЕ ПОПАЛ</button></div>' : '';
+  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die${critical && index === 0 ? ' is-crit-source' : ''}" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}${critDie}${luckDie}</div><strong class="formula-roll-total">СУММА: ${signed(total)}</strong>${critText(entry) || entry.note ? `<div class="roll-note">${critText(entry)}${entry.note ? `<span>${esc(entry.note)}</span>` : ''}</div>` : ''}${luckControls}${missControls}`;
+}
+// Удача добавляется к уже выпавшему результату и списывается с текущей УДЧ.
+function addLuckToRoll(){
+  if(!lastRoll?.luck) return;
+  const spend = Math.max(0, Math.min(Math.floor(Number($('#luckAfter')?.value) || 0), numeric('luckCurrent')));
+  if(!spend) return;
+  const {entry} = lastRoll;
+  state.luckCurrent = numeric('luckCurrent') - spend;
+  setInput('luckCurrent', state.luckCurrent);
+  entry.luck = (entry.luck || 0) + spend;
+  entry.total += spend;
+  entry.note = lastRoll.noteFor(entry);
+  Object.assign(lastRoll.history, entry);
+  persist();
+  renderDashboardLog();
+  updateDerived();
+  const logItem = $('#diceLog').firstElementChild;
+  if(logItem) logItem.innerHTML = logLine(entry);
+  showRollResult();
 }
 
 function parseFormula(value){
@@ -698,36 +733,24 @@ function rollFormula(formula){
   rollDicePool([formula], 0, `${formula.count}d${formula.sides}`, {crits:false});
 }
 
-// Удача: заявленные очки добавляются к броску и списываются с текущей УДЧ.
-function spendLuck(){
-  const input = $('#luckSpend');
-  const spend = Math.max(0, Math.min(Math.floor(Number(input.value) || 0), numeric('luckCurrent')));
-  input.value = 0;
-  if(!spend) return 0;
-  state.luckCurrent = numeric('luckCurrent') - spend;
-  setInput('luckCurrent', state.luckCurrent);
-  return spend;
-}
 const withNotes = (label, notes) => notes.filter(Boolean).length ? `${label} (${notes.filter(Boolean).join(', ')})` : label;
 
-// Проверка навыка: 1d10 + стат + навык с учётом штрафов брони и ранений (+ потраченная удача).
-function rollCheck(ref, label = refLabel(ref), judge, extras = [], {attack = false} = {}){
+// Проверка навыка: 1d10 + стат + навык с учётом штрафов брони и ранений (удачу можно добавить после броска).
+function rollCheck(ref, label = refLabel(ref), judge, extras = [], {attack = false, onMiss} = {}){
   const wound = woundPenalty();
-  const luck = spendLuck();
-  const modifier = refTotal(ref) + luck + extras.reduce((sum,[value])=>sum + value, 0);
+  const modifier = refTotal(ref) + extras.reduce((sum,[value])=>sum + value, 0);
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
-  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, luck && `удача +${luck}`, ...extras.map(([value,note])=>value && `${note} +${value}`)]), {judge, attack});
+  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, ...extras.map(([value,note])=>value && `${note} +${value}`)]), {judge, attack, luck:true, onMiss});
 }
 const rollSkill = ref => rollCheck(typeof ref === 'number' ? `b${ref}` : String(ref));
 
 // Инициатива: 1d10 + РЕФ (со штрафом брони).
 function rollInitiative(){
-  const luck = spendLuck();
   const armor = statPenalty(1);
   const reaction = soloLevel('initiative');
-  rollDicePool([{sides:10,count:1}], statValue(1) - armor + luck + reaction, withNotes('Инициатива', [armor && `броня −${armor}`, luck && `удача +${luck}`, reaction && `реакция +${reaction}`]), {crits:false});
+  rollDicePool([{sides:10,count:1}], statValue(1) - armor + reaction, withNotes('Инициатива', [armor && `броня −${armor}`, reaction && `реакция +${reaction}`]), {crits:false, luck:true});
 }
 
 function upgradeSkill(ref){
@@ -796,7 +819,15 @@ function weaponAttack(index){
   const skill = skills.indexOf(data[5]);
   if(skill < 0){ toast(`${name}: выберите тип или навык оружия`); return; }
   if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, data[5] === AUTOFIRE_SKILL ? AUTOFIRE_AMMO : 1)) return;
-  rollCheck(`b${skill}`, `${name}: попадание`, undefined, [[soloLevel('precision'), 'точная атака']], {attack:true});
+  const smart = loadedAmmo(data)?.type === 'smart';
+  rollCheck(`b${skill}`, `${name}: попадание`, smart ? () => 'Умные патроны: если мастер скажет, что вы промахнулись на 4 или меньше, нажмите «НЕ ПОПАЛ» — второй шанс' : undefined,
+    [[soloLevel('precision'), 'точная атака']], {attack:true, onMiss: smart ? () => smartSecondChance(name) : undefined});
+}
+// Умные патроны (нужен Тактический прицел): промах на 4 или меньше — повторная проверка 1d10 + 10
+// вместо СТАТ + навык, та же дистанция и СЛ; удачу добавить можно, цель может уклониться как обычно.
+function smartSecondChance(name){
+  rollDicePool([{sides:10,count:1}], 10, `${name}: умные патроны — второй шанс (1d10 + 10)`, {attack:true, luck:true,
+    judge: () => 'Только если промах был на 4 или меньше. Та же СЛ; цель может уклониться как обычно'});
 }
 // Урон: формула оружия. Для очереди — 2d6 и таблица множителей: DV знает мастер,
 // он берёт множитель = на сколько атака превысила DV (не больше множителя оружия).
@@ -1372,12 +1403,11 @@ const roleSelect = (key, label, entries, fallback) => `<label>${label}<select da
 const roleCheck = (key, label) => `<label class="check-row"><input type="checkbox" data-key="${key}"${isChecked(key) ? ' checked' : ''}> ${label}</label>`;
 const tierFor = (tiers, rank) => [...tiers].reverse().find(tier=>rank >= tier[0]) || tiers[0];
 const techSkillEntries = () => skills.map((name,i)=>[name,i]).filter(([,i])=>skillStatIndex(i) === 3).map(([name])=>[name, name]);
-// Бросок из частей: [[значение, подпись], …] + 1d10 (+ удача, если её можно тратить).
+// Бросок из частей: [[значение, подпись], …] + 1d10 (luck — можно ли добавить удачу после броска).
 function rollParts(label, parts, {judge, luck = true, crits = true} = {}){
-  const spent = luck ? spendLuck() : 0;
-  const all = [...parts, [spent, 'удача']].filter(([value])=>value);
+  const all = parts.filter(([value])=>value);
   const modifier = all.reduce((sum,[value])=>sum + value, 0);
-  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, all.map(([value,note])=>`${note} ${value >= 0 ? '+' : '−'}${Math.abs(value)}`)), {judge, crits});
+  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, all.map(([value,note])=>`${note} ${value >= 0 ? '+' : '−'}${Math.abs(value)}`)), {judge, crits, luck});
 }
 const beats = dv => entry => entry.total > dv ? `УСПЕХ (СЛ ${dv})` : `ПРОВАЛ (СЛ ${dv}; при равенстве — провал)`;
 const skillPart = name => { const i = skills.indexOf(name); return [refLevel(`b${i}`), name.replace(' (x2)', '')]; };
@@ -1715,8 +1745,7 @@ function programAttack(index){
   const data = programRow(index);
   if(!data) return;
   const attack = Number(data[2]) || 0;
-  const luck = spendLuck();
-  rollDicePool([{sides:10,count:1}], roleRank() + attack + luck, withNotes(`${programName(data)}: попадание`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`, luck && `удача +${luck}`]));
+  rollDicePool([{sides:10,count:1}], roleRank() + attack, withNotes(`${programName(data)}: попадание`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`]), {luck:true});
   if(/^Против/i.test(data[1] || '') && isProgramOn(data)){
     data[8] = '';
     $$(`[data-key="rolePrograms${index}_8"]`).forEach(el=>{ el.checked = false; });
@@ -1790,10 +1819,9 @@ function refreshRolePanel(){
     upgrade.title = `Повысить ранг до ${rank + 1} за ${cost} IP`;
   }
 }
-// Проверка способности роли: 1d10 + ранг (+ потраченная удача).
+// Проверка способности роли: 1d10 + ранг (удачу можно добавить после броска).
 function rollRoleAbility(label, extras = []){
-  const luck = spendLuck();
-  rollDicePool([{sides:10,count:1}], roleRank() + luck + extras.reduce((sum,[value])=>sum + value, 0), withNotes(label, [luck && `удача +${luck}`, ...extras.map(([value,note])=>value && `${note} +${value}`)]));
+  rollDicePool([{sides:10,count:1}], roleRank() + extras.reduce((sum,[value])=>sum + value, 0), withNotes(label, extras.map(([value,note])=>value && `${note} +${value}`)), {luck:true});
 }
 function upgradeRole(){
   const cost = roleUpgradeCost();
@@ -1984,11 +2012,16 @@ $('#diceClose').onclick=()=>$('#diceDrawer').classList.remove('open');
 $('#addDie').onclick=()=>{state.dicePool=[...readDicePool(),{sides:6,count:1}];renderDicePool();persist();};
 $('#dicePool').oninput=()=>{state.dicePool=readDicePool();persist();};
 $('#dicePool').onclick=e=>{const remove=e.target.closest('.remove-die');if(!remove)return;const pool=readDicePool();pool.splice(Number(remove.closest('.dice-pool-row').dataset.diceIndex),1);state.dicePool=pool;renderDicePool();persist();};
+$('#diceResult').addEventListener('click', e=>{
+  if(e.target.closest('[data-roll-luck]')) addLuckToRoll();
+  if(e.target.closest('[data-roll-hit]')){ lastRoll.onMiss = null; showRollResult(); }
+  const miss = e.target.closest('[data-roll-miss]');
+  if(miss){ const onMiss = lastRoll.onMiss; lastRoll.onMiss = null; onMiss?.(); }
+});
 $('#rollDice').onclick=()=>{
   const pool=readDicePool();
   state.dicePool=pool;
-  const luck=spendLuck();
-  rollDicePool(pool,(Number($('#diceModifier').value)||0)+luck,withNotes('Свободный бросок',[luck && `удача +${luck}`]));
+  rollDicePool(pool,Number($('#diceModifier').value)||0,'Свободный бросок',{luck:true});
 };
 $('#initiativeBtn').onclick=rollInitiative;
 // Удача восстанавливается до значения УДЧ в начале каждой игровой сессии (стр. 130).
