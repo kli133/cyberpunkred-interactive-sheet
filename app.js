@@ -117,6 +117,17 @@ function migrate(data){
   delete s.humanityValue;
   Object.keys(s).forEach(key => { if(structuredKey.test(key)) delete s[key]; });
   if(s.portrait && !isSafeImage(s.portrait)) delete s.portrait;
+  // Боеприпасы v0.4.x: строка [калибр, тип, кол-во] → [калибр, «форма:тип», кол-во]; у оружия «калибр:тип» → «форма:тип».
+  const oldKind = id => ({mPistol:'pistol', hPistol:'pistol', vhPistol:'pistol'})[id] || id;
+  if(Array.isArray(s.ammo)) s.ammo = s.ammo.map(row=>{
+    if(!Array.isArray(row) || String(row[1] || '').includes(':') || !ammoKinds[oldKind(row[0])]) return row;
+    const kind = oldKind(row[0]);
+    return [ammoKinds[kind][1], row[1] ? `${kind}:${row[1]}` : '', row[2] ?? ''];
+  });
+  if(Array.isArray(s.weapon)) s.weapon.forEach(row=>{
+    const [kind, type] = String(row?.[10] || '').split(':');
+    if(kind && type && oldKind(kind) !== kind) row[10] = `${oldKind(kind)}:${type}`;
+  });
   if(Array.isArray(s.rolePrograms)) s.rolePrograms.forEach(row=>{
     const preset = programPresets[row?.[6]];
     if(!preset || !isBlank(row[12]) || !isBlank(row[13]) || (!preset[9] && !preset[10])) return;
@@ -380,7 +391,7 @@ function row(type,data=[],index){
     if(select === 'vehicleType') return `<td><select data-key="${key}" aria-label="Тип транспорта"><option value="">Свой</option>${Object.entries(vehicleTypes).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item[0])}</option>`).join('')}</select></td>`;
     if(select === 'caliber') return `<td><select data-key="${key}" aria-label="Калибр"><option value="">—</option>${Object.entries(ammoCalibers).map(([id,[name]])=>`<option value="${id}" title="${esc(caliberWeapons(id))}"${id === data[j] ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>${data[j] ? `<small class="ammo-for">${esc(caliberWeapons(data[j]))}</small>` : ''}</td>`;
     if(select === 'ammoType') return `<td><select data-key="${key}" aria-label="Тип боеприпасов">${ammoTypeOptions(data[0], data[j])}</select></td>`;
-    if(select === 'ammoInfo'){ const item = ammoTypes[data[1]]; return `<td class="ammo-info">${item ? `${esc(item[3])}<small>${esc(item[1])} за ${ammoCalibers[data[0]]?.[1] === 1 ? 'штуку' : '10 шт.'}</small>` : ''}</td>`; }
+    if(select === 'ammoInfo'){ const item = ammoTypes[String(data[1] || '').split(':')[1]]; return `<td class="ammo-info">${item ? `${esc(item[3])}<small>${esc(item[1])} за ${ammoCalibers[data[0]]?.[1] === 1 ? 'штуку' : '10 шт.'}</small>` : ''}</td>`; }
     if(select === 'loadedAmmo') return `<td><select data-key="${key}" aria-label="Заряжено">${loadedAmmoOptions(data)}</select></td>`;
     if(select === 'program') return `<td>${programPresetSelect(key, data[j] || '')}</td>`;
     if(select === 'boost') return `<td>${programBoostSelect(key, data[j] || '', `${type}${index}_10`, data[10] || '')}</td>`;
@@ -530,7 +541,7 @@ function refreshWeaponRows(){
     if(damage){
       const loaded = loadedAmmo(data);
       const effect = !on && loaded && loaded.type in ammoNoDamage;
-      const shell = !on && loaded?.caliber === 'shell';
+      const shell = !on && loaded?.kind === 'shell';
       damage.textContent = on ? 'УРОН ОЧЕРЕДИ' : effect ? 'ЭФФЕКТ' : 'УРОН';
       damage.title = on ? 'Урон очереди после попадания: 2d6 × множитель, который назовёт мастер'
         : effect ? `${ammoTypes[loaded.type][0]}: урона оружия нет — ${ammoTypes[loaded.type][3]}`
@@ -849,7 +860,7 @@ function weaponDamage(index){
     rollDicePool([{sides:dice.sides,count:dice.count}], dice.bonus, `${name}: ${ammoName.toLowerCase()} — урон мимо брони`, {crits:false, judge: () => `Только если цель провалит проверку. ${effect}`});
     return;
   }
-  const shell = loaded?.caliber === 'shell';
+  const shell = loaded?.kind === 'shell';
   const damage = parseDamage(shell ? SHOTGUN_SHELL_DAMAGE : data[1]);
   if(!damage){ toast(`${name}: укажите урон в виде 3d6 или 2d6+2`); return; }
   rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${name}: ${shell ? 'урон дробью' : 'урон'}`, {crits:false,
@@ -859,44 +870,47 @@ function weaponDamage(index){
 const ammoNote = data => { const loaded = loadedAmmo(data); return loaded && loaded.type !== 'basic' ? `${ammoTypes[loaded.type][0]}: ${ammoTypes[loaded.type][3]}` : ''; };
 const weaknessNote = () => soloLevel('weakness') ? `Слабое место: +${soloLevel('weakness')} к урону, если это первое попадание за ход` : '';
 // ---------- Боеприпасы: запас в снаряжении и заряженные в оружие ----------
-const ammoTypeOptions = (caliber, value) => {
-  const group = ammoCalibers[caliber]?.[2];
-  const list = Object.entries(ammoTypes).filter(([, item])=>!group || item[2].includes(group));
-  return '<option value="">—</option>' + list.map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
-};
-// Своё оружие (тип не выбран) может брать любой калибр, холодное — никакой.
-// Оружие, которое стреляет этим калибром (по таблице оружия книги).
-const caliberWeapons = caliber => Object.entries(weaponCalibers).filter(([, list])=>list.includes(caliber)).map(([id])=>weaponTypes[id][0].toLowerCase()).join(', ');
-const weaponCaliberList = data => isBlank(data?.[8]) ? Object.keys(ammoCalibers) : weaponCalibers[data[8]] || [];
-const ammoStock = (caliber, type) => (state.ammo || []).filter(row=>row[0] === caliber && row[1] === type).reduce((sum,row)=>sum + (Number(row[2]) || 0), 0);
-// Заряжено: «калибр:тип»; пусто — патроны не связаны со снаряжением (перезарядка без учёта запаса).
-function loadedAmmoOptions(data){
-  const calibers = weaponCaliberList(data);
-  if(!calibers.length) return '<option value="">— не нужны</option>';
-  const options = caliber => Object.entries(ammoTypes).filter(([, item])=>item[2].includes(ammoCalibers[caliber][2]))
-    .map(([type,[name]])=>`<option value="${caliber}:${type}"${`${caliber}:${type}` === data?.[10] ? ' selected' : ''}>${calibers.length > 1 ? `${esc(ammoCalibers[caliber][0])}: ` : ''}${esc(name)} (${ammoStock(caliber, type)})</option>`).join('');
-  return '<option value="">— без учёта запаса</option>' + (calibers.length > 1
-    ? calibers.map(caliber=>`<optgroup label="${esc(ammoCalibers[caliber][0])}">${options(caliber)}</optgroup>`).join('')
-    : options(calibers[0]));
+// Боеприпас — «форма:тип», например «slug:ap»: жаканы, бронебойные. Калибр формы — ammoKinds[форма][1].
+const kindsOf = caliber => Object.keys(ammoKinds).filter(kind=>ammoKinds[kind][1] === caliber);
+const kindLabel = kind => kindsOf(ammoKinds[kind][1]).length > 1 ? `${ammoCalibers[ammoKinds[kind][1]][0]}: ${ammoKinds[kind][0].toLowerCase()}` : ammoCalibers[ammoKinds[kind][1]][0];
+const typesOfKind = kind => Object.entries(ammoTypes).filter(([, item])=>item[2].includes(ammoKinds[kind][2]));
+// Список вариантов: при нескольких формах — группы, а в тексте варианта — форма (видно и в закрытом списке).
+function ammoOptions(kinds, value, label){
+  const names = kinds.map(kind=>ammoKinds[kind][0]);
+  const prefix = kind => kinds.length < 2 ? '' : `${new Set(names).size < names.length ? kindLabel(kind) : ammoKinds[kind][0]}: `;
+  const options = kind => typesOfKind(kind).map(([type,[name]])=>{ const id = `${kind}:${type}`; return `<option value="${id}"${id === value ? ' selected' : ''}>${esc(prefix(kind) + name)}${label ? esc(label(kind, type)) : ''}</option>`; }).join('');
+  return kinds.length > 1 ? kinds.map(kind=>`<optgroup label="${esc(kindLabel(kind))}">${options(kind)}</optgroup>`).join('') : options(kinds[0]);
 }
-const loadedAmmo = data => { const [caliber, type] = String(data?.[10] || '').split(':'); return ammoCalibers[caliber] && ammoTypes[type] ? {caliber, type} : null; };
+const ammoTypeOptions = (caliber, value) => '<option value="">—</option>' + (kindsOf(caliber).length ? ammoOptions(kindsOf(caliber), value) : '');
+// Оружие, которое стреляет этим калибром.
+const caliberWeapons = caliber => ammoCalibers[caliber]?.[2] || '';
+// Своё оружие (тип не выбран) может брать любые боеприпасы, холодное — никакие.
+const weaponKindList = data => isBlank(data?.[8]) ? Object.keys(ammoKinds) : weaponAmmoKinds[data[8]] || [];
+const ammoStock = (kind, type) => (state.ammo || []).filter(row=>row[1] === `${kind}:${type}`).reduce((sum,row)=>sum + (Number(row[2]) || 0), 0);
+// Заряжено: «форма:тип»; пусто — патроны не связаны со снаряжением (перезарядка без учёта запаса).
+function loadedAmmoOptions(data){
+  const kinds = weaponKindList(data);
+  if(!kinds.length) return '<option value="">— не нужны</option>';
+  return '<option value="">— без учёта запаса</option>' + ammoOptions(kinds, data?.[10], (kind, type)=>` (${ammoStock(kind, type)})`);
+}
+const loadedAmmo = data => { const [kind, type] = String(data?.[10] || '').split(':'); return ammoKinds[kind] && ammoTypes[type] ? {kind, type} : null; };
 // Снять патроны из запаса (по строкам снаряжения), вернуть остаток в запас.
-function takeAmmo(caliber, type, count){
+function takeAmmo(kind, type, count){
   let taken = 0;
   (state.ammo || []).forEach(row=>{
-    if(taken >= count || row[0] !== caliber || row[1] !== type) return;
+    if(taken >= count || row[1] !== `${kind}:${type}`) return;
     const part = Math.min(Number(row[2]) || 0, count - taken);
     row[2] = String((Number(row[2]) || 0) - part);
     taken += part;
   });
   return taken;
 }
-function returnAmmo(caliber, type, count){
+function returnAmmo(kind, type, count){
   if(count <= 0) return;
   if(!state.ammo?.some(row=>row.some(cell=>!isBlank(cell)))) state.ammo = [];
-  const row = state.ammo.find(item=>item[0] === caliber && item[1] === type);
+  const row = state.ammo.find(item=>item[1] === `${kind}:${type}`);
   if(row) row[2] = String((Number(row[2]) || 0) + count);
-  else state.ammo.push([caliber, type, String(count)]);
+  else state.ammo.push([ammoKinds[kind][1], `${kind}:${type}`, String(count)]);
 }
 // После изменения запаса из кода — перерисовать таблицу боеприпасов, чтобы save() прочитал актуальные числа.
 function syncAmmoTable(){ renderRows('ammo'); bindInputs(); }
@@ -905,10 +919,10 @@ function loadFromStock(index, data){
   const loaded = loadedAmmo(data);
   const magazine = Number(data[6]) || 0;
   const current = Math.max(0, Number(data[2]) || 0);
-  const taken = takeAmmo(loaded.caliber, loaded.type, Math.max(0, magazine - current));
+  const taken = takeAmmo(loaded.kind, loaded.type, Math.max(0, magazine - current));
   data[2] = String(current + taken);
   setInput(`weapon${index}_2`, data[2]);
-  return {taken, magazine, total:current + taken, left:ammoStock(loaded.caliber, loaded.type), name:ammoTypes[loaded.type][0]};
+  return {taken, magazine, total:current + taken, left:ammoStock(loaded.kind, loaded.type), name:ammoTypes[loaded.type][0]};
 }
 // Смена заряженных патронов: остаток в магазине вернуть в запас старого типа и зарядить новым.
 function applyWeaponAmmo(key, value){
@@ -920,7 +934,7 @@ function applyWeaponAmmo(key, value){
   const before = loadedAmmo(data);
   const current = Math.max(0, Number(data[2]) || 0);
   // Заряженные без учёта запаса патроны не возвращаются: магазин заряжается заново из снаряжения.
-  if(before && current) returnAmmo(before.caliber, before.type, current);
+  if(before && current) returnAmmo(before.kind, before.type, current);
   data[10] = value;
   if(current && (before || loadedAmmo(data))){ data[2] = '0'; setInput(`weapon${index}_2`, '0'); }
   refreshWeaponRows();
@@ -1070,9 +1084,9 @@ function applyWeaponType(key, value){
   const data = state.weapon?.[i];
   const before = loadedAmmo(data);
   if(before){
-    returnAmmo(before.caliber, before.type, Math.max(0, Number(data[2]) || 0));
+    returnAmmo(before.kind, before.type, Math.max(0, Number(data[2]) || 0));
     data[2] = '0'; data[6] = magazine; data[8] = value;
-    if(!(weaponCalibers[value] || []).includes(before.caliber)){ data[10] = ''; setInput(`weapon${i}_10`, ''); setInput(`weapon${i}_2`, '0'); }
+    if(!(weaponAmmoKinds[value] || []).includes(before.kind)){ data[10] = ''; setInput(`weapon${i}_10`, ''); setInput(`weapon${i}_2`, '0'); }
     else loadFromStock(i, data);
     syncAmmoTable();
   }
@@ -1257,10 +1271,10 @@ function printSheetHtml(blank){
     const multiplier = autofireMultiplier(data);
     const attack = skill >= 0 ? `+${refTotal(`b${skill}`)}` : '';
     const autofire = multiplier ? `×${multiplier}, +${refTotal(`b${skills.indexOf(AUTOFIRE_SKILL)}`)}${isAutofireOn(data) ? ' (вкл.)' : ''}` : '';
-    const ammo = isBlank(data[2]) && isBlank(data[6]) ? '' : `${text(data[2])} / ${text(data[6])}${loadedAmmo(data) ? ` ${esc(ammoTypes[loadedAmmo(data).type][0].toLowerCase())}${weaponCaliberList(data).length > 1 ? ` (${esc(ammoCalibers[loadedAmmo(data).caliber][0].toLowerCase())})` : ''}` : ''}`;
+    const ammo = isBlank(data[2]) && isBlank(data[6]) ? '' : `${text(data[2])} / ${text(data[6])}${loadedAmmo(data) ? ` ${esc(ammoTypes[loadedAmmo(data).type][0].toLowerCase())}${weaponKindList(data).length > 1 ? ` (${esc(ammoKinds[loadedAmmo(data).kind][0].toLowerCase())})` : ''}` : ''}`;
     const loaded = loadedAmmo(data);
     const damage = loaded && loaded.type in ammoNoDamage ? (ammoNoDamage[loaded.type] ? `${ammoNoDamage[loaded.type]} мимо брони` : 'эффект')
-      : loaded?.caliber === 'shell' ? `${SHOTGUN_SHELL_DAMAGE} дробь` : text(data[1]);
+      : loaded?.kind === 'shell' ? `${SHOTGUN_SHELL_DAMAGE} дробь` : text(data[1]);
     return [text(data[0]), text(weaponTypes[data[8]]?.[0]), text(data[5]), attack, damage, ammo, text(data[3]), autofire, text(data[4])];
   });
   const skillBlocks = Object.entries(skillCategories).map(([category, entries])=>{
@@ -1301,7 +1315,7 @@ function printSheetHtml(blank){
     </div>
     <div class="p-grid p-grid-gear">
       ${section('Снаряжение', table('p-gear', ['Предмет','Кол-во','Заметка'], rowsOrBlank((state.gear || []).map(row=>row.map(text)), 3, blank ? 8 : 5)))}
-      ${section('Боеприпасы', table('p-ammo', ['Калибр','Тип','Кол-во'], rowsOrBlank((state.ammo || []).map(row=>[text(ammoCalibers[row[0]]?.[0]), text(ammoTypes[row[1]]?.[0]), text(row[2])]), 3, blank ? 8 : 5)))}
+      ${section('Боеприпасы', table('p-ammo', ['Калибр','Тип','Кол-во'], rowsOrBlank((state.ammo || []).map(row=>{ const [kind, type] = String(row[1] || '').split(':'); return [text(ammoCalibers[row[0]]?.[0]), text(ammoTypes[type] ? `${kindsOf(row[0]).length > 1 ? `${ammoKinds[kind]?.[0] || ''}: ` : ''}${ammoTypes[type][0]}` : ''), text(row[2])]; }), 3, blank ? 8 : 5)))}
     </div>
     ${section(`Навыки <small>стат · уровень · итог${blank ? ' · Б — базовый навык, при создании не ниже 2' : ''}</small>`, `<div class="p-skill-columns">${skillBlocks}</div>`, 'p-page-break')}
     ${section(cyberTitle, table('p-cyber', ['Слот','Имплант','Информация','ПЧ'], rowsOrBlank(cyberRows, 4, blank ? 8 : 4)), 'p-page-break')}
