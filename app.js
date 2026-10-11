@@ -378,7 +378,7 @@ function row(type,data=[],index){
     if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;
     if(select === 'teamType') return `<td><select data-key="${key}" aria-label="Тип подчинённого"><option value="">—</option>${Object.entries(execSubordinates).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}</select></td>`;
     if(select === 'vehicleType') return `<td><select data-key="${key}" aria-label="Тип транспорта"><option value="">Свой</option>${Object.entries(vehicleTypes).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item[0])}</option>`).join('')}</select></td>`;
-    if(select === 'caliber') return `<td><select data-key="${key}" aria-label="Калибр"><option value="">—</option>${Object.entries(ammoCalibers).map(([id,[name]])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></td>`;
+    if(select === 'caliber') return `<td><select data-key="${key}" aria-label="Калибр"><option value="">—</option>${Object.entries(ammoCalibers).map(([id,[name]])=>`<option value="${id}" title="${esc(caliberWeapons(id))}"${id === data[j] ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>${data[j] ? `<small class="ammo-for">${esc(caliberWeapons(data[j]))}</small>` : ''}</td>`;
     if(select === 'ammoType') return `<td><select data-key="${key}" aria-label="Тип боеприпасов">${ammoTypeOptions(data[0], data[j])}</select></td>`;
     if(select === 'ammoInfo'){ const item = ammoTypes[data[1]]; return `<td class="ammo-info">${item ? `${esc(item[3])}<small>${esc(item[1])} за ${ammoCalibers[data[0]]?.[1] === 1 ? 'штуку' : '10 шт.'}</small>` : ''}</td>`; }
     if(select === 'loadedAmmo') return `<td><select data-key="${key}" aria-label="Заряжено">${loadedAmmoOptions(data)}</select></td>`;
@@ -865,15 +865,19 @@ const ammoTypeOptions = (caliber, value) => {
   return '<option value="">—</option>' + list.map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
 };
 // Своё оружие (тип не выбран) может брать любой калибр, холодное — никакой.
+// Оружие, которое стреляет этим калибром (по таблице оружия книги).
+const caliberWeapons = caliber => Object.entries(weaponCalibers).filter(([, list])=>list.includes(caliber)).map(([id])=>weaponTypes[id][0].toLowerCase()).join(', ');
 const weaponCaliberList = data => isBlank(data?.[8]) ? Object.keys(ammoCalibers) : weaponCalibers[data[8]] || [];
 const ammoStock = (caliber, type) => (state.ammo || []).filter(row=>row[0] === caliber && row[1] === type).reduce((sum,row)=>sum + (Number(row[2]) || 0), 0);
 // Заряжено: «калибр:тип»; пусто — патроны не связаны со снаряжением (перезарядка без учёта запаса).
 function loadedAmmoOptions(data){
   const calibers = weaponCaliberList(data);
   if(!calibers.length) return '<option value="">— не нужны</option>';
-  const options = calibers.flatMap(caliber=>Object.entries(ammoTypes).filter(([, item])=>item[2].includes(ammoCalibers[caliber][2]))
-    .map(([type,[name]])=>[`${caliber}:${type}`, `${calibers.length > 1 ? `${ammoCalibers[caliber][0]}: ` : ''}${name} (${ammoStock(caliber, type)})`]));
-  return '<option value="">— без учёта запаса</option>' + options.map(([id,name])=>`<option value="${id}"${id === data?.[10] ? ' selected' : ''}>${esc(name)}</option>`).join('');
+  const options = caliber => Object.entries(ammoTypes).filter(([, item])=>item[2].includes(ammoCalibers[caliber][2]))
+    .map(([type,[name]])=>`<option value="${caliber}:${type}"${`${caliber}:${type}` === data?.[10] ? ' selected' : ''}>${calibers.length > 1 ? `${esc(ammoCalibers[caliber][0])}: ` : ''}${esc(name)} (${ammoStock(caliber, type)})</option>`).join('');
+  return '<option value="">— без учёта запаса</option>' + (calibers.length > 1
+    ? calibers.map(caliber=>`<optgroup label="${esc(ammoCalibers[caliber][0])}">${options(caliber)}</optgroup>`).join('')
+    : options(calibers[0]));
 }
 const loadedAmmo = data => { const [caliber, type] = String(data?.[10] || '').split(':'); return ammoCalibers[caliber] && ammoTypes[type] ? {caliber, type} : null; };
 // Снять патроны из запаса (по строкам снаряжения), вернуть остаток в запас.
@@ -1253,7 +1257,7 @@ function printSheetHtml(blank){
     const multiplier = autofireMultiplier(data);
     const attack = skill >= 0 ? `+${refTotal(`b${skill}`)}` : '';
     const autofire = multiplier ? `×${multiplier}, +${refTotal(`b${skills.indexOf(AUTOFIRE_SKILL)}`)}${isAutofireOn(data) ? ' (вкл.)' : ''}` : '';
-    const ammo = isBlank(data[2]) && isBlank(data[6]) ? '' : `${text(data[2])} / ${text(data[6])}${loadedAmmo(data) ? ` ${esc(ammoTypes[loadedAmmo(data).type][0].toLowerCase())}` : ''}`;
+    const ammo = isBlank(data[2]) && isBlank(data[6]) ? '' : `${text(data[2])} / ${text(data[6])}${loadedAmmo(data) ? ` ${esc(ammoTypes[loadedAmmo(data).type][0].toLowerCase())}${weaponCaliberList(data).length > 1 ? ` (${esc(ammoCalibers[loadedAmmo(data).caliber][0].toLowerCase())})` : ''}` : ''}`;
     const loaded = loadedAmmo(data);
     const damage = loaded && loaded.type in ammoNoDamage ? (ammoNoDamage[loaded.type] ? `${ammoNoDamage[loaded.type]} мимо брони` : 'эффект')
       : loaded?.caliber === 'shell' ? `${SHOTGUN_SHELL_DAMAGE} дробь` : text(data[1]);
