@@ -589,7 +589,7 @@ button {
 }
 
 .equipment-grid .weapon-table {
-  min-width: 1060px;
+  min-width: 1210px;
 }
 
 .equipment-grid .weapon-table th:nth-child(1), .equipment-grid .weapon-table td:nth-child(1) {
@@ -616,6 +616,10 @@ button {
 }
 
 .equipment-grid .weapon-table th:nth-child(9), .equipment-grid .weapon-table td:nth-child(9) {
+  width: 160px;
+}
+
+.equipment-grid .weapon-table th:nth-child(10), .equipment-grid .weapon-table td:nth-child(10) {
   width: auto;
 }
 
@@ -2543,6 +2547,7 @@ footer {
 
   .p-grid-1 { grid-template-columns: 1fr; }
   .p-grid-2 { grid-template-columns: 1fr 1fr; }
+  .p-grid-gear { grid-template-columns: 3fr 2fr; }
   .p-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
   .p-grid-4 { grid-template-columns: repeat(4, 1fr); }
 
@@ -2942,11 +2947,11 @@ footer {
     margin-bottom: 2px;
   }
 
-  .weapon-table td:nth-child(1), .weapon-table td:nth-child(9), .weapon-table td:last-child {
+  .weapon-table td:nth-child(1), .weapon-table td:nth-child(10), .weapon-table td:last-child {
     grid-column: 1 / -1;
   }
 
-  .weapon-table td:nth-child(2), .weapon-table td:nth-child(3) {
+  .weapon-table td:nth-child(2), .weapon-table td:nth-child(3), .weapon-table td:nth-child(9) {
     grid-column: span 2;
   }
 
@@ -3003,4 +3008,81 @@ footer {
 
 .net-attack .role-buttons {
   margin: 6px 0 0;
+}
+
+/* === Боеприпасы === */
+.ammo-table select, .weapon-table td:nth-child(9) select {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 4px 0;
+  font-size: 12px;
+  outline: 0;
+}
+
+.equipment-grid .ammo-table th:nth-child(1), .equipment-grid .ammo-table td:nth-child(1) { width: 190px; }
+.equipment-grid .ammo-table th:nth-child(2), .equipment-grid .ammo-table td:nth-child(2) { width: 170px; }
+.equipment-grid .ammo-table th:nth-child(3), .equipment-grid .ammo-table td:nth-child(3) { width: 70px; }
+.equipment-grid .ammo-table th:last-child, .equipment-grid .ammo-table td:last-child { width: 80px; }
+
+.ammo-table td:nth-child(3) input {
+  text-align: center;
+}
+
+.ammo-info {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.35;
+}
+
+.ammo-info small {
+  display: block;
+  color: #999;
+  font-size: 11px;
+}
+
+/* Боеприпасы на узком экране: калибр, тип и количество в строку, свойство — под ними. */
+@media(max-width:760px) {
+  .ammo-table thead {
+    display: none;
+  }
+
+  .ammo-table, .ammo-table tbody {
+    display: block;
+  }
+
+  .ammo-table tr {
+    display: grid;
+    grid-template-columns: minmax(0,2fr) minmax(0,2fr) minmax(0,1fr);
+    gap: 6px 8px;
+    border-bottom: 1px solid #d1ccc6;
+    padding: 8px 0;
+  }
+
+  .equipment-grid .ammo-table td {
+    display: block;
+    width: auto !important;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+  }
+
+  .ammo-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: #777;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .ammo-table td.ammo-info, .ammo-table td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .ammo-table td:last-child {
+    text-align: left;
+  }
 }

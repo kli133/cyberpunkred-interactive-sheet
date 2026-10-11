@@ -183,10 +183,20 @@
           <button class="add-row" data-add="gear">+ ДОБАВИТЬ ПРЕДМЕТ</button>
         </div>
         <div class="panel">
+          <div class="section-title">БОЕПРИПАСЫ <span>CALIBER // TYPE // COUNT</span></div>
+          <div class="table-scroll">
+            <table class="data-table ammo-table">
+              <thead><tr><th>Калибр</th><th>Тип</th><th>Кол-во</th><th>Свойство и цена</th><th></th></tr></thead>
+              <tbody id="ammoRows"></tbody>
+            </table>
+          </div>
+          <button class="add-row" data-add="ammo">+ ДОБАВИТЬ БОЕПРИПАСЫ</button>
+        </div>
+        <div class="panel">
           <div class="section-title">ОРУЖИЕ <span>TYPE // SKILL // DMG // AMMO // ROF // AUTO</span></div>
           <div class="table-scroll">
             <table class="data-table weapon-table">
-              <thead><tr><th>Оружие</th><th>Тип</th><th>Навык</th><th>Урон</th><th title="Патроны сейчас; пусто — не считать">Патр.</th><th title="Размер магазина">Маг.</th><th>ROF</th><th title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам">Авто</th><th>Заметки</th><th></th></tr></thead>
+              <thead><tr><th>Оружие</th><th>Тип</th><th>Навык</th><th>Урон</th><th title="Патроны сейчас; пусто — не считать">Патр.</th><th title="Размер магазина">Маг.</th><th>ROF</th><th title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам">Авто</th><th title="Какими патронами заряжено; перезарядка берёт их из «Боеприпасов»">Боеприпасы</th><th>Заметки</th><th></th></tr></thead>
               <tbody id="weaponRows"></tbody>
             </table>
           </div>

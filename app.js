@@ -2,13 +2,15 @@
 const skillEntries = Object.values(skillCategories).flat();
 const skills = skillEntries.map(([name]) => name);
 const penalizedStats = [1, 2, 7]; // РЕФ, ЛВК, СКО
-const rowTypes = {gear:3, weapon:10, relationship:3};
+const rowTypes = {gear:3, weapon:11, relationship:3, ammo:3};
 // Порядок колонок в таблицах: j — индекс значения в сохранённой строке (новые колонки оружия добавлены в конец).
 // short — короткое однострочное значение (числа, урон); остальные текстовые ячейки многострочные и растут вместе с текстом.
 const rowColumns = {
   gear:[{j:0},{j:1,short:true},{j:2,note:true}],
   // weapon: 7 — множитель автоогня (скрытое поле, заполняется типом), 8 — тип, 9 — автоогонь включён.
-  weapon:[{j:0,label:'Оружие'},{j:8,select:'type',label:'Тип'},{j:5,select:'skill',label:'Навык'},{j:1,short:true,placeholder:'3d6',label:'Урон'},{j:2,short:true,label:'Патр.'},{j:6,short:true,label:'Маг.'},{j:3,short:true,label:'ROF'},{j:9,toggle:true,label:'Авто'},{j:4,note:true,label:'Заметки'}],
+  weapon:[{j:0,label:'Оружие'},{j:8,select:'type',label:'Тип'},{j:5,select:'skill',label:'Навык'},{j:1,short:true,placeholder:'3d6',label:'Урон'},{j:2,short:true,label:'Патр.'},{j:6,short:true,label:'Маг.'},{j:3,short:true,label:'ROF'},{j:9,toggle:true,label:'Авто'},{j:10,select:'loadedAmmo',label:'Боеприпасы'},{j:4,note:true,label:'Заметки'}],
+  // ammo: 0 калибр, 1 тип, 2 количество; колонка «свойство» — справочная, не хранится.
+  ammo:[{j:0,select:'caliber',label:'Калибр'},{j:1,select:'ammoType',label:'Тип'},{j:2,short:true,label:'Кол-во'},{j:-1,select:'ammoInfo'}],
   relationship:[{j:0},{j:1},{j:2}]
 };
 const INDEX_KEY = 'cyberred-index';
@@ -376,12 +378,19 @@ function row(type,data=[],index){
     if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;
     if(select === 'teamType') return `<td><select data-key="${key}" aria-label="Тип подчинённого"><option value="">—</option>${Object.entries(execSubordinates).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}</select></td>`;
     if(select === 'vehicleType') return `<td><select data-key="${key}" aria-label="Тип транспорта"><option value="">Свой</option>${Object.entries(vehicleTypes).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item[0])}</option>`).join('')}</select></td>`;
+    if(select === 'caliber') return `<td><select data-key="${key}" aria-label="Калибр"><option value="">—</option>${Object.entries(ammoCalibers).map(([id,[name]])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></td>`;
+    if(select === 'ammoType') return `<td><select data-key="${key}" aria-label="Тип боеприпасов">${ammoTypeOptions(data[0], data[j])}</select></td>`;
+    if(select === 'ammoInfo'){ const item = ammoTypes[data[1]]; return `<td class="ammo-info">${item ? `${esc(item[3])}<small>${esc(item[1])} за ${ammoCalibers[data[0]]?.[1] === 1 ? 'штуку' : '10 шт.'}</small>` : ''}</td>`; }
+    if(select === 'loadedAmmo') return `<td><select data-key="${key}" aria-label="Заряжено">${loadedAmmoOptions(data)}</select></td>`;
     if(select === 'program') return `<td>${programPresetSelect(key, data[j] || '')}</td>`;
     if(select === 'boost') return `<td>${programBoostSelect(key, data[j] || '', `${type}${index}_10`, data[10] || '')}</td>`;
     if(toggle && type !== 'weapon') return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Включено"${data[j] === '1' ? ' checked' : ''}></td>`;
     if(toggle) return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Автоматический огонь"${isAutofireOn(data) ? ' checked' : ''}${autofireMultiplier(data) ? '' : ' disabled'}></td>`;
     return short ? `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>` : `<td>${growField(key, data[j] || '')}</td>`;
   }).map((html,k)=>{ const label = rowColumns[type][k].label; return label ? html.replace('<td', `<td data-label="${label}"`) : html; }).join('');
+  const ammoActions = type === 'ammo'
+    ? `<button type="button" class="weapon-btn" data-ammo-pack="${index}" title="Купить пачку: +10 (гранаты и ракеты — +1)">+${ammoCalibers[data[0]]?.[1] ?? 10}</button>`
+    : '';
   const programActions = type === 'rolePrograms'
     ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="Бросок урона программы (после попадания)">УРОН</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="Восстановить REZ до максимума">↺</button>`
     : '';
@@ -393,7 +402,7 @@ function row(type,data=[],index){
   const weaponActions = type === 'weapon'
     ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРОН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
     : '';
-  return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
+  return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}${ammoActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
 // СТАТы подчинённого хранятся строкой «ИНТ 5 · РЕФ 7 · …»; на карточке — сеткой полей.
 const parseTeamStats = text => execStatNames.map(name=>{ const match = new RegExp(`${name}\\s*(\\d+)`).exec(String(text || '')); return match ? match[1] : ''; });
@@ -501,6 +510,8 @@ function renderRows(type){
 function refreshWeaponRows(){
   $$('#weaponRows tr').forEach((tr,i)=>{
     const data = state.weapon?.[i];
+    const ammoSelect = tr.querySelector('[data-key$="_10"]');
+    if(ammoSelect && ammoSelect !== document.activeElement) ammoSelect.innerHTML = loadedAmmoOptions(data);
     const toggle = tr.querySelector('[data-key$="_9"]');
     const multiplier = autofireMultiplier(data);
     const on = isAutofireOn(data);
@@ -790,20 +801,98 @@ function weaponDamage(index){
   if(!data) return;
   const name = data[0] || 'Оружие';
   if(isAutofireOn(data)){
-    rollDicePool([AUTOFIRE_DAMAGE], 0, `${name}: урон очереди`, {crits:false, judge: entry => [damageTable(entry, autofireMultiplier(data)), weaknessNote()].filter(Boolean).join('. ')});
+    rollDicePool([AUTOFIRE_DAMAGE], 0, `${name}: урон очереди`, {crits:false, judge: entry => [damageTable(entry, autofireMultiplier(data)), weaknessNote(), ammoNote(data)].filter(Boolean).join('. ')});
     return;
   }
   const damage = parseDamage(data[1]);
   if(!damage){ toast(`${name}: укажите урон в виде 3d6 или 2d6+2`); return; }
   rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus, `${name}: урон`, {crits:false,
-    judge: entry => [isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`, weaknessNote()].filter(Boolean).join('. ')});
+    judge: entry => [isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`, weaknessNote(), ammoNote(data)].filter(Boolean).join('. ')});
 }
+const ammoNote = data => { const loaded = loadedAmmo(data); return loaded && loaded.type !== 'basic' ? `${ammoTypes[loaded.type][0]}: ${ammoTypes[loaded.type][3]}` : ''; };
 const weaknessNote = () => soloLevel('weakness') ? `Слабое место: +${soloLevel('weakness')} к урону, если это первое попадание за ход` : '';
+// ---------- Боеприпасы: запас в снаряжении и заряженные в оружие ----------
+const ammoTypeOptions = (caliber, value) => {
+  const group = ammoCalibers[caliber]?.[2];
+  const list = Object.entries(ammoTypes).filter(([, item])=>!group || item[2].includes(group));
+  return '<option value="">—</option>' + list.map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
+};
+// Своё оружие (тип не выбран) может брать любой калибр, холодное — никакой.
+const weaponCaliberList = data => isBlank(data?.[8]) ? Object.keys(ammoCalibers) : weaponCalibers[data[8]] || [];
+const ammoStock = (caliber, type) => (state.ammo || []).filter(row=>row[0] === caliber && row[1] === type).reduce((sum,row)=>sum + (Number(row[2]) || 0), 0);
+// Заряжено: «калибр:тип»; пусто — патроны не связаны со снаряжением (перезарядка без учёта запаса).
+function loadedAmmoOptions(data){
+  const calibers = weaponCaliberList(data);
+  if(!calibers.length) return '<option value="">— не нужны</option>';
+  const options = calibers.flatMap(caliber=>Object.entries(ammoTypes).filter(([, item])=>item[2].includes(ammoCalibers[caliber][2]))
+    .map(([type,[name]])=>[`${caliber}:${type}`, `${calibers.length > 1 ? `${ammoCalibers[caliber][0]}: ` : ''}${name} (${ammoStock(caliber, type)})`]));
+  return '<option value="">— без учёта запаса</option>' + options.map(([id,name])=>`<option value="${id}"${id === data?.[10] ? ' selected' : ''}>${esc(name)}</option>`).join('');
+}
+const loadedAmmo = data => { const [caliber, type] = String(data?.[10] || '').split(':'); return ammoCalibers[caliber] && ammoTypes[type] ? {caliber, type} : null; };
+// Снять патроны из запаса (по строкам снаряжения), вернуть остаток в запас.
+function takeAmmo(caliber, type, count){
+  let taken = 0;
+  (state.ammo || []).forEach(row=>{
+    if(taken >= count || row[0] !== caliber || row[1] !== type) return;
+    const part = Math.min(Number(row[2]) || 0, count - taken);
+    row[2] = String((Number(row[2]) || 0) - part);
+    taken += part;
+  });
+  return taken;
+}
+function returnAmmo(caliber, type, count){
+  if(count <= 0) return;
+  if(!state.ammo?.some(row=>row.some(cell=>!isBlank(cell)))) state.ammo = [];
+  const row = state.ammo.find(item=>item[0] === caliber && item[1] === type);
+  if(row) row[2] = String((Number(row[2]) || 0) + count);
+  else state.ammo.push([caliber, type, String(count)]);
+}
+// После изменения запаса из кода — перерисовать таблицу боеприпасов, чтобы save() прочитал актуальные числа.
+function syncAmmoTable(){ renderRows('ammo'); bindInputs(); }
+// Зарядить магазин из запаса выбранного типа.
+function loadFromStock(index, data){
+  const loaded = loadedAmmo(data);
+  const magazine = Number(data[6]) || 0;
+  const current = Math.max(0, Number(data[2]) || 0);
+  const taken = takeAmmo(loaded.caliber, loaded.type, Math.max(0, magazine - current));
+  data[2] = String(current + taken);
+  setInput(`weapon${index}_2`, data[2]);
+  return {taken, magazine, total:current + taken, left:ammoStock(loaded.caliber, loaded.type), name:ammoTypes[loaded.type][0]};
+}
+// Смена заряженных патронов: остаток в магазине вернуть в запас старого типа и зарядить новым.
+function applyWeaponAmmo(key, value){
+  const match = /^weapon(\d+)_10$/.exec(key);
+  if(!match) return;
+  const index = Number(match[1]);
+  const data = state.weapon?.[index];
+  if(!data) return;
+  const before = loadedAmmo(data);
+  const current = Math.max(0, Number(data[2]) || 0);
+  // Заряженные без учёта запаса патроны не возвращаются: магазин заряжается заново из снаряжения.
+  if(before && current) returnAmmo(before.caliber, before.type, current);
+  data[10] = value;
+  if(current && (before || loadedAmmo(data))){ data[2] = '0'; setInput(`weapon${index}_2`, '0'); }
+  if(loadedAmmo(data) && !isBlank(data[6])){
+    const result = loadFromStock(index, data);
+    toast(`${data[0] || 'Оружие'}: заряжено ${result.name} — ${result.total} / ${result.magazine}, в запасе ${result.left}`);
+  }
+  syncAmmoTable();
+}
+
 function weaponReload(index){
   const data = weaponRow(index);
   if(!data) return;
   const name = data[0] || 'Оружие';
   if(isBlank(data[6])){ toast(`${name}: укажите размер магазина`); return; }
+  if(loadedAmmo(data)){
+    if((Number(data[2]) || 0) >= Number(data[6])){ toast(`${name}: магазин уже полон`); return; }
+    const result = loadFromStock(index, data);
+    syncAmmoTable();
+    refreshWeaponRows();
+    if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+    toast(result.taken ? `${name}: перезаряжено (${result.name}) — ${result.total} / ${result.magazine}, в запасе ${result.left}` : `${name}: нет патронов «${result.name}» в снаряжении`);
+    return;
+  }
   data[2] = data[6];
   setInput(`weapon${index}_2`, data[2]);
   if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
@@ -925,6 +1014,16 @@ function applyWeaponType(key, value){
   setInput(`weapon${i}_3`, rof);
   setInput(`weapon${i}_7`, multiplier || '');
   if(!multiplier) $$(`[data-key="weapon${i}_9"]`).forEach(el=>{ el.checked = false; });
+  // Патроны из снаряжения: заряженные вернуть в запас; если калибр подходит — зарядить заново из запаса.
+  const data = state.weapon?.[i];
+  const before = loadedAmmo(data);
+  if(before){
+    returnAmmo(before.caliber, before.type, Math.max(0, Number(data[2]) || 0));
+    data[2] = '0'; data[6] = magazine; data[8] = value;
+    if(!(weaponCalibers[value] || []).includes(before.caliber)){ data[10] = ''; setInput(`weapon${i}_10`, ''); setInput(`weapon${i}_2`, '0'); }
+    else loadFromStock(i, data);
+    syncAmmoTable();
+  }
 }
 
 // Выбор брони из списка заполняет SP и штраф; ручная правка максимума считается сменой брони.
@@ -1016,6 +1115,7 @@ function bindInputs(){
       applyArmorInput(key, el.value);
       if(key === 'roleId' && el.value && isBlank(state.roleRank)) setInput('roleRank', ROLE_START_RANK);
       applyWeaponType(key, el.value);
+      applyWeaponAmmo(key, el.value);
       applyProgramPreset(key, el.value);
       applyVehiclePreset(key, el.value);
       applyHumanityLoss(key, el.value);
@@ -1023,6 +1123,10 @@ function bindInputs(){
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
       save(key);
       if(key === 'roleId'){ renderRolePanel(); bindInputs(); }
+      else if(/^weapon\d+_8$/.test(key)){ renderRows('weapon'); bindInputs(); }
+      // Смена калибра сбрасывает неподходящий тип — перерисовать и сохранить; остатки видны в списках «Боеприпасы» у оружия.
+      else if(/^ammo\d+_[01]$/.test(key)){ renderRows('ammo'); bindInputs(); save(); refreshWeaponRows(); }
+      else if(/^ammo\d+_2$/.test(key)) refreshWeaponRows();
       else if(/^role(Team\d+_4|Vehicles\d+_3|Programs\d+_6)$/.test(key)){ renderRows(key.startsWith('roleTeam') ? 'roleTeam' : key.startsWith('roleVehicles') ? 'roleVehicles' : 'rolePrograms'); bindInputs(); refreshRolePanel(); }
       else if(currentRole()) refreshRoleExtras();
     });
@@ -1101,7 +1205,7 @@ function printSheetHtml(blank){
     const multiplier = autofireMultiplier(data);
     const attack = skill >= 0 ? `+${refTotal(`b${skill}`)}` : '';
     const autofire = multiplier ? `×${multiplier}, +${refTotal(`b${skills.indexOf(AUTOFIRE_SKILL)}`)}${isAutofireOn(data) ? ' (вкл.)' : ''}` : '';
-    const ammo = isBlank(data[2]) && isBlank(data[6]) ? '' : `${text(data[2])} / ${text(data[6])}`;
+    const ammo = isBlank(data[2]) && isBlank(data[6]) ? '' : `${text(data[2])} / ${text(data[6])}${loadedAmmo(data) ? ` ${esc(ammoTypes[loadedAmmo(data).type][0].toLowerCase())}` : ''}`;
     return [text(data[0]), text(weaponTypes[data[8]]?.[0]), text(data[5]), attack, text(data[1]), ammo, text(data[3]), autofire, text(data[4])];
   });
   const skillBlocks = Object.entries(skillCategories).map(([category, entries])=>{
@@ -1140,7 +1244,10 @@ function printSheetHtml(blank){
       ${section('Критические травмы', `<div class="p-note">${multiline(state.criticalInjuries) || '&nbsp;'}</div>`)}
       ${section('Зависимости', `<div class="p-note">${multiline(state.addictions) || '&nbsp;'}</div>`)}
     </div>
-    ${section('Снаряжение', table('p-gear', ['Предмет','Кол-во','Заметка'], rowsOrBlank((state.gear || []).map(row=>row.map(text)), 3, blank ? 8 : 5)))}
+    <div class="p-grid p-grid-gear">
+      ${section('Снаряжение', table('p-gear', ['Предмет','Кол-во','Заметка'], rowsOrBlank((state.gear || []).map(row=>row.map(text)), 3, blank ? 8 : 5)))}
+      ${section('Боеприпасы', table('p-ammo', ['Калибр','Тип','Кол-во'], rowsOrBlank((state.ammo || []).map(row=>[text(ammoCalibers[row[0]]?.[0]), text(ammoTypes[row[1]]?.[0]), text(row[2])]), 3, blank ? 8 : 5)))}
+    </div>
     ${section(`Навыки <small>стат · уровень · итог${blank ? ' · Б — базовый навык, при создании не ниже 2' : ''}</small>`, `<div class="p-skill-columns">${skillBlocks}</div>`, 'p-page-break')}
     ${section(cyberTitle, table('p-cyber', ['Слот','Имплант','Информация','ПЧ'], rowsOrBlank(cyberRows, 4, blank ? 8 : 4)), 'p-page-break')}
     ${section('Жизненный путь', `<div class="p-grid p-grid-2">${[['Образ жизни', state.lifeStyle], ['Арендная плата', state.lifeRent], ['Жильё', state.lifeHousing], ['Образ и стиль', state.lifeLook], ...lifeRows].map(([label,value])=>field(esc(label), value)).join('')}</div>`)}
@@ -1775,6 +1882,11 @@ document.addEventListener('click',e=>{
   }
   const rem=e.target.closest('[data-remove]');
   if(rem) removeRow(rem.dataset.remove, Number(rem.dataset.index));
+  const pack=e.target.closest('[data-ammo-pack]');
+  if(pack){
+    const row = state.ammo?.[Number(pack.dataset.ammoPack)];
+    if(row){ row[2] = String((Number(row[2]) || 0) + (ammoCalibers[row[0]]?.[1] ?? 10)); syncAmmoTable(); save(); refreshWeaponRows(); }
+  }
   const weapon=e.target.closest('[data-weapon-attack],[data-weapon-damage],[data-weapon-reload]');
   if(weapon){
     const {weaponAttack:attack, weaponDamage:damage, weaponReload:reload} = weapon.dataset;
