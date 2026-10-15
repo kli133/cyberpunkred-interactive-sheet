@@ -407,7 +407,7 @@
 
 .enemy-texts {
   display: grid;
-  grid-template-columns: repeat(3,minmax(0,1fr));
+  grid-template-columns: repeat(2,minmax(0,1fr));
   gap: 10px;
 }
 
@@ -966,7 +966,7 @@
 .net-table th:nth-child(5) { width: auto; }
 .net-table th:nth-child(6) { width: 130px; }
 .net-table th:nth-child(7) { width: 72px; }
-.net-table th:nth-child(8) { width: 160px; }
+.net-table th:nth-child(8) { width: 200px; }
 
 .net-table td {
   vertical-align: top;
@@ -1467,4 +1467,815 @@
   line-height: 1.45;
   color: var(--ink);
   text-transform: none;
+}
+
+/* Травмы и состояния на карточке противника */
+.enemy-injuries, .enemy-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin: 8px 0 4px;
+}
+
+.injury-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.injury-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #3a1214;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 4px 2px 8px;
+  cursor: help;
+}
+
+.injury-chip.is-custom {
+  background: #5a5856;
+}
+
+.injury-chip button {
+  border: 0;
+  background: transparent;
+  color: #f2a4a7;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 3px;
+}
+
+.injury-chip button:hover {
+  color: #fff;
+}
+
+.enemy-injuries select, .enemy-status select {
+  border: 1px solid #c9c4be;
+  background: #fff;
+  font-size: 11px;
+  padding: 2px 4px;
+  max-width: 190px;
+}
+
+.injury-effects {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.status-chip {
+  border: 1px solid #b9b4ae;
+  background: transparent;
+  color: #5a5856;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 6px;
+  transition: background .15s, color .15s, transform .1s;
+}
+
+.status-chip:active {
+  transform: scale(.94);
+}
+
+.status-chip.active {
+  background: var(--warn);
+  border-color: var(--warn);
+  color: var(--ink);
+}
+
+.enemy-card.is-out .enemy-name {
+  opacity: .55;
+  text-decoration: line-through dotted;
+}
+
+/* Вкладка «Бой: правила» */
+.rules-toolbar input[type=search] {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.rules-list {
+  display: grid;
+  gap: 12px;
+}
+
+.rules-section {
+  margin: 0;
+}
+
+.rules-section > summary span {
+  float: right;
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.rules-section > .rules-body {
+  margin: 12px 14px 16px;
+}
+
+.rules-body h3 {
+  font-size: 13px;
+  letter-spacing: 1px;
+  margin: 16px 0 6px;
+  text-transform: uppercase;
+}
+
+.rules-formula {
+  background: var(--black);
+  color: #fff;
+  border-left: 4px solid var(--red);
+  padding: 8px 12px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.rules-points {
+  margin: 10px 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rules-points li + li {
+  margin-top: 5px;
+}
+
+.rules-table td, .rules-table th {
+  font-size: 12px;
+  line-height: 1.4;
+  vertical-align: top;
+}
+
+.rules-table td:last-child {
+  width: auto;
+}
+
+.rules-table + .rules-table, .table-scroll + .table-scroll {
+  margin-top: 10px;
+}
+
+.catalog-table .group-row td {
+  background: #202124;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.mod-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(240px,1fr));
+  gap: 12px;
+}
+
+.mod-group > b {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.mod-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 4px;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.mod-item:hover {
+  background: #eeeae5;
+}
+
+.mod-item input {
+  accent-color: var(--red);
+}
+
+.mod-item span {
+  flex: 1;
+}
+
+.mod-item em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.mod-item em.is-plus {
+  color: var(--ok);
+}
+
+.mod-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.mod-total strong {
+  font-size: 22px;
+  min-width: 48px;
+  color: var(--red);
+}
+
+.mod-total .add-row, .mod-total .quick-roll {
+  margin-top: 0;
+}
+
+.chance-controls, .cover-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chance-controls label {
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #3b3a39;
+}
+
+.chance-controls input, .chance-controls select, .cover-add input, .cover-add select {
+  border: 1px solid #c9c4be;
+  background: #fff;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.chance-controls input[type=number] {
+  width: 110px;
+}
+
+.chance-controls .add-row {
+  margin-top: 0;
+}
+
+.chance-opposed {
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.chance-table th, .chance-table td {
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.chance-table tbody th {
+  text-align: left;
+  white-space: normal;
+}
+
+/* Цвет ячейки — от красного (мало шансов) к зелёному. */
+.chance-table td.chance {
+  background: color-mix(in srgb, var(--ok) calc(var(--p) * 100%), #e9a3a5);
+  font-weight: 700;
+}
+
+.chance-table td.chance small {
+  display: block;
+  font-weight: 400;
+  font-size: 10px;
+  opacity: .75;
+}
+
+.chance-table td.is-none {
+  color: var(--muted);
+}
+
+.cover-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.cover-row {
+  display: grid;
+  grid-template-columns: minmax(120px,1fr) minmax(80px,160px) 90px 70px auto auto auto;
+  align-items: center;
+  gap: 8px;
+  background: #f4f1ed;
+  padding: 6px 8px;
+  border-left: 4px solid var(--ok);
+}
+
+.cover-row.is-broken {
+  border-left-color: var(--red);
+  opacity: .6;
+}
+
+.cover-row input {
+  border: 1px solid #c9c4be;
+  padding: 3px 5px;
+  width: 100%;
+}
+
+.cover-hp {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+@media(max-width:700px) {
+  .cover-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rules-section > summary span {
+    float: none;
+    display: block;
+  }
+}
+
+/* Вкладка «Сеть»: подсказка сложности, Демон, справочник, картинка архитектуры */
+.net-guide {
+  background: var(--black);
+  color: #ddd;
+  border-left: 4px solid var(--red);
+  padding: 7px 12px;
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+.net-guide b {
+  color: #fff;
+}
+
+.net-iface {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.net-iface input {
+  width: 64px;
+}
+
+.net-ref {
+  margin-bottom: 18px;
+}
+
+.net-ref-table i {
+  color: #6f6b67;
+  font-size: 11px;
+}
+
+.net-ref-table .row-btns {
+  white-space: nowrap;
+}
+
+.demon-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+
+.demon-box.is-active {
+  background: #1b1320;
+  color: #fff;
+  border-left: 4px solid #c35bff;
+  padding: 8px 10px;
+}
+
+.demon-box select {
+  border: 1px solid #c9c4be;
+  background: #fff;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.demon-box .ice-stats input {
+  width: 44px;
+  border: 0;
+  background: #333;
+  color: #fff;
+  font: inherit;
+  padding: 0 3px;
+}
+
+.demon-box.is-active .muted {
+  color: #b9a8c6;
+}
+
+.demon-box .row-btns .weapon-btn {
+  border-color: #c35bff;
+  color: #e2c2ff;
+}
+
+.net-image {
+  margin: 10px 0;
+  background: #101113;
+  padding: 10px;
+}
+
+.net-image-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #ddd;
+  font-size: 12px;
+}
+
+.net-image-tools select {
+  border: 1px solid #54565b;
+  background: #1b1c1f;
+  color: #fff;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.net-image-tools .quick-roll, .net-image-tools .add-row {
+  margin-top: 0;
+}
+
+.net-image-tools input {
+  accent-color: var(--red);
+}
+
+.net-image-view {
+  overflow: auto;
+  max-height: 80vh;
+  background: repeating-conic-gradient(#1a1a1d 0 25%, #121214 0 50%) 0 0 / 20px 20px;
+}
+
+.net-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.net-table td.row-btns {
+  white-space: normal;
+}
+
+.net-table td.row-btns .weapon-btn, .net-table td.row-btns .remove {
+  margin-bottom: 3px;
+}
+
+/* Вкладка «Справочник» */
+.role-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-picker .add-row, .role-players .add-row {
+  margin-top: 0;
+  transition: background .15s, color .15s, transform .1s;
+}
+
+.role-picker .add-row:active, .role-players .add-row:active {
+  transform: scale(.95);
+}
+
+.role-picker .add-row.active {
+  background: var(--red);
+  color: #fff;
+}
+
+.role-rank {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0;
+}
+
+.role-rank label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.role-rank b {
+  min-width: 26px;
+  font-size: 22px;
+  color: var(--red);
+}
+
+.role-rank input[type=range] {
+  width: min(320px, 60vw);
+  accent-color: var(--red);
+}
+
+.role-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-card {
+  background: #f4f1ed;
+  border-left: 5px solid var(--red);
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.role-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.role-card-head b {
+  font-size: 18px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.role-card-head span {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.role-points {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.role-points li.is-locked, .rules-table .is-locked {
+  opacity: .45;
+}
+
+.book-bestiary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(300px,1fr));
+  gap: 12px;
+}
+
+.book-enemy {
+  background: #f4f1ed;
+  border-top: 4px solid var(--red);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  transition: transform .15s, box-shadow .15s;
+}
+
+.book-enemy:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
+
+.book-enemy header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.book-enemy header b {
+  font-size: 15px;
+  text-transform: uppercase;
+}
+
+.book-enemy p {
+  margin: 6px 0;
+}
+
+.book-enemy summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.book-enemy .enemy-row-add input {
+  width: 56px;
+}
+
+.tier {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  color: #fff;
+  background: #5a5856;
+  text-transform: uppercase;
+}
+
+.tier-лейтенант { background: #b07d10; }
+.tier-мини-босс { background: var(--red); }
+.tier-босс { background: #6d1fb0; }
+
+.implant-chip {
+  background: #12324a;
+}
+
+.implant-chip.is-drug {
+  background: #4a1d5a;
+}
+
+.implant-effects {
+  color: #12609a;
+}
+
+/* Вкладка «Экономика» */
+.econ-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.econ-toolbar .add-row, .econ-toolbar .quick-roll {
+  margin-top: 0;
+}
+
+.econ-summary {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.econ-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(340px,1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.econ-card {
+  background: #f4f1ed;
+  border-left: 5px solid var(--warn);
+  padding: 10px 12px;
+  font-size: 12px;
+  transition: border-color .2s, opacity .2s;
+}
+
+.econ-card.is-paid {
+  border-left-color: var(--ok);
+}
+
+.econ-card header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.econ-card header input:not([type]) {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.econ-card input, .econ-card select {
+  border: 1px solid #c9c4be;
+  background: #fff;
+  padding: 3px 5px;
+  font: inherit;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.econ-rank {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.econ-rank input {
+  width: 44px;
+}
+
+.econ-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.econ-fields label {
+  display: grid;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #3b3a39;
+}
+
+.econ-fields label:first-child, .econ-fields label:nth-child(2) {
+  grid-column: 1 / -1;
+}
+
+.econ-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.econ-total strong {
+  font-size: 18px;
+  color: var(--red);
+}
+
+.econ-total small {
+  flex-basis: 100%;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #5a5856;
+}
+
+.econ-paid {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.econ-warn {
+  color: var(--red);
+  font-size: 11px;
+}
+
+.econ-rich {
+  color: #12609a;
+  font-size: 11px;
+}
+
+.econ-perk {
+  margin: 6px 0 0;
+  color: #12609a;
+  font-weight: 700;
+}
+
+.econ-perks summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+.econ-perks p {
+  margin: 4px 0;
+}
+
+.gig-out {
+  font-size: 14px;
+  margin: 6px 0 12px;
+}
+
+.gig-out strong, .gig-out b {
+  color: var(--red);
+}
+
+#hustleTable tr.is-hit td {
+  background: #ffe2a8;
+  font-weight: 700;
+  transition: background .3s;
+}
+
+.ip-award {
+  font-weight: 700;
+  color: var(--red);
+  white-space: nowrap;
+}
+
+@media(max-width:560px) {
+  .econ-list {
+    grid-template-columns: 1fr;
+  }
 }
