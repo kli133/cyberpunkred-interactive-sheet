@@ -14,15 +14,10 @@ const WEAPON_WIDTH = 8;
 // Этаж архитектуры: 0 этаж, 1 ветка, 2 что там, 3 СЛ, 4 содержимое, 5 REZ, 6 REZ макс., 7 пройден.
 const FLOOR_WIDTH = 8;
 const floorKinds = ['Пароль','Файл','Узел управления','Чёрный ЛЁД','Демон','Другое','Пусто'];
-// Таблицы генератора Сети: одна строка — один равновероятный вариант (повтор строки — больший шанс).
-// «ЛЁД: Имя» берёт статы из blackIce в data.js. Это заготовки листа, а не таблицы книги — Мастер их правит.
-const netGenDefaults = {
-  lobby:['Файл','Пароль','Пароль','ЛЁД: Скунс','ЛЁД: Огонёк','ЛЁД: Убийца'],
-  basic:['Пароль','Пароль','Файл','Файл','Узел управления','ЛЁД: Скунс','ЛЁД: Огонёк','ЛЁД: Ворон','ЛЁД: Аспид','ЛЁД: Скорпион','ЛЁД: Адская гончая'],
-  standard:['Пароль','Пароль','Файл','Файл','Узел управления','ЛЁД: Огонёк','ЛЁД: Ворон','ЛЁД: Адская гончая','ЛЁД: Убийца','ЛЁД: Саблезуб','ЛЁД: Скорпион','ЛЁД: Лич'],
-  uncommon:['Пароль','Файл','Файл','Узел управления','Узел управления','ЛЁД: Адская гончая','ЛЁД: Саблезуб','ЛЁД: Лич','ЛЁД: Кракен','ЛЁД: Великан','ЛЁД: Убийца'],
-  advanced:['Пароль','Файл','Узел управления','Узел управления','ЛЁД: Кракен','ЛЁД: Великан','ЛЁД: Дракон','ЛЁД: Лич','ЛЁД: Саблезуб','ЛЁД: Адская гончая','Демон']
-};
+// Таблицы генератора Сети — из книги (netBookTables в net-data.js). Мастер может их править:
+// одна строка — один вариант; 16 строк бросаются 3d6, другое число строк — с равным шансом.
+// «ЛЁД: Имя» берёт статы из blackIce в data.js.
+const netGenDefaults = netBookTables;
 const netGenTitles = {lobby:'Лобби (этажи 1–2)', ...Object.fromEntries(Object.entries(netDifficulties).map(([k,[name,dv]])=>[k, `${name} (СЛ ${dv})`]))};
 const AUTOFIRE_AMMO_COST = 10;
 
@@ -39,14 +34,22 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const clone = value => JSON.parse(JSON.stringify(value));
 const rows = (list, width) => (Array.isArray(list) ? list : []).map(row=>Array.from({length:width},(_,j)=>String(row?.[j] ?? '')));
 
+// Состояния противника (стр. 177, 180–181): лёжа, в захвате, без сознания, горит (2 / 4 / 6), тонет, вакуум, под током.
+// vacuumLoss — сколько ИНТ, РЕФ и ЛВК отнял вакуум: возвращается, когда состояние снимают.
+const blankStatus = () => ({prone:false, grappled:false, unconscious:false, fire:0, drown:false, vacuum:false, shock:false, vacuumLoss:0});
+const statusFlags = [['prone','ЛЁЖА','Лёжа: нельзя перемещаться, пока не встанет'], ['grappled','ЗАХВАТ','В захвате: −2 ко всем броскам'], ['unconscious','БЕЗ СОЗН.','Без сознания: не действует'],
+  ['drown','ТОНЕТ','Тонет или задыхается: в начале хода урон = ТЕЛ мимо брони'], ['vacuum','ВАКУУМ','Вакуум: удушье в начале хода и 1d6 по ИНТ, РЕФ, ЛВК в конце хода'],
+  ['shock','ТОК','Под током: 6d6 в конце хода, броня защищает']];
+const fireLevels = [[0,'не горит'], [2,'горит: слабо (2)'], [4,'горит: сильно (4)'], [6,'горит: смертельно (6)']];
 const blankEnemy = () => ({
   id:uid(), name:'', kind:'', stats:stats.map(()=>''), hp:'', hpMax:'',
   headSp:'', headSpMax:'', bodySp:'', bodySpMax:'', armor:'', range:'', dv:'',
-  weapons:[], skills:[], injuries:'', gear:'', notes:'', dead:false, deathPenalty:0, collapsed:false, selected:false
+  weapons:[], skills:[], injuries:'', gear:'', notes:'', dead:false, deathPenalty:0, collapsed:false, selected:false, status:blankStatus(),
+  implants:[]
 });
 const blankState = () => ({
   sessionTitle:'', scene:'', hooks:'', notes:'', locations:'', clues:'', loot:'',
-  players:[], npcs:[], enemies:[], templates:[], scenes:[], nets:[], tables:[], netGen:{},
+  players:[], npcs:[], enemies:[], templates:[], scenes:[], nets:[], tables:[], netGen:{}, covers:[], economy:{people:[]},
   init:[], turn:0, round:1, log:[], compact:false
 });
 
@@ -60,6 +63,9 @@ function normalizeEnemy(raw){
   ['name','kind','hp','hpMax','headSp','headSpMax','bodySp','bodySpMax','armor','range','dv','injuries','gear','notes'].forEach(k=>{ e[k] = String(e[k] ?? ''); });
   ['dead','collapsed','selected'].forEach(k=>{ e[k] = e[k] === true; });
   e.deathPenalty = num(e.deathPenalty);
+  const st = e.status && typeof e.status === 'object' ? e.status : {};
+  e.status = {...blankStatus(), ...Object.fromEntries(Object.entries(blankStatus()).map(([k,v])=>[k, typeof v === 'boolean' ? st[k] === true : num(st[k])]))};
+  e.implants = (Array.isArray(e.implants) ? e.implants : []).map(imp=>({name:String(imp?.name ?? ''), kind:imp?.kind === 'drug' ? 'drug' : 'cyber'})).filter(imp=>imp.name);
   return e;
 }
 function normalize(raw){
@@ -69,10 +75,17 @@ function normalize(raw){
   s.enemies = (Array.isArray(s.enemies) ? s.enemies : []).map(normalizeEnemy);
   s.templates = (Array.isArray(s.templates) ? s.templates : []).map(normalizeEnemy);
   s.scenes = (Array.isArray(s.scenes) ? s.scenes : []).map(sc=>({name:String(sc?.name ?? ''), enemies:(Array.isArray(sc?.enemies) ? sc.enemies : []).map(normalizeEnemy)}));
-  s.nets = (Array.isArray(s.nets) ? s.nets : []).map(n=>({name:String(n?.name ?? ''), notes:String(n?.notes ?? ''), difficulty:netDifficulties[n?.difficulty] ? n.difficulty : '', floors:rows(n?.floors, FLOOR_WIDTH)}));
+  s.nets = (Array.isArray(s.nets) ? s.nets : []).map(n=>({name:String(n?.name ?? ''), notes:String(n?.notes ?? ''), difficulty:netDifficulties[n?.difficulty] ? n.difficulty : '',
+    floors:rows(n?.floors, FLOOR_WIDTH), demon:demons[n?.demon] ? n.demon : '', demonRez:isBlank(n?.demonRez) ? '' : String(n.demonRez)}));
+  // Нетронутые прежние заготовки листа заменяются таблицами книги.
   const gen = s.netGen && typeof s.netGen === 'object' ? s.netGen : {};
-  s.netGen = Object.fromEntries(Object.entries(netGenDefaults).map(([k,lines])=>[k, typeof gen[k] === 'string' ? gen[k] : lines.join('\n')]));
+  s.netGen = Object.fromEntries(Object.entries(netGenDefaults).map(([k,lines])=>[k, typeof gen[k] === 'string' && gen[k] !== netOldDefaults[k].join('\n') ? gen[k] : lines.join('\n')]));
   s.tables = (Array.isArray(s.tables) ? s.tables : []).map(t=>({name:String(t?.name ?? ''), lines:String(t?.lines ?? '')}));
+  s.covers = (Array.isArray(s.covers) ? s.covers : []).map(c=>({name:String(c?.name ?? ''), hp:num(c?.hp), max:num(c?.max)}));
+  // Экономика: строки персонажей — строки, кроме отметки «оплачено».
+  const people = Array.isArray(s.economy?.people) ? s.economy.people : [];
+  s.economy = {people:people.map(p=>({...Object.fromEntries(['name','roleId','rank','housing','lifestyle','trauma','extra','cash','ipGroup','ipStyle','ipStyleLevel'].map(k=>[k, String(p?.[k] ?? '')])), paid:p?.paid === true}))
+    .map(p=>({...p, housing:p.housing || 'container', lifestyle:p.lifestyle || 'kibble'}))};
   s.init = (Array.isArray(s.init) ? s.init : []).map(item=>({
     id:String(item?.id || uid()), name:String(item?.name ?? ''), value:String(item?.value ?? ''),
     enemyId:item?.enemyId ? String(item.enemyId) : '', note:String(item?.note ?? ''),
@@ -103,7 +116,23 @@ function persist(){
 const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(persist, 300); };
 
 // --- Расчёты противника ---
-const stat = (e, i) => num(e.stats[i]);
+// Импланты и наркотики противника (ref-data.js): fx — эффект, который лист считает сам.
+const cyberIndex = Object.fromEntries(Object.entries(cyberCatalog).flatMap(([group, items])=>items.map(item=>[item[0], {group, item, fx:item[5] || {}}])));
+const drugIndex = Object.fromEntries(streetDrugs.map(d=>[d[0], {fx:d[6]}]));
+const implantFx = imp => (imp.kind === 'drug' ? drugIndex[imp.name] : cyberIndex[imp.name])?.fx || {};
+// СТАТ с учётом имплантов: прибавки (с пределом), экзоскелет поднимает до значения.
+function stat(e, i){
+  let value = num(e.stats[i]);
+  (e.implants || []).map(implantFx).forEach(fx=>{
+    if(fx.stat?.[0] === i) value = fx.stat[2] ? Math.min(fx.stat[2], value + fx.stat[1]) : value + fx.stat[1];
+  });
+  (e.implants || []).map(implantFx).forEach(fx=>{
+    if(fx.statMin?.[0] === i) value = Math.min(fx.statMin[2], Math.max(value, fx.statMin[1]));
+  });
+  return value;
+}
+const initBonus = e => (e.implants || []).map(implantFx).reduce((sum, fx)=>sum + num(fx.init), 0);
+const ignoresWound = e => (e.implants || []).some(imp=>implantFx(imp).ignoreWound);
 const formulaHp = e => 10 + 5*Math.ceil((stat(e, STAT_BODY) + stat(e, STAT_WILL))/2);
 const maxHp = e => isBlank(e.hpMax) ? formulaHp(e) : num(e.hpMax);
 const curHp = e => isBlank(e.hp) ? maxHp(e) : num(e.hp);
@@ -117,18 +146,79 @@ function condition(e){
 }
 const enemyName = (e, i = state.enemies.indexOf(e)) => e.name.trim() || `Противник ${i + 1}`;
 const enemyById = id => state.enemies.find(e=>e.id === id);
-// Смертельное ранение: −6 к СКО (стр. 187), скорость — 2 м за единицу СКО.
-const moveMeters = e => Math.max(0, stat(e, STAT_MOVE) - (condition(e).key === 'mortal' ? 6 : 0)) * 2;
+
+// --- Критические травмы противника ---
+// Травмы хранятся строками в e.injuries; правило находится по названию из книги или прежнему названию листа.
+const zoneLabels = {Body:'тело', Head:'голова'};
+function parseInjury(line){
+  const p = plain(line);
+  const zones = /\(голов/.test(p) ? ['Head', 'Body'] : ['Body', 'Head'];
+  for(const zone of zones){
+    const k = criticalInjuries[zone].findIndex((name, idx)=>p.startsWith(plain(name)) || p.startsWith(plain(injuryRules[zone][idx].old)));
+    if(k >= 0) return {line, zone, k, name:criticalInjuries[zone][k], rule:injuryRules[zone][k]};
+  }
+  return {line};
+}
+const enemyInjuries = e => e.injuries.split('\n').map(line=>line.trim()).filter(Boolean).map(parseInjury);
+const hasInjury = (e, zone, k) => enemyInjuries(e).some(inj=>inj.zone === zone && inj.k === k);
+// Сумма эффектов всех травм: штрафы складываются, «не может уклоняться» и множитель головы — по худшей.
+function injuryMods(e){
+  const total = {all:0, ranged:0, melee:0, move:0, death:0, noDodge:false, headMult:2};
+  enemyInjuries(e).forEach(({rule})=>{
+    if(!rule) return;
+    const m = rule.mods;
+    ['all','ranged','melee','move','death'].forEach(k=>{ total[k] += num(m[k]); });
+    if(m.noDodge) total.noDodge = true;
+    if(m.headMult) total.headMult = Math.max(total.headMult, m.headMult);
+  });
+  return total;
+}
+function addInjury(e, zone, k, rolled){
+  const injury = `${criticalInjuries[zone][k]} (${zoneLabels[zone]}${rolled ? `, 2d6 = ${rolled}` : ''})`;
+  e.injuries = [e.injuries.trim(), injury].filter(Boolean).join('\n');
+  return injury;
+}
+// Бросок 2d6 по таблице повторяется, пока не выпадет травма, которой у цели ещё нет (стр. 187).
+function rollInjury(e, zone){
+  for(let tries = 0; tries < 50; tries++){
+    const r = d(6) + d(6);
+    if(!hasInjury(e, zone, r - 2)) return addInjury(e, zone, r - 2, r);
+  }
+  return 'все травмы этой зоны уже есть';
+}
+// Штраф к броску противника: ранение, травмы, захват; kind — 'ranged' или 'melee' для травм глаз и мышц.
+function checkPenalty(e, kind = ''){
+  const m = injuryMods(e);
+  const wound = condition(e).key === 'serious' && ignoresWound(e) ? 0 : condition(e).penalty;
+  const parts = [[wound, 'ранение'], [m.all, 'травмы'], [e.status.grappled ? 2 : 0, 'захват'],
+    [kind === 'ranged' ? m.ranged : kind === 'melee' ? m.melee : 0, kind === 'ranged' ? 'травма глаза' : 'разрыв мышцы']].filter(([v])=>v > 0);
+  return {total:parts.reduce((sum, [v])=>sum + v, 0), note:parts.map(([v, label])=>`${label} −${v}`).join(', ')};
+}
+// Скорость: смертельное ранение −6, травмы ног и лёгких — свои штрафы, минимум 1 (стр. 186–187); лёжа и без сознания — 0.
+function moveStat(e){
+  const base = stat(e, STAT_MOVE);
+  if(e.status.prone || e.status.unconscious) return 0;
+  const penalty = (condition(e).key === 'mortal' ? 6 : 0) + injuryMods(e).move;
+  return penalty ? Math.max(Math.min(1, base), base - penalty) : base;
+}
+const moveMeters = e => moveStat(e) * 2;
+const deathBase = e => e.deathPenalty + injuryMods(e).death;
 
 // --- Оружие и DV ---
-const autofireMult = w => num(weaponTypes[w[6]]?.[5]);
-const isMelee = w => /Оружие ближнего боя|Рукопашный/.test(weaponTypes[w[6]]?.[1] || '');
+// Экзотическое оружие и гранаты (dm-data.js) выбираются наравне с оружием из книги.
+const allWeapons = {...weaponTypes, ...Object.fromEntries(Object.entries(exoticWeapons).map(([id, w])=>[id, w.slice(0, 6)]))};
+const weaponType = w => allWeapons[w[6]];
+const weaponProps = w => exoticWeapons[w[6]]?.[8] || {};
+const autofireMult = w => num(weaponType(w)?.[5]);
+const isMelee = w => /Оружие ближнего боя|Рукопашный/.test(weaponType(w)?.[1] || '');
+const canShell = w => w[6] === 'shotgun' || w[6] === 'hurricane';
+const SHELL_DV = 13; // дробь и огнемёт: атака против СЛ 13 (стр. 174)
 // DV атаки: ручное значение карточки или таблица по дистанции; null — DV неизвестен, NaN — вне дальности.
 function attackDv(e, w, auto){
   if(!isBlank(e.dv)) return num(e.dv);
-  if(isBlank(e.range) || isMelee(w)) return null;
-  const table = weaponDvTable[w[6]];
-  if(!table) return null;
+  const table = weaponDvTable[w[6]] || exoticWeapons[w[6]]?.[6];
+  if(table === 'shell') return SHELL_DV;
+  if(isBlank(e.range) || isMelee(w) || !table) return null;
   const value = auto ? autofireDv[table]?.[num(e.range)] : rangeDv[table]?.[1][num(e.range)];
   return value ?? NaN;
 }
@@ -150,7 +240,8 @@ function parseDice(value){
 const isCritDamage = entry => entry.sides === 6 && entry.dice.filter(v=>v === 6).length >= 2;
 // Правило RED: на одиночном 1d10 десятка — ещё 1d10 сверху, единица — 1d10 вычитается.
 // judge(entry) — пояснение к результату; multiply — урон очереди (сумма × множитель).
-function roll(formula, modifier, label, {crits = false, note = '', judge, multiply} = {}){
+// noCrit — урон оружия, которое не вызывает критических травм (огнемёт, несмертельное).
+function roll(formula, modifier, label, {crits = false, note = '', judge, multiply, noCrit = false} = {}){
   const dice = Array.from({length:formula.count},()=>d(formula.sides));
   const sum = dice.reduce((a,b)=>a+b,0);
   const critical = crits && formula.count === 1 && formula.sides === 10 && (sum === 10 || sum === 1);
@@ -159,7 +250,7 @@ function roll(formula, modifier, label, {crits = false, note = '', judge, multip
   if(multiply) entry.total *= multiply;
   entry.mult = multiply || 0;
   entry.note = [critical && (critExtra > 0 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКИЙ ПРОВАЛ'),
-    isCritDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`, note, judge?.(entry)].filter(Boolean).join('. ');
+    !noCrit && isCritDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`, note, judge?.(entry)].filter(Boolean).join('. ');
   addLog(entry);
   showRoll(entry);
   return entry;
@@ -184,41 +275,56 @@ function renderLog(){
   $('#diceLog').innerHTML = html;
 }
 
-// Бросок от лица противника: 1d10 + база, со штрафом ранения.
-function enemyCheck(e, base, label, options = {}){
-  const c = condition(e);
-  return roll({count:1, sides:10, bonus:0}, num(base) - c.penalty, `${enemyName(e)}: ${label}`, {crits:true, note: c.penalty ? `ранение −${c.penalty}` : '', ...options});
+// Бросок от лица противника: 1d10 + база, со штрафами ранения, травм и захвата.
+// kind — 'ranged' или 'melee': тогда учитываются и травмы глаз или мышц.
+function enemyCheck(e, base, label, options = {}, kind = ''){
+  const p = checkPenalty(e, kind);
+  const note = [p.note, e.status.unconscious && 'БЕЗ СОЗНАНИЯ — не может действовать', options.note].filter(Boolean).join('; ');
+  return roll({count:1, sides:10, bonus:0}, num(base) - p.total, `${enemyName(e)}: ${label}`, {crits:true, ...options, note});
 }
 const dodgeHint = 'если цель уклоняется (РЕФ 8+) — сравните с её ЛВК + Уклонение + 1d10';
-// Атака: сравнение с DV по дистанции; при попадании урон бросается сразу.
+// Атака: сравнение с DV по дистанции; при попадании урон бросается сразу. Высокое качество — +1 (стр. 342).
 function weaponAttack(e, j){
   const w = e.weapons[j];
   const name = w[0] || 'оружие';
+  const props = weaponProps(w);
   if(!isMelee(w) && !spendAmmo(w, 1)) return;
   const dv = attackDv(e, w, false);
-  const attack = enemyCheck(e, w[1], `${name}, атака`, {judge: entry => isMelee(w) ? 'ближний бой: цель защищается ЛВК + Уклонение + 1d10'
+  const base = num(w[1]) + (props.quality ? 1 : 0);
+  const attack = enemyCheck(e, base, `${name}, атака`, {note: props.quality ? 'высокое качество +1' : '', judge: entry => isMelee(w) ? 'ближний бой: цель защищается ЛВК + Уклонение + 1d10'
     : dv === null ? `DV: выберите дистанцию; ${dodgeHint}` : Number.isNaN(dv) ? 'ВНЕ ДАЛЬНОСТИ'
-    : `${entry.total > dv ? 'ПОПАЛ' : 'ПРОМАХ'} (DV ${dv}); ${dodgeHint}`});
+    : `${entry.total > dv ? 'ПОПАЛ' : 'ПРОМАХ'} (DV ${dv}); ${dodgeHint}`}, isMelee(w) ? 'melee' : 'ranged');
   if(dv !== null && !Number.isNaN(dv) && attack.total > dv) weaponDamage(e, j, `попадание ${attack.total} > DV ${dv}`);
 }
+// Свойства оружия, которые важны цели: несмертельное, игнор брони ниже 11, урон по площади.
+const damageNotes = w => { const p = weaponProps(w); return [p.area && 'урон всем в зоне, один бросок', p.ap11 && 'броня ниже 11 SP не защищает', p.nonLethal && 'несмертельное: цель останется с 1 ПЗ без сознания'].filter(Boolean).join('; '); };
 function weaponDamage(e, j, note = ''){
   const w = e.weapons[j];
+  const props = weaponProps(w);
+  if(props.effect){ addLog({kind:'text', tag:'ЭФФЕКТ', text:`${enemyName(e)}: ${w[0] || 'оружие'} — ${props.effect}${note ? ` (${note})` : ''}`}); return; }
   const f = parseDice(w[2]);
   if(!f){ toast('Укажите урон в виде 3d6 или 2d6+2'); return; }
-  roll(f, 0, `${enemyName(e)}: ${w[0] || 'оружие'}, урон`, {note});
+  roll(f, 0, `${enemyName(e)}: ${w[0] || 'оружие'}, урон`, {note:[note, damageNotes(w)].filter(Boolean).join('; '), noCrit:props.noCrit || props.nonLethal});
 }
-// Очередь (стр. 173): 10 патронов, 1d10 + РЕФ + Автоогонь против DV автоогня;
+// Выстрел дробью (стр. 174): против СЛ 13, при успехе 3d6 всем в 6 м перед стрелком; без прицельных выстрелов.
+function weaponShell(e, j){
+  const w = e.weapons[j];
+  if(!spendAmmo(w, 1)) return;
+  const attack = enemyCheck(e, w[1], `${w[0] || 'дробовик'}, дробь`, {judge: entry => `${entry.total > SHELL_DV ? 'ПОПАЛ' : 'ПРОМАХ'} (СЛ ${SHELL_DV}); цели с РЕФ 8+ могут уклониться`}, 'ranged');
+  if(attack.total > SHELL_DV) roll(parseDice(SHOTGUN_SHELL_DAMAGE), 0, `${enemyName(e)}: дробь, урон`, {note:'всем, кого видит в 6 м перед собой; один бросок на всех'});
+}
+// Очередь (стр. 173): 10 патронов (Helix — 20), 1d10 + РЕФ + Автоогонь против DV автоогня;
 // урон 2d6 × (на сколько превышен DV), не больше множителя оружия.
 function weaponAutofire(e, j){
   const w = e.weapons[j];
   const mult = autofireMult(w);
   if(!mult){ toast('У этого оружия нет автоогня'); return; }
-  if(!spendAmmo(w, AUTOFIRE_AMMO_COST)) return;
+  if(!spendAmmo(w, weaponProps(w).autofireCost || AUTOFIRE_AMMO_COST)) return;
   const base = isBlank(w[7]) ? w[1] : w[7];
   const dv = attackDv(e, w, true);
   const attack = enemyCheck(e, base, `${w[0] || 'оружие'}, очередь`, {note: isBlank(w[7]) ? 'база автоогня не задана — взята атака' : '',
     judge: entry => dv === null ? `DV автоогня: выберите дистанцию; урон 2d6 × превышение (макс. ×${mult})` : Number.isNaN(dv) ? 'ВНЕ ДАЛЬНОСТИ АВТООГНЯ'
-      : entry.total > dv ? `ПОПАЛ (DV ${dv})` : `ПРОМАХ (DV ${dv})`});
+      : entry.total > dv ? `ПОПАЛ (DV ${dv})` : `ПРОМАХ (DV ${dv})`}, 'ranged');
   if(dv === null || Number.isNaN(dv) || attack.total <= dv) return;
   const multiplier = Math.min(mult, attack.total - dv);
   roll({count:2, sides:6, bonus:0}, 0, `${enemyName(e)}: ${w[0] || 'оружие'}, урон очереди`, {multiply:multiplier, note:`превышение ${attack.total - dv}, множитель ×${multiplier} (макс. ×${mult})`});
@@ -228,40 +334,64 @@ function weaponSuppress(e, j){
   const w = e.weapons[j];
   if(!autofireMult(w)){ toast('Подавляющий огонь — только из оружия с автоогнём'); return; }
   if(!spendAmmo(w, AUTOFIRE_AMMO_COST)) return;
-  enemyCheck(e, isBlank(w[7]) ? w[1] : w[7], `${w[0] || 'оружие'}, подавляющий огонь`, {judge: entry => `цели в 25 м без укрытия: ВОЛ + Концентрация + 1d10 против ${entry.total}, иначе тратят перемещение на укрытие`});
+  enemyCheck(e, isBlank(w[7]) ? w[1] : w[7], `${w[0] || 'оружие'}, подавляющий огонь`, {judge: entry => `цели в 25 м без укрытия: ВОЛ + Концентрация + 1d10 против ${entry.total}, иначе тратят перемещение на укрытие`}, 'ranged');
 }
 
 // --- Урон ---
-// Урон по одному противнику, возвращает строку для журнала.
-function damageEnemy(e, damage, zone, melee, crit){
-  const spKey = zone === 'Head' ? 'headSp' : 'bodySp';
+// Зоны попадания: тело, голова, и прицельные выстрелы −8 (стр. 170) в ногу и в предмет в руке — урон идёт в тело.
+const hitZones = [['Body','Тело'], ['Head','Голова ×2'], ['Leg','Нога (прицельно)'], ['Hand','Предмет в руке (прицельно)']];
+// Вид урона: как броня его останавливает.
+const damageKinds = [['','обычный'], ['melee','ближний: SP/2'], ['ap11','броня < 11 не держит'], ['ignore','мимо брони'], ['nonlethal','несмертельный']];
+const LEG_BREAK = 6, LEG_LOST = 10; // индексы «Перелом ноги» и «Оторванная нога» в таблице тела
+// Урон по одному противнику, возвращает строку для журнала. attack — урон от атаки (у смертельно раненого — новая травма).
+function damageEnemy(e, damage, zone, kind, crit, attack = true){
+  const head = zone === 'Head';
+  const spKey = head ? 'headSp' : 'bodySp';
   const sp = num(e[spKey]);
-  const effectiveSp = melee ? Math.ceil(sp/2) : sp;
-  let through = Math.max(0, damage - effectiveSp);
-  if(zone === 'Head') through *= 2;
+  const effectiveSp = kind === 'melee' ? Math.ceil(sp/2) : kind === 'ignore' || (kind === 'ap11' && sp < 11) ? 0 : sp;
+  const mult = head ? injuryMods(e).headMult : 1;
+  let through = Math.max(0, damage - effectiveSp) * mult;
+  const wasMortal = condition(e).key === 'mortal';
   const parts = [];
-  if(through > 0 && sp > 0){ e[spKey] = String(sp - 1); parts.push(`SP ${sp} → ${sp - 1}`); }
-  if(crit){
-    const r = d(6) + d(6);
-    const injury = `${criticalInjuries[zone][r - 2]} (${zone === 'Head' ? 'голова' : 'тело'}, 2d6 = ${r})`;
-    e.injuries = [e.injuries.trim(), injury].filter(Boolean).join('\n');
-    through += CRITICAL_BONUS_DAMAGE;
-    parts.push(`крит. травма: ${injury}`);
+  // Несмертельное и «мимо брони» броню не портят (стр. 186, 349).
+  if(through > 0 && sp > 0 && kind !== 'ignore' && kind !== 'nonlethal'){ e[spKey] = String(sp - 1); parts.push(`SP ${sp} → ${sp - 1}`); }
+  if(through > 0 && zone === 'Hand') parts.push('роняет предмет из рук');
+  const injuries = [];
+  if(kind !== 'nonlethal'){
+    // Прицельно в ногу: «Перелом ноги», если у цели ещё есть целая нога.
+    const legsGone = enemyInjuries(e).filter(inj=>inj.zone === 'Body' && (inj.k === LEG_BREAK || inj.k === LEG_LOST)).length;
+    if(through > 0 && zone === 'Leg' && legsGone < 2) injuries.push(addInjury(e, 'Body', LEG_BREAK));
+    if(crit) injuries.push(rollInjury(e, head ? 'Head' : 'Body'));
+    // Смертельно раненый от каждой атаки получает новую травму, штраф испытания смерти +1 (стр. 188).
+    if(wasMortal && attack && through > 0 && kind !== 'ignore'){
+      injuries.push(rollInjury(e, head ? 'Head' : 'Body'));
+      e.deathPenalty += 1;
+      parts.push('штраф испытания смерти +1');
+    }
   }
+  if(injuries.length){ through += CRITICAL_BONUS_DAMAGE * injuries.length; parts.push(`крит. травма: ${injuries.join(', ')} (+${CRITICAL_BONUS_DAMAGE * injuries.length})`); }
   const before = curHp(e);
-  e.hp = String(Math.max(0, before - through));
+  let after = Math.max(0, before - through);
+  if(kind === 'nonlethal' && after < 1 && through > 0){ after = Math.min(before, 1); e.status.unconscious = true; parts.push('без сознания'); }
+  e.hp = String(after);
   const c = condition(e);
-  const where = zone === 'Head' ? 'голову' : 'тело';
+  const where = {Head:'голову', Leg:'ногу', Hand:'руку'}[zone] || 'тело';
   if(through <= 0) return `${enemyName(e)}: ${damage} в ${where} остановлено бронёй (SP ${effectiveSp}).`;
-  return [`${enemyName(e)}: ${damage} в ${where} (SP ${effectiveSp}) → −${through} ХИТ, ${before} → ${e.hp}/${maxHp(e)}`, ...parts, c.key === 'ok' ? '' : c.label].filter(Boolean).join('. ');
+  return [`${enemyName(e)}: ${damage} в ${where} (SP ${effectiveSp}${mult > 2 ? `, голова ×${mult}` : ''}) → −${kind === 'nonlethal' ? before - after : through} ХИТ, ${before} → ${e.hp}/${maxHp(e)}`, ...parts, c.key === 'ok' ? '' : c.label].filter(Boolean).join('. ');
+}
+// Урон мимо брони без атаки: огонь, удушье (стр. 180).
+function directDamage(e, amount, why){
+  const before = curHp(e);
+  e.hp = String(Math.max(0, before - amount));
+  addLog({kind:'text', tag:'СОСТОЯНИЕ', text:`${enemyName(e)}: ${why} — −${amount} ХИТ, ${before} → ${e.hp}/${maxHp(e)}${condition(e).key === 'ok' ? '' : `. ${condition(e).label}`}`});
 }
 function applyHit(e, card){
   const damage = Math.max(0, Math.floor(num(card.querySelector('[data-hit="damage"]').value)));
   const zone = card.querySelector('[data-hit="zone"]').value;
-  const melee = card.querySelector('[data-hit="melee"]')?.checked;
+  const kind = card.querySelector('[data-hit="kind"]')?.value || '';
   const crit = card.querySelector('[data-hit="crit"]')?.checked;
   if(!damage && !crit) return;
-  addLog({kind:'text', tag:'УРОН', text:damageEnemy(e, damage, zone, melee, crit)});
+  addLog({kind:'text', tag:'УРОН', text:damageEnemy(e, damage, zone, kind, crit)});
   renderCombat();
 }
 // Групповое попадание: граната, взрыв, дробь. Формула бросается один раз на всех.
@@ -273,39 +403,97 @@ function groupHit(){
   let damage = Math.floor(num(value));
   if(formula) damage = roll(formula, 0, `Групповой урон (${targets.length} целей)`).total;
   if(damage <= 0){ toast('Урон: число или формула, например 6d6'); return; }
-  const zone = $('#groupZone').value, melee = $('#groupMelee').checked;
-  targets.forEach(e=>addLog({kind:'text', tag:'ГРУППА', text:damageEnemy(e, damage, zone, melee, false)}));
+  const zone = $('#groupZone').value, kind = $('#groupKind').value;
+  targets.forEach(e=>addLog({kind:'text', tag:'ГРУППА', text:damageEnemy(e, damage, zone, kind, false)}));
   renderCombat();
 }
-// Испытание против смерти: 1d10 + штраф должен быть меньше ТЕЛ; каждое следующее — штраф +1.
+// Испытание против смерти (стр. 188): 1d10 + штраф должен быть меньше ТЕЛ; выпавшая 10 — всегда провал.
+// Каждое следующее — штраф +1; травмы добавляют к штрафу свои +1.
 function deathSave(e){
   const r = d(10);
-  const total = r + e.deathPenalty;
-  const ok = total < stat(e, STAT_BODY);
-  addLog({kind:'text', tag:'СМЕРТЬ', text:`${enemyName(e)}: испытание 1d10 = ${r}${e.deathPenalty ? ` + ${e.deathPenalty}` : ''} против ТЕЛ ${stat(e, STAT_BODY)} — ${ok ? 'выжил' : 'УМЕР'}`});
+  const penalty = deathBase(e);
+  const total = r + penalty;
+  const ok = r !== 10 && total < stat(e, STAT_BODY);
+  addLog({kind:'text', tag:'СМЕРТЬ', text:`${enemyName(e)}: испытание 1d10 = ${r}${penalty ? ` + ${penalty}` : ''} против ТЕЛ ${stat(e, STAT_BODY)} — ${ok ? 'выжил' : r === 10 ? 'выпала 10: УМЕР' : 'УМЕР'}`});
   if(ok) e.deathPenalty += 1; else e.dead = true;
   renderCombat();
+}
+// Состояния в начале и в конце хода противника (стр. 180).
+function startTurnEffects(e){
+  if(e.dead) return;
+  if(e.status.drown || e.status.vacuum) directDamage(e, stat(e, STAT_BODY), e.status.vacuum ? 'удушье в вакууме' : 'тонет / задыхается');
+  if(condition(e).key === 'mortal') addLog({kind:'text', tag:'СМЕРТЬ', text:`${enemyName(e)}: начало хода — испытание смерти (ТЕЛ ${stat(e, STAT_BODY)}, штраф +${deathBase(e)})`});
+}
+function endTurnEffects(e){
+  if(e.dead) return;
+  if(e.status.fire) directDamage(e, e.status.fire, `горит (${e.status.fire})`);
+  if(e.status.shock){
+    const r = roll({count:6, sides:6, bonus:0}, 0, `${enemyName(e)}: удар током`, {noCrit:true});
+    addLog({kind:'text', tag:'СОСТОЯНИЕ', text:damageEnemy(e, r.total, 'Body', '', false, false)});
+  }
+  if(e.status.vacuum){
+    const loss = d(6);
+    [0, STAT_REF, STAT_DEX].forEach(s=>{ e.stats[s] = String(Math.max(0, stat(e, s) - loss)); });
+    e.status.vacuumLoss += loss;
+    const dead = stat(e, 0) <= 0;
+    if(dead) e.dead = true;
+    addLog({kind:'text', tag:'СОСТОЯНИЕ', text:`${enemyName(e)}: вакуум — ИНТ, РЕФ и ЛВК −${loss} (1d6)${dead ? '. ИНТ 0: УМЕР' : ''}`});
+  }
+}
+// Снятый вакуум возвращает отнятые ИНТ, РЕФ и ЛВК: персонаж глотнул воздуха.
+function setStatus(e, key, value){
+  if(key === 'vacuum' && !value && e.status.vacuumLoss){
+    [0, STAT_REF, STAT_DEX].forEach(s=>{ e.stats[s] = String(stat(e, s) + e.status.vacuumLoss); });
+    addLog({kind:'text', tag:'СОСТОЯНИЕ', text:`${enemyName(e)}: глотнул воздуха — ИНТ, РЕФ и ЛВК +${e.status.vacuumLoss}`});
+    e.status.vacuumLoss = 0;
+  }
+  e.status[key] = value;
+}
+// Сломанные рёбра и инородное тело: 5 урона в конце хода, если прошёл пешком больше 4 м (стр. 187).
+const movingInjuries = e => enemyInjuries(e).filter(inj=>/В конце каждого хода, в котором прошёл/.test(inj.rule?.effect || ''));
+function movedFar(e){
+  const list = movingInjuries(e);
+  if(!list.length) return;
+  directDamage(e, CRITICAL_BONUS_DAMAGE * list.length, `прошёл больше 4 м с травмой (${list.map(inj=>inj.name).join(', ')})`);
 }
 
 // --- Отрисовка противников ---
 const input = (i, path, value, attrs = '') => `<input data-e="${i}" data-f="${path}" value="${esc(value)}" ${attrs}>`;
 const area = (i, path, value, placeholder, rowsCount = 2) => `<textarea data-e="${i}" data-f="${path}" rows="${rowsCount}" placeholder="${esc(placeholder)}">${esc(value)}</textarea>`;
 const options = (list, value) => list.map(([id,label])=>`<option value="${esc(id)}"${String(id) === String(value) ? ' selected' : ''}>${esc(label)}</option>`).join('');
-const weaponTypeOptions = value => options([['','— свой —'], ...Object.entries(weaponTypes).map(([id,w])=>[id, w[0]])], value);
-const presetWeaponOptions = () => `<option value="">+ оружие из книги…</option>${Object.entries(weaponTypes).map(([id,w])=>`<option value="${id}">${esc(w[0])} (${esc(w[2])})</option>`).join('')}`;
+const weaponGroups = [['Оружие из книги', weaponTypes], ['Экзотическое и гранаты', exoticWeapons]];
+const weaponTypeOptions = value => `${options([['','— свой —']], value)}${weaponGroups.map(([title, list])=>`<optgroup label="${title}">${options(Object.entries(list).map(([id,w])=>[id, w[0]]), value)}</optgroup>`).join('')}`;
+const presetWeaponOptions = () => `<option value="">+ оружие из книги…</option>${weaponGroups.map(([title, list])=>`<optgroup label="${title}">${Object.entries(list).map(([id,w])=>`<option value="${id}">${esc(w[0])}${w[2] ? ` (${esc(w[2])})` : ''}</option>`).join('')}</optgroup>`).join('')}`;
 const armorOptions = value => options([['','— броня —'], ...Object.entries(armorPresets).map(([id,a])=>[id, `${a[0]} (SP ${a[1]})`])], value);
 const rangeSelect = (i, e) => `<select data-e="${i}" data-f="range" aria-label="Дистанция до цели" title="Дистанция до цели: по ней берётся DV">${options([['','дистанция…'], ...rangeBands.map((b,k)=>[k, b])], e.range)}</select>`;
 const hitControls = (i, c, full) => `
   <input type="number" min="0" data-hit="damage" placeholder="урон" aria-label="Урон">
-  <select data-hit="zone" aria-label="Зона"><option value="Body">Тело</option><option value="Head">Голова ×2</option></select>
-  ${full ? `<label title="Холодное оружие: SP цели вдвое меньше"><input type="checkbox" data-hit="melee"> SP/2</label>
+  <select data-hit="zone" aria-label="Зона" title="Нога: при пробитии брони — «Перелом ноги». Предмет в руке: цель роняет его. Прицельный выстрел стрелок делает с −8">${options(full ? hitZones : hitZones.slice(0, 2), 'Body')}</select>
+  ${full ? `<select data-hit="kind" aria-label="Вид урона" title="Ближний: SP/2. Броня ниже 11 не держит: Mono-Three, рельсотрон. Мимо брони: яд, огонь, удушение. Несмертельный: тазер, дубинка-шокер">${options(damageKinds, '')}</select>
   <label title="Две шестёрки на кубиках урона: травма 2d6 и +5 урона"><input type="checkbox" data-hit="crit"> крит</label>` : ''}
   <button type="button" class="quick-roll" data-act="hit" data-i="${i}">ПОПАДАНИЕ</button>
   ${full ? `<button type="button" class="weapon-btn" data-act="heal" data-i="${i}" title="Вылечить на число из поля «урон» (пусто — полностью)">ЛЕЧИТЬ</button>` : ''}
   <button type="button" class="weapon-btn death-btn" data-act="deathSave" data-i="${i}"${c.key === 'mortal' ? '' : ' hidden'}>ИСПЫТАНИЕ СМЕРТИ</button>`;
-const weaponButtons = (i, j, w) => `<button type="button" class="weapon-btn" data-act="attack" data-i="${i}" data-j="${j}" title="1d10 + атака против DV; при попадании урон бросается сам">АТАКА</button>`
-  + (autofireMult(w) ? `<button type="button" class="weapon-btn" data-act="autofire" data-i="${i}" data-j="${j}" title="Очередь: 10 патронов, DV автоогня, урон 2d6 × превышение (макс. ×${autofireMult(w)})">ОЧЕРЕДЬ</button><button type="button" class="weapon-btn" data-act="suppress" data-i="${i}" data-j="${j}" title="Подавляющий огонь: 10 патронов">ПОДАВЛ.</button>` : '')
-  + `<button type="button" class="weapon-btn" data-act="damage" data-i="${i}" data-j="${j}">УРОН</button>`;
+function weaponButtons(i, j, w){
+  const props = weaponProps(w);
+  const note = props.note || props.effect;
+  return (props.autoOnly ? '' : `<button type="button" class="weapon-btn" data-act="attack" data-i="${i}" data-j="${j}" title="1d10 + атака против DV; при попадании урон бросается сам${note ? `. ${esc(note)}` : ''}">АТАКА</button>`)
+    + (canShell(w) ? `<button type="button" class="weapon-btn" data-act="shell" data-i="${i}" data-j="${j}" title="Выстрел дробью: против СЛ 13, 3d6 всем в 6 м перед стрелком">ДРОБЬ</button>` : '')
+    + (autofireMult(w) ? `<button type="button" class="weapon-btn" data-act="autofire" data-i="${i}" data-j="${j}" title="Очередь: ${props.autofireCost || AUTOFIRE_AMMO_COST} патронов, DV автоогня, урон 2d6 × превышение (макс. ×${autofireMult(w)})">ОЧЕРЕДЬ</button><button type="button" class="weapon-btn" data-act="suppress" data-i="${i}" data-j="${j}" title="Подавляющий огонь: 10 патронов">ПОДАВЛ.</button>` : '')
+    + `<button type="button" class="weapon-btn" data-act="damage" data-i="${i}" data-j="${j}"${props.effect ? ` title="${esc(props.effect)}"` : ''}>${props.effect ? 'ЭФФЕКТ' : 'УРОН'}</button>`;
+}
+// Травмы — чипы с эффектом из книги; штрафы, которые лист применяет сам, — строкой ниже.
+function injuryBlock(i, e){
+  const list = enemyInjuries(e);
+  const m = injuryMods(e);
+  const effects = [m.all && `все броски −${m.all}`, m.ranged && `дальние атаки −${m.ranged}`, m.melee && `ближние атаки −${m.melee}`, m.move && `СКО −${m.move}`,
+    m.death && `испытание смерти +${m.death}`, m.noDodge && 'не может уклоняться', m.headMult > 2 && `голова ×${m.headMult}`].filter(Boolean);
+  const chips = list.map((inj, k)=>`<span class="injury-chip${inj.rule ? '' : ' is-custom'}" title="${esc(inj.rule ? `${inj.rule.effect} Первая помощь: ${inj.rule.aid}. Лечение: ${inj.rule.treat}.` : 'Своя запись')}">${esc(inj.line)}<button type="button" data-act="delInjury" data-i="${i}" data-j="${k}" aria-label="Вылечить">×</button></span>`).join('');
+  const add = `<select data-act="addInjury" data-i="${i}" aria-label="Добавить травму"><option value="">+ травма…</option>${Object.entries(criticalInjuries).map(([zone, names])=>`<optgroup label="${zone === 'Head' ? 'Голова' : 'Тело'}">${names.map((name, k)=>`<option value="${zone}:${k}">${k + 2}. ${esc(name)}</option>`).join('')}</optgroup>`).join('')}</select>`;
+  const moving = movingInjuries(e).length ? `<button type="button" class="weapon-btn" data-act="movedFar" data-i="${i}" title="Рёбра или инородное тело: 5 урона за каждую такую травму">ПРОШЁЛ > 4 М</button>` : '';
+  return `<div class="enemy-injuries"><span class="injury-title">ТРАВМЫ</span>${chips || '<span class="muted">нет</span>'}${add}${moving}</div>${effects.length ? `<p class="injury-effects">Учтено в бросках: ${effects.join(' · ')}</p>` : ''}`;
+}
+const statusBlock = (i, e) => `<div class="enemy-status"><span class="injury-title">СОСТОЯНИЕ</span>${statusFlags.map(([k, label, hint])=>`<button type="button" class="status-chip${e.status[k] ? ' active' : ''}" data-act="status" data-i="${i}" data-j="${k}" aria-pressed="${e.status[k]}" title="${esc(hint)}">${label}</button>`).join('')}<select data-act="fire" data-i="${i}" aria-label="Горит" title="Урон огнём в конце хода противника, мимо брони">${options(fireLevels, e.status.fire)}</select></div>`;
 const headTools = (i, e) => `<span class="enemy-tools">
     <button type="button" data-act="init" data-i="${i}" title="${state.init.some(item=>item.enemyId === e.id) ? 'Уже в инициативе — перебросить' : 'В инициативу: 1d10 + РЕФ'}">⚑</button>
     <button type="button" data-act="dup" data-i="${i}" title="Копия">⧉</button>
@@ -350,6 +538,9 @@ function enemyCard(e, i){
         <button type="button" class="weapon-btn" data-act="repair" data-i="${i}" title="Восстановить SP до максимума">ПОЧИНИТЬ</button>
       </div>
       <div class="enemy-hit">${hitControls(i, c, true)}</div>
+      <div data-out="injuries">${injuryBlock(i, e)}</div>
+      ${statusBlock(i, e)}
+      ${typeof implantBlock === 'function' ? `<div data-out="implants">${implantBlock(i, e)}</div>` : ''}
       <div class="enemy-target">
         <span>ЦЕЛЬ</span>${rangeSelect(i, e)}
         <label title="DV вручную: укрытие, особые условия. Пусто — по таблице дистанции">DV${input(i, 'dv', e.dv, 'type="number" min="0" placeholder="авто"')}</label>
@@ -371,7 +562,6 @@ function enemyCard(e, i){
         <button type="button" class="add-row" data-act="evade" data-i="${i}" title="1d10 + ЛВК + навык Уклонение, если он есть в списке">УКЛОНЕНИЕ</button>
       </div>
       <div class="enemy-texts">
-        <label>Крит. травмы${area(i, 'injuries', e.injuries, 'Записываются сами при крите')}</label>
         <label>Киберимпланты и снаряжение${area(i, 'gear', e.gear, 'Кибероружие, гранаты, наркотики...')}</label>
         <label>Заметки${area(i, 'notes', e.notes, 'Тактика, мотивация, что знает')}</label>
       </div>
@@ -412,8 +602,9 @@ function updateCard(i){
     out('badge').textContent = c.label;
     out('hpbar').style.width = `${hpPercent(e)}%`;
     if(out('wound')) out('wound').textContent = woundThreshold(e);
-    if(out('death')) out('death').textContent = `< ${stat(e, STAT_BODY)}${e.deathPenalty ? ` (+${e.deathPenalty})` : ''}`;
-    if(out('move')) out('move').textContent = `${stat(e, STAT_MOVE)} // ${moveMeters(e)} м`;
+    if(out('death')) out('death').textContent = `< ${stat(e, STAT_BODY)}${deathBase(e) ? ` (+${deathBase(e)})` : ''}`;
+    if(out('move')) out('move').textContent = `${moveStat(e)} // ${moveMeters(e)} м`;
+    card.classList.toggle('is-out', e.status.unconscious);
     card.querySelectorAll('[data-f="hp"]').forEach(el=>{ el.placeholder = maxHp(e); });
     card.querySelectorAll('[data-f="hpMax"]').forEach(el=>{ el.placeholder = formulaHp(e); });
     card.querySelector('[data-act="deathSave"]').hidden = c.key !== 'mortal';
@@ -560,7 +751,7 @@ const sortInit = () => {
   state.turn = Math.max(0, state.init.indexOf(current));
 };
 function enemyInit(e){
-  const r = roll({count:1, sides:10, bonus:0}, stat(e, STAT_REF), `${enemyName(e)}: инициатива`);
+  const r = roll({count:1, sides:10, bonus:0}, stat(e, STAT_REF) + initBonus(e), `${enemyName(e)}: инициатива`, {note: initBonus(e) ? `импланты +${initBonus(e)}` : ''});
   const existing = state.init.find(item=>item.enemyId === e.id);
   if(existing) existing.value = String(r.total);
   else state.init.push({id:uid(), name:'', value:String(r.total), enemyId:e.id, note:'', effects:[]});
@@ -632,74 +823,105 @@ function renderTemplates(){
 
 // --- Сеть ---
 const plain = text => text.toLowerCase().replace(/ё/g, 'е').trim();
-// ЛЁД ищется по русскому или английскому названию, затем по началу названия.
+// ЛЁД ищется по русскому или английскому названию, по прежнему имени листа, затем по началу названия.
 function findIce(name){
   const q = plain(name);
+  if(iceAliases[q]) return blackIce[iceAliases[q]];
   const list = Object.values(blackIce);
   return list.find(ice=>ice[0].split(/[()]/).some(part=>part.trim() && plain(part) === q)) || list.find(ice=>plain(ice[0]).startsWith(q));
 }
+const iceKey = ice => Object.keys(blackIce).find(k=>blackIce[k] === ice);
 const iceText = ice => `${ice[0]}: PER ${ice[2]} SPD ${ice[3]} ATK ${ice[4]} DEF ${ice[5]} — ${ice[7]}`;
-// Строка таблицы → этаж [этаж, ветка, что, СЛ, содержимое, REZ, REZ макс., пройден].
-function floorFromLine(line, dv){
+const iceFloor = name => {
+  const found = findIce(name);
+  return found ? ['', '', 'Чёрный ЛЁД', '', iceText(found), String(found[6]), String(found[6]), ''] : ['', '', 'Чёрный ЛЁД', '', name, '', '', ''];
+};
+// Строка таблицы → этажи [этаж, ветка, что, СЛ, содержимое, REZ, REZ макс., пройден].
+// На одном этаже может быть несколько ЛЬДОВ: «ЛЁД: Адская гончая x2», «ЛЁД: Ворон, Аспид» — каждый своей строкой.
+// СЛ берётся из строки («Пароль СЛ8»), иначе — по сложности архитектуры.
+function floorsFromLine(line, dv){
   const text = line.trim();
   const ice = text.match(/^(?:лёд|лед|ice)\s*:\s*(.+)$/i);
-  if(ice){
-    const found = findIce(ice[1]);
-    return found ? ['', '', 'Чёрный ЛЁД', '', iceText(found), String(found[6]), String(found[6]), ''] : ['', '', 'Чёрный ЛЁД', '', ice[1], '', '', ''];
-  }
-  const kind = floorKinds.find(k=>plain(text).startsWith(plain(k.split(' ')[0])));
-  if(kind === 'Пароль' || kind === 'Файл' || kind === 'Узел управления') return ['', '', kind, String(dv), text.replace(/^\S+(\s+управления)?/i, '').replace(/^[\s:—-]+/, ''), '', '', ''];
-  if(kind) return ['', '', kind, '', '', '', '', ''];
-  return ['', '', 'Другое', '', text, '', '', ''];
+  if(ice) return ice[1].split(',').flatMap(part=>{
+    const m = part.trim().match(/^(.*?)\s*[xх×]\s*(\d+)$/i);
+    return Array.from({length: m ? Math.min(6, Number(m[2])) : 1}, ()=>iceFloor(m ? m[1] : part.trim()));
+  });
+  const ownDv = text.match(/СЛ\s*(\d+)/i);
+  const rest = text.replace(/СЛ\s*\d+/i, '');
+  const kind = floorKinds.find(k=>plain(rest).startsWith(plain(k.split(' ')[0])));
+  if(kind === 'Пароль' || kind === 'Файл' || kind === 'Узел управления') return [['', '', kind, ownDv ? ownDv[1] : String(dv), rest.replace(/^\S+(\s+управления)?/i, '').replace(/^[\s:—-]+/, '').trim(), '', '', '']];
+  if(kind) return [['', '', kind, '', '', '', '', '']];
+  return [['', '', 'Другое', '', text, '', '', '']];
 }
-function rollFloor(key, dv){
+// Бросок по таблице: 16 строк — 3d6 (строка 1 = 3), иначе равный шанс. used — уже выпавшие ЛЁД и Пароли:
+// повторы перебрасываются (стр. 210), Файлы и Узлы могут повторяться.
+function rollFloor(key, dv, used = new Set()){
   const lines = state.netGen[key].split('\n').map(l=>l.trim()).filter(Boolean);
-  return floorFromLine(lines.length ? pick(lines) : 'Пусто', dv);
+  if(!lines.length) return floorsFromLine('Пусто', dv);
+  const once = line => /^(лёд|лед|ice|пароль)/i.test(line);
+  let line = '';
+  for(let tries = 0; tries < 30; tries++){
+    line = lines.length === 16 ? lines[d(6) + d(6) + d(6) - 3] : pick(lines);
+    if(!once(line) || !used.has(line)) break;
+  }
+  if(once(line)) used.add(line);
+  return floorsFromLine(line, dv);
 }
-// Архитектура: этажи 1–2 — из таблицы лобби, остальные — из таблицы сложности.
-// Этажей 3d6, если не задано. Ветка «Б» отходит от основного пути «А» и делит с ним этажи.
+const branchLetters = ['А','Б','В','Г','Д'];
+// Шаг 1 (стр. 210): 3d6 этажей; 1d10 ≥ 7 — ответвление, и бросок повторяется. Ветки отходят не раньше второго
+// этажа основного пути, основной путь — самый длинный: у него есть «дно» для Вируса.
+function planBranches(total, rollBranches){
+  let count = 0;
+  while(rollBranches && count < 4 && d(10) >= 7) count++;
+  const lengths = [];
+  for(let k = 0; k < count; k++){
+    const left = total - lengths.reduce((a,b)=>a + b, 0);
+    const len = 1 + Math.floor(Math.random() * Math.max(1, Math.floor((left - 3) / (count - k + 1))));
+    if(left - len < Math.max(3, len + 1)) break;
+    lengths.push(len);
+  }
+  const main = total - lengths.reduce((a,b)=>a + b, 0);
+  return {main, branches:lengths.map(len=>({len, from: 2 + Math.floor(Math.random() * Math.max(1, main - 2))}))};
+}
 function generateNet(){
   const difficulty = $('#netDifficulty').value;
   const dv = netDifficulties[difficulty][1];
   const auto = isBlank($('#netFloors').value);
   const total = auto ? d(6) + d(6) + d(6) : Math.max(2, Math.min(40, Math.floor(num($('#netFloors').value))));
-  let mainLength = total, branchLength = 0, branchFrom = 0;
-  if($('#netBranch').checked && total >= 5){
-    branchLength = 1 + Math.floor(Math.random() * Math.min(4, total - 4));
-    mainLength = total - branchLength;
-    branchFrom = 2 + Math.floor(Math.random() * (mainLength - 2));
-  }
+  const plan = planBranches(total, $('#netBranch').checked);
+  const multi = plan.branches.length > 0;
+  const used = new Set();
   const floors = [];
-  for(let n = 1; n <= mainLength; n++){
-    const f = rollFloor(n <= 2 ? 'lobby' : difficulty, dv);
-    f[0] = String(n); f[1] = branchLength ? 'А' : '';
-    floors.push(f);
-  }
-  for(let k = 1; k <= branchLength; k++){
-    const f = rollFloor(difficulty, dv);
-    f[0] = String(branchFrom + k); f[1] = 'Б';
-    floors.push(f);
-  }
+  const push = (list, number, branch) => list.forEach(f=>{ f[0] = String(number); f[1] = branch; floors.push(f); });
+  for(let n = 1; n <= plan.main; n++) push(rollFloor(n <= 2 ? 'lobby' : difficulty, dv, used), n, multi ? 'А' : '');
+  plan.branches.forEach((b, k)=>{ for(let m = 1; m <= b.len; m++) push(rollFloor(difficulty, dv, used), b.from + m, branchLetters[k + 1]); });
   const name = $('#netName').value.trim() || `Архитектура ${state.nets.length + 1}`;
-  state.nets.push({name, notes: branchLength ? `Ветка Б отходит после этажа ${branchFrom}.` : '', difficulty, floors});
+  const branchText = plan.branches.map((b, k)=>`ветка ${branchLetters[k + 1]} после этажа ${b.from}`).join(', ');
+  state.nets.push({name, notes: branchText ? `${branchText[0].toUpperCase()}${branchText.slice(1)}.` : '', difficulty, floors, demon:'', demonRez:''});
   $('#netName').value = '';
   renderNets(); save();
-  addLog({kind:'text', tag:'СЕТЬ', text:`${name}: ${total} этажей${auto ? ' (3d6)' : ''}, ${netGenTitles[difficulty]}${branchLength ? `, ветка Б после этажа ${branchFrom}` : ''}`});
+  addLog({kind:'text', tag:'СЕТЬ', text:`${name}: ${total} этажей${auto ? ' (3d6)' : ''}, ${netGenTitles[difficulty]}${branchText ? `, ${branchText}` : ''}`});
   toast(`Архитектура «${name}» создана`);
 }
 // Этаж перебрасывается по таблице своей архитектуры (лобби — для этажей 1–2 основного пути).
+// Все строки этого этажа (несколько ЛЬДОВ) заменяются новым результатом.
 function rerollFloor(n, r){
   const net = state.nets[n];
   const old = net.floors[r];
   const difficulty = net.difficulty || $('#netDifficulty').value;
-  const f = rollFloor(num(old[0]) <= 2 && old[1] !== 'Б' ? 'lobby' : difficulty, netDifficulties[difficulty][1]);
-  f[0] = old[0]; f[1] = old[1];
-  net.floors[r] = f;
+  const lobby = num(old[0]) <= 2 && !['Б','В','Г','Д'].includes(old[1]);
+  const used = new Set(net.floors.filter(f=>f[0] !== old[0] || f[1] !== old[1]).map(f=>f[2] === 'Пароль' ? `Пароль СЛ${f[3]}` : f[2] === 'Чёрный ЛЁД' ? `ЛЁД: ${iceName(f).split(' (')[0]}` : '').filter(Boolean));
+  const fresh = rollFloor(lobby ? 'lobby' : difficulty, netDifficulties[difficulty][1], used);
+  fresh.forEach(f=>{ f[0] = old[0]; f[1] = old[1]; });
+  const first = net.floors.findIndex(f=>f[0] === old[0] && f[1] === old[1]);
+  net.floors = net.floors.filter(f=>f[0] !== old[0] || f[1] !== old[1]);
+  net.floors.splice(first, 0, ...fresh);
   renderNets(); save();
 }
 // Текст ЛЬДа «Имя: PER 6 SPD 6 ATK 6 DEF 2 — эффект» показывается карточкой; ✎ открывает его для правки.
 const iceStats = ['PER','SPD','ATK','DEF'];
 const editingFloors = new Set();
+const openNetImages = new Set(); // архитектуры с открытой картинкой
 function parseIce(text){
   const m = String(text).match(/^(.*?):\s*PER\s*(\d+)\s*SPD\s*(\d+)\s*ATK\s*(\d+)\s*DEF\s*(\d+)\s*(?:—\s*([\s\S]*))?$/);
   return m && {name:m[1].trim(), stats:m.slice(2, 6), effect:(m[6] || '').trim()};
@@ -723,24 +945,58 @@ function floorContent(n, r, f){
 const floorStat = (f, key) => { const m = f[4].match(new RegExp(`${key}\\s*(\\d+)`)); return m ? Number(m[1]) : null; };
 const floorDice = f => (f[4].match(/\d+\s*[dд]\s*\d+/i) || [''])[0];
 const iceName = f => f[4].split(':')[0].trim() || 'Чёрный ЛЁД';
-// Атака ЛЬДа: 1d10 + ATK против Интерфейса нетраннера + DEF его защиты + 1d10.
-function iceAttack(n, r){
+// Броски ЛЬДА (стр. 205): атака ATK + 1d10 против Интерфейса + 1d10 (или ЗАЩ программы + 1d10);
+// защита DEF + 1d10; встреча — SPD + 1d10 против Интерфейса + Скорость + 1d10; «Ускользнуть» — против PER + 1d10.
+const iceRolls = {
+  attack:['ATK', 'атака', 'против Интерфейса нетраннера + 1d10 (ЛЁД против программ — против ЗАЩ программы + 1d10)'],
+  defense:['DEF', 'защита', 'атакующий должен превзойти: Интерфейс + ATK программы + 1d10'],
+  speed:['SPD', 'встреча (СКО)', 'нетраннер бросает Интерфейс + бонус Скорости + 1d10; проиграл — сразу эффект ЛЬДА'],
+  perception:['PER', 'восприятие (ВСП)', 'против «Ускользнуть»: Интерфейс + 1d10 нетраннера']
+};
+const iceRollLabels = {attack:'АТАКА', defense:'ЗАЩ', speed:'СКО', perception:'ВСП'};
+function iceRoll(n, r, kind){
   const f = state.nets[n].floors[r];
-  roll({count:1, sides:10, bonus:0}, floorStat(f, 'ATK') || 0, `${iceName(f)}: атака`, {crits:true, note:'против Интерфейса нетраннера + DEF защитной программы + 1d10'});
+  const [key, label, note] = iceRolls[kind];
+  roll({count:1, sides:10, bonus:0}, floorStat(f, key) || 0, `${iceName(f)}: ${label}`, {crits:true, note});
 }
 function iceEffect(n, r){
   const f = state.nets[n].floors[r];
   const formula = parseDice(floorDice(f));
   if(formula) roll(formula, 0, `${iceName(f)}: эффект`, {note:f[4].split('—').slice(1).join('—').trim()});
 }
+// Демон (стр. 212): защищается и бьёт Разрядом Интерфейсом + 1d10; дронами и турелями — боевым номером + 1d10.
+const demonRolls = {
+  zap:['РАЗРЯД', 'против Интерфейса нетраннера + 1d10 или ЗАЩ программы + 1d10; успех — 1d6 мозгу или программе'],
+  defense:['ЗАЩИТА', 'Интерфейс + 1d10: атакующий должен превзойти'],
+  control:['УПРАВЛЕНИЕ', 'перехватить Узел — превзойти его СЛ или проверку того, кто им владеет'],
+  combat:['БОЕВОЙ №', 'атака или защита дроном, турелью']
+};
+function demonRoll(n, kind){
+  const [name, , iface, , combat] = demons[state.nets[n].demon];
+  const [label, note] = demonRolls[kind];
+  const r = roll({count:1, sides:10, bonus:0}, kind === 'combat' ? combat : iface, `${name}: ${label.toLowerCase()}`, {crits:true, note});
+  if(kind === 'zap') roll({count:1, sides:6, bonus:0}, 0, `${name}: урон Разряда`, {note:`если ${r.total} больше защиты цели`, noCrit:true});
+}
+function demonBlock(net, n){
+  const select = `<select data-net="${n}" data-k="demon" aria-label="Демон архитектуры">${options([['','без Демона'], ...Object.entries(demons).map(([k, dm])=>[k, `Демон: ${dm[0]}`])], net.demon)}</select>`;
+  const demon = demons[net.demon];
+  if(!demon) return `<div class="demon-box">${select}<span class="muted">Демон управляет Узлами и активной защитой (стр. 212).</span></div>`;
+  const [name, rez, iface, actions, combat, icon] = demon;
+  return `<div class="demon-box is-active">${select}
+    <div class="ice-stats"><span><small>REZ</small><input data-net="${n}" data-k="demonRez" type="number" value="${esc(isBlank(net.demonRez) ? rez : net.demonRez)}" aria-label="REZ демона"> / ${rez}</span><span><small>ИНТЕРФЕЙС</small>${iface}</span><span><small>ДЕЙСТВИЙ</small>${actions}</span><span><small>БОЕВОЙ №</small>${combat}</span></div>
+    <span class="row-btns">${Object.entries(demonRolls).map(([kind, [label, note]])=>`<button type="button" class="weapon-btn" data-demon-roll="${n}" data-kind="${kind}" title="${esc(note)}">${label}</button>`).join('')}</span>
+    <small class="muted">${esc(name)}: ${esc(icon)}. Встаёт первым в очереди; сначала триггеры Узлов, остальными действиями — Разряд.</small></div>`;
+}
+const iceButtons = (n, r, f) => f[2] !== 'Чёрный ЛЁД' || floorStat(f, 'ATK') === null ? ''
+  : Object.entries(iceRolls).map(([kind, [key, label]])=>`<button type="button" class="weapon-btn" data-ice-roll="${n}" data-r="${r}" data-kind="${kind}" title="1d10 + ${key}: ${esc(label)}">${iceRollLabels[kind]}</button>`).join('');
 function renderNetGen(){
   $('#netDifficulty').innerHTML = options(Object.entries(netDifficulties).map(([k,[name,dv]])=>[k, `${name} — СЛ ${dv}`]), $('#netDifficulty').value || 'standard');
   $('#netGenTables').innerHTML = Object.keys(netGenDefaults).map(k=>`<label>${esc(netGenTitles[k])}<textarea data-netgen="${k}" rows="8">${esc(state.netGen[k])}</textarea></label>`).join('');
-  $('#iceList').innerHTML = Object.values(blackIce).map(ice=>`<tr><td><b>${esc(ice[0])}</b><br><small class="muted">${esc(ice[1])}</small></td><td>${ice[2]}</td><td>${ice[3]}</td><td>${ice[4]}</td><td>${ice[5]}</td><td>${ice[6]}</td><td>${esc(ice[7])}</td></tr>`).join('');
 }
 function renderNets(){
   $('#netList').innerHTML = state.nets.map((net,n)=>`<div class="panel net-panel">
-      <div class="section-title"><input class="net-name" data-net="${n}" data-k="name" value="${esc(net.name)}" placeholder="Архитектура ${n + 1}"><button type="button" class="clear-log" data-net-del="${n}">УДАЛИТЬ</button><span>${net.difficulty ? esc(netGenTitles[net.difficulty]) : ''}${net.floors.length ? ` · ЭТАЖЕЙ ${net.floors.length}` : ''}</span></div>
+      <div class="section-title"><input class="net-name" data-net="${n}" data-k="name" value="${esc(net.name)}" placeholder="Архитектура ${n + 1}"><button type="button" class="clear-log" data-net-del="${n}">УДАЛИТЬ</button><span>${net.difficulty ? esc(netGenTitles[net.difficulty]) : ''}${net.floors.length ? ` · ЭТАЖЕЙ ${new Set(net.floors.map(f=>`${f[1]}:${f[0]}`)).size}` : ''}</span></div>
+      ${demonBlock(net, n)}
       <div class="table-scroll">
         <table class="data-table net-table">
           <thead><tr><th>Этаж</th><th>Ветка</th><th>Что там</th><th>СЛ</th><th>Содержимое / статы ЛЬДа</th><th>REZ</th><th>Пройден</th><th></th></tr></thead>
@@ -752,17 +1008,20 @@ function renderNets(){
             <td>${floorContent(n, r, f)}</td>
             <td class="rez"><input data-floor="${n}" data-r="${r}" data-j="5" type="number" value="${esc(f[5])}" aria-label="REZ"><span class="slash">/</span><input data-floor="${n}" data-r="${r}" data-j="6" type="number" value="${esc(f[6])}" aria-label="REZ макс."></td>
             <td class="short"><input type="checkbox" data-floor="${n}" data-r="${r}" data-j="7"${f[7] === 'true' ? ' checked' : ''} aria-label="Пройден"></td>
-            <td class="row-btns">${f[2] === 'Чёрный ЛЁД' && floorStat(f, 'ATK') !== null ? `<button type="button" class="weapon-btn" data-ice-attack="${n}" data-r="${r}" title="1d10 + ATK ЛЬДа">АТАКА</button>` : ''}${f[2] === 'Чёрный ЛЁД' && floorDice(f) ? `<button type="button" class="weapon-btn" data-ice-effect="${n}" data-r="${r}" title="Кубики эффекта ЛЬДа">ЭФФЕКТ</button>` : ''}<button type="button" class="weapon-btn" data-floor-reroll="${n}" data-r="${r}" title="Перебросить этаж по таблице">⟳</button><button type="button" class="remove" data-floor-del="${n}" data-r="${r}" title="Удалить этаж">×</button></td>
+            <td class="row-btns">${iceButtons(n, r, f)}${f[2] === 'Чёрный ЛЁД' && floorDice(f) ? `<button type="button" class="weapon-btn" data-ice-effect="${n}" data-r="${r}" title="Кубики эффекта ЛЬДа">ЭФФЕКТ</button>` : ''}<button type="button" class="weapon-btn" data-floor-reroll="${n}" data-r="${r}" title="Перебросить этаж по таблице">⟳</button><button type="button" class="remove" data-floor-del="${n}" data-r="${r}" title="Удалить этаж">×</button></td>
           </tr>`).join('') || '<tr><td colspan="8" class="empty-cell">Этажей нет</td></tr>'}</tbody>
         </table>
       </div>
       <div class="enemy-row-add">
         <button type="button" class="add-row" data-floor-add="${n}">+ ЭТАЖ</button>
         <button type="button" class="add-row" data-net-reset="${n}" title="Снять отметки «пройден» и восстановить REZ">СБРОСИТЬ ПРОХОД</button>
+        <button type="button" class="add-row${openNetImages.has(n) ? ' active' : ''}" data-net-image="${n}" title="Картинка архитектуры для Owlbear: с текстом, значками или без">КАРТИНКА</button>
       </div>
+      ${openNetImages.has(n) ? `<div class="net-image" data-image-box="${n}"></div>` : ''}
       <textarea data-net="${n}" data-k="notes" rows="2" placeholder="Кто охраняет, что будет при тревоге...">${esc(net.notes)}</textarea>
     </div>`).join('') || '<div class="empty-search">Архитектур пока нет.</div>';
   $$('#netList .grow-field').forEach(autoGrow);
+  if(typeof drawNetImages === 'function') drawNetImages(); // картинки архитектуры (net.js)
 }
 
 // --- Генераторы ---
@@ -847,6 +1106,8 @@ function renderAll(){
   renderNets();
   renderTables();
   renderLog();
+  if(typeof renderCovers === 'function') renderCovers(); // вкладка правил (rules.js)
+  if(typeof renderEcon === 'function') renderEcon(); // вкладка экономики (econ.js)
 }
 function activateTab(id){
   $$('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab === id));
@@ -882,7 +1143,13 @@ document.addEventListener('input', ev=>{
     return;
   }
   if(el.dataset.init !== undefined){ state.init[Number(el.dataset.init)][el.dataset.k] = value; save(); return; }
-  if(el.dataset.net !== undefined){ state.nets[Number(el.dataset.net)][el.dataset.k] = value; save(); return; }
+  if(el.dataset.net !== undefined){
+    const net = state.nets[Number(el.dataset.net)];
+    net[el.dataset.k] = value;
+    if(el.dataset.k === 'demon'){ net.demonRez = ''; renderNets(); }
+    save();
+    return;
+  }
   if(el.dataset.floor !== undefined){
     state.nets[Number(el.dataset.floor)].floors[Number(el.dataset.r)][Number(el.dataset.j)] = String(value);
     if(el.classList.contains('grow-field')) autoGrow(el);
@@ -899,7 +1166,7 @@ document.addEventListener('change', ev=>{
     if(/^weapons\.\d+\.6$/.test(el.dataset.f)){
       const [, j] = el.dataset.f.split('.');
       const w = state.enemies[Number(el.dataset.e)].weapons[Number(j)];
-      const preset = weaponTypes[w[6]];
+      const preset = weaponType(w);
       if(preset){ if(isBlank(w[2])) w[2] = preset[2]; if(isBlank(w[3])) w[3] = preset[4]; if(isBlank(w[5]) && preset[3]){ w[5] = preset[3]; w[4] = preset[3]; } }
       renderEnemies(); renderTurn();
     }
@@ -914,9 +1181,25 @@ document.addEventListener('change', ev=>{
     if(preset){ e.headSp = e.headSpMax = e.bodySp = e.bodySpMax = String(preset[1]); }
     renderCombat();
   }
+  if(el.dataset.act === 'addInjury' && el.value){
+    const e = state.enemies[Number(el.dataset.i)];
+    const [zone, k] = el.value.split(':');
+    addLog({kind:'text', tag:'ТРАВМА', text:`${enemyName(e)}: ${addInjury(e, zone, Number(k))}`});
+    renderCombat();
+  }
+  if(el.dataset.act === 'addImplant' && el.value){
+    const [kind, ...name] = el.value.split(':');
+    installImplant(state.enemies[Number(el.dataset.i)], kind, name.join(':'));
+    renderCombat();
+  }
+  if(el.dataset.act === 'fire'){
+    const e = state.enemies[Number(el.dataset.i)];
+    e.status.fire = num(el.value);
+    renderCombat();
+  }
   if(el.dataset.act === 'presetWeapon' && el.value){
     const e = state.enemies[Number(el.dataset.i)];
-    const [name, , damage, mag, rof] = weaponTypes[el.value];
+    const [name, , damage, mag, rof] = allWeapons[el.value];
     e.weapons.push([name, '', damage, rof, mag, mag, el.value, '']);
     renderEnemies(); renderTurn(); save();
   }
@@ -934,6 +1217,7 @@ const enemyActions = {
   autofire(e, i, j){ weaponAutofire(e, j); renderCombat(); },
   suppress(e, i, j){ weaponSuppress(e, j); renderCombat(); },
   damage(e, i, j){ weaponDamage(e, j); },
+  shell(e, i, j){ weaponShell(e, j); renderCombat(); },
   reload(e, i, j){ const w = e.weapons[j]; if(!isBlank(w[5])){ w[4] = w[5]; renderCombat(); } },
   delWeapon(e, i, j){ e.weapons.splice(j, 1); renderCombat(); },
   addWeapon(e){ e.weapons.push(['','','','1','','','','']); renderCombat(); },
@@ -942,6 +1226,7 @@ const enemyActions = {
   addSkill(e){ e.skills.push(['','']); renderCombat(); },
   init(e){ enemyInit(e); sortInit(); renderCombat(); },
   evade(e){
+    if(injuryMods(e).noDodge){ toast(`${enemyName(e)}: без ноги — не может уклоняться`); return; }
     const skill = e.skills.find(s=>/уклон/i.test(s[0]));
     enemyCheck(e, skill ? skill[1] : stat(e, STAT_DEX), skill ? 'уклонение' : 'уклонение (только ЛВК)');
   },
@@ -954,6 +1239,18 @@ const enemyActions = {
     renderCombat();
   },
   deathSave(e){ deathSave(e); },
+  delInjury(e, i, j){
+    const list = enemyInjuries(e);
+    addLog({kind:'text', tag:'ТРАВМА', text:`${enemyName(e)}: вылечено — ${list[j].line}`});
+    e.injuries = list.filter((_, k)=>k !== j).map(inj=>inj.line).join('\n');
+    renderCombat();
+  },
+  movedFar(e){ movedFar(e); renderCombat(); },
+  delImplant(e, i, j){
+    addLog({kind:'text', tag:'ИМПЛАНТ', text:`${enemyName(e)}: снят — ${e.implants[j].name}`});
+    e.implants.splice(j, 1);
+    renderCombat();
+  },
   repair(e){
     if(!isBlank(e.headSpMax)) e.headSp = e.headSpMax;
     if(!isBlank(e.bodySpMax)) e.bodySp = e.bodySpMax;
@@ -1032,10 +1329,12 @@ const clickHandlers = [
     area?.setSelectionRange(area.value.length, area.value.length);
   }],
   ['floorReroll', (n, el)=>rerollFloor(Number(n), Number(el.dataset.r))],
-  ['iceAttack', (n, el)=>iceAttack(Number(n), Number(el.dataset.r))],
+  ['iceRoll', (n, el)=>iceRoll(Number(n), Number(el.dataset.r), el.dataset.kind)],
+  ['demonRoll', (n, el)=>demonRoll(Number(n), el.dataset.kind)],
+  ['netImage', n=>{ n = Number(n); if(openNetImages.has(n)) openNetImages.delete(n); else openNetImages.add(n); renderNets(); }],
   ['iceEffect', (n, el)=>iceEffect(Number(n), Number(el.dataset.r))],
   ['floorDel', (n, el)=>{ state.nets[Number(n)].floors.splice(Number(el.dataset.r), 1); renderNets(); save(); }],
-  ['netReset', n=>{ state.nets[Number(n)].floors.forEach(f=>{ f[7] = ''; if(!isBlank(f[6])) f[5] = f[6]; }); renderNets(); save(); }],
+  ['netReset', n=>{ const net = state.nets[Number(n)]; net.floors.forEach(f=>{ f[7] = ''; if(!isBlank(f[6])) f[5] = f[6]; }); net.demonRez = ''; renderNets(); save(); }],
   ['tableRoll', i=>rollTable(Number(i))],
   ['tableDel', i=>{ const t = state.tables[Number(i)]; withUndo(`Таблица «${t.name || 'Без имени'}» удалена`, ()=>state.tables.splice(Number(i), 1)); }],
   ['nameNpc', name=>{ state.npcs.push([name, '', '', '', '', '']); renderNpcs(); save(); toast(`${name}: добавлен в NPC`); }]
@@ -1045,6 +1344,12 @@ document.addEventListener('click', ev=>{
   if(!el) return;
   if(el.classList.contains('tab')){ activateTab(el.dataset.tab); return; }
   const act = el.dataset.act;
+  if(act === 'status'){
+    const e = state.enemies[Number(el.dataset.i)];
+    setStatus(e, el.dataset.j, !e.status[el.dataset.j]);
+    renderCombat();
+    return;
+  }
   if(act && enemyActions[act]){
     const i = Number(el.dataset.i);
     enemyActions[act](state.enemies[i], i, Number(el.dataset.j), el.closest('.enemy-card'));
@@ -1091,15 +1396,21 @@ $('#clearDead').addEventListener('click', ()=>{
 $('#printBtn').addEventListener('click', printEnemies);
 
 // Ход переходит к следующему живому участнику; после последнего начинается новый раунд.
+// Состояния противника срабатывают в конце его хода (огонь, ток, вакуум) и в начале следующего (удушье).
 $('#nextTurn').addEventListener('click', ()=>{
   if(!state.init.length) return;
+  const enemyAt = k => state.init[k]?.enemyId && enemyById(state.init[k].enemyId);
+  const ending = enemyAt(state.turn);
+  if(ending) endTurnEffects(ending);
   for(let step = 0; step < state.init.length; step++){
     state.turn++;
     if(state.turn >= state.init.length){ state.turn = 0; state.round++; tickEffects(); }
-    const e = state.init[state.turn].enemyId && enemyById(state.init[state.turn].enemyId);
+    const e = enemyAt(state.turn);
     if(!e || !e.dead) break;
   }
-  renderInit(); save();
+  const starting = enemyAt(state.turn);
+  if(starting) startTurnEffects(starting);
+  renderCombat();
 });
 $('#sortInit').addEventListener('click', ()=>{ sortInit(); renderInit(); save(); });
 $('#rerollInit').addEventListener('click', ()=>{
@@ -1150,8 +1461,8 @@ $('#saveScene').addEventListener('click', ()=>{
   toast(`Сцена «${name}» ${at >= 0 ? 'обновлена' : 'сохранена'}`);
 });
 $('#generateNet').addEventListener('click', generateNet);
-$('#netGenReset').addEventListener('click', ()=>withUndo('Таблицы генератора возвращены к заготовкам', ()=>{ state = normalize({...state, netGen:{}}); }));
-$('#addNet').addEventListener('click', ()=>{ state.nets.push({name:'', notes:'', floors:[['1','','Пароль','','','','','']]}); renderNets(); save(); });
+$('#netGenReset').addEventListener('click', ()=>withUndo('Таблицы генератора возвращены к таблицам книги', ()=>{ state = normalize({...state, netGen:{}}); }));
+$('#addNet').addEventListener('click', ()=>{ state.nets.push({name:'', notes:'', difficulty:'', floors:[['1','','Пароль','','','','','']], demon:'', demonRez:''}); renderNets(); save(); });
 $('#npcSearch').addEventListener('input', filterNpcs);
 $('#npcCollapseAll').addEventListener('click', ()=>{
   const all = state.npcs.every(row=>row[5] === 'true');
@@ -1195,12 +1506,13 @@ $('#importInput').addEventListener('change', async ev=>{
 $('#resetBtn').addEventListener('click', ()=>{
   // Бестиарий, сцены, архитектуры и свои таблицы переживают очистку: их готовят на всю кампанию.
   withUndo('Сессия очищена, бестиарий и заготовки сохранены', ()=>{
-    const {templates, scenes, nets, tables, players, netGen} = state;
-    state = {...blankState(), templates, scenes, nets, tables, players, netGen};
+    const {templates, scenes, nets, tables, players, netGen, economy} = state;
+    state = {...blankState(), templates, scenes, nets, tables, players, netGen, economy};
   });
 });
 window.addEventListener('beforeunload', ()=>{ if(saveTimer) persist(); });
 
+$('#groupKind').innerHTML = options(damageKinds, '');
 renderAll();
 renderNames(generateNames());
 try { const tab = localStorage.getItem(`${DM_KEY}:tab`); if(tab && $(`#${tab}`)) activateTab(tab); } catch {}
