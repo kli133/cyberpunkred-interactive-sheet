@@ -1,0 +1,1470 @@
+/* Лист Мастера: базовый дизайн берётся из ../styles.css, здесь — только то, чего нет в листе игрока. */
+:root {
+  --ok: #41bf62;
+  --warn: #e4b62f;
+}
+
+.link-btn {
+  border: 1px solid #54565b;
+  color: white;
+  padding: 9px 14px;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-decoration: none;
+}
+
+.link-btn:hover {
+  border-color: var(--red);
+}
+
+.panel input:not([type=checkbox]), .panel select {
+  font: inherit;
+}
+
+.session-panel label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.panel > textarea {
+  width: 100%;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.empty-cell {
+  color: var(--muted);
+  text-align: center;
+  padding: 12px !important;
+}
+
+.slash {
+  color: var(--muted);
+  padding: 0 2px;
+}
+
+/* Панель инструментов над списками */
+.dm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.dm-toolbar .add-row {
+  margin-top: 0;
+}
+
+.dm-toolbar label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.dm-toolbar select, .dm-toolbar input {
+  display: block;
+  margin-top: 4px;
+  min-width: 200px;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: #fff;
+  padding: 7px;
+  font: inherit;
+  outline: 0;
+}
+
+.dm-toolbar .narrow input {
+  min-width: 0;
+  width: 70px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+/* Карточки противников */
+.enemy-list {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.enemy-card {
+  min-width: 0;
+  background: #fff;
+  border: 2px solid var(--line);
+  scroll-margin-top: 12px;
+}
+
+.enemy-card.is-serious {
+  border-color: var(--warn);
+}
+
+.enemy-card.is-mortal {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px var(--red);
+}
+
+.enemy-card.is-dead {
+  opacity: .55;
+}
+
+.enemy-card.is-collapsed .enemy-body {
+  display: none;
+}
+
+.enemy-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--black);
+  border-left: 7px solid var(--red);
+  padding: 6px 8px;
+  color: #fff;
+}
+
+.enemy-head input {
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid #444;
+  background: transparent;
+  color: #fff;
+  padding: 3px 2px;
+  outline: 0;
+}
+
+.enemy-head input:focus {
+  border-bottom-color: var(--red);
+}
+
+.enemy-name {
+  flex: 1 1 40%;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.enemy-kind {
+  flex: 1 1 25%;
+  font-size: 12px;
+  color: #aaa !important;
+}
+
+.enemy-tools {
+  display: flex;
+  gap: 2px;
+}
+
+.enemy-tools button {
+  border: 0;
+  background: transparent;
+  color: #aaa;
+  width: 26px;
+  height: 26px;
+  font-size: 15px;
+}
+
+.enemy-tools button:hover {
+  color: var(--red);
+}
+
+.badge {
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 6px;
+  background: var(--ok);
+  color: #101113;
+}
+
+.is-serious .badge, .badge.is-serious {
+  background: var(--warn);
+}
+
+.is-mortal .badge, .badge.is-mortal {
+  background: var(--red);
+  color: #fff;
+}
+
+.is-dead .badge, .badge.is-dead {
+  background: #555;
+  color: #fff;
+}
+
+.badge.is-ok {
+  background: var(--ok);
+}
+
+.hp-bar {
+  display: block;
+  height: 5px;
+  background: #d7d2cc;
+}
+
+.hp-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  transition: width .25s;
+}
+
+.is-serious .hp-bar i {
+  background: var(--warn);
+}
+
+.is-mortal .hp-bar i, .is-dead .hp-bar i {
+  background: var(--red);
+}
+
+.enemy-body {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: 12px;
+}
+
+.enemy-stats {
+  display: grid;
+  grid-template-columns: repeat(10,minmax(0,1fr));
+  gap: 4px;
+}
+
+.enemy-stats label {
+  display: grid;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  color: #3b3a39;
+}
+
+.enemy-stats input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #999;
+  text-align: center;
+  padding: 4px 0;
+  -moz-appearance: textfield;
+}
+
+.enemy-card input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.enemy-metrics {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 6px;
+}
+
+.enemy-metrics .metric {
+  padding: 7px 4px;
+}
+
+.enemy-metrics .metric strong input {
+  -moz-appearance: textfield;
+}
+
+.enemy-metrics .metric strong input::placeholder {
+  color: #fff;
+  opacity: .7;
+}
+
+.enemy-armor, .enemy-hit, .enemy-row-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.enemy-armor label {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #3b3a39;
+  white-space: nowrap;
+}
+
+.enemy-armor input, .enemy-hit input[type=number], .enemy-row-add input {
+  width: 46px;
+  border: 1px solid #999;
+  text-align: center;
+  padding: 4px 2px;
+  margin-left: 4px;
+}
+
+.enemy-armor select, .enemy-hit select, .enemy-row-add select {
+  border: 1px solid #999;
+  background: #fff;
+  padding: 4px;
+  font: inherit;
+  font-size: 12px;
+  max-width: 100%;
+}
+
+.enemy-hit {
+  background: #eeeae5;
+  border-left: 4px solid var(--red);
+  padding: 8px;
+}
+
+.enemy-hit input[type=number] {
+  width: 64px;
+  margin-left: 0;
+}
+
+.enemy-hit label {
+  white-space: nowrap;
+}
+
+.enemy-hit input[type=checkbox] {
+  accent-color: var(--red);
+}
+
+.enemy-hit .quick-roll {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.death-btn {
+  border-color: var(--red);
+  background: var(--red);
+  color: #fff !important;
+}
+
+.enemy-row-add .add-row {
+  margin-top: 0;
+}
+
+.enemy-weapons {
+  table-layout: fixed;
+  min-width: 520px;
+}
+
+.enemy-weapons th:nth-child(1) { width: auto; }
+.enemy-weapons th:nth-child(2) { width: 54px; }
+.enemy-weapons th:nth-child(3) { width: 64px; }
+.enemy-weapons th:nth-child(4) { width: 42px; }
+.enemy-weapons th:nth-child(5) { width: 92px; }
+.enemy-weapons th:nth-child(6) { width: 168px; }
+
+.enemy-weapons td:nth-child(5) {
+  white-space: nowrap;
+}
+
+.enemy-weapons td:nth-child(5) input {
+  width: 36px;
+}
+
+.data-table td.row-btns {
+  width: auto;
+  white-space: nowrap;
+}
+
+.enemy-skills {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 4px 14px;
+}
+
+.enemy-skill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid #d5d0ca;
+  padding: 2px 0;
+}
+
+.enemy-skill input {
+  border: 0;
+  padding: 4px 2px;
+  min-width: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.enemy-skill input:first-child {
+  flex: 1;
+}
+
+.enemy-skill input[type=number] {
+  width: 44px;
+  border: 1px solid #999;
+  text-align: center;
+}
+
+.enemy-skills:empty {
+  display: none;
+}
+
+.enemy-texts {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+}
+
+.enemy-texts label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #3b3a39;
+}
+
+.enemy-texts textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: #f8f7f4;
+  padding: 6px;
+  resize: vertical;
+  outline: 0;
+  font: inherit;
+  font-size: 13px;
+  text-transform: none;
+}
+
+/* Обзор боя на панели */
+.battle-overview {
+  display: grid;
+  gap: 4px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.overview-row {
+  display: grid;
+  grid-template-columns: minmax(0,1.4fr) minmax(60px,1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-bottom: 1px solid #ddd;
+  background: transparent;
+  padding: 6px 2px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.overview-row span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.overview-row small {
+  color: var(--muted);
+}
+
+.overview-row:hover {
+  background: #f8f7f4;
+}
+
+.overview-row.is-dead span:first-child {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* Инициатива */
+.init-table td:first-child {
+  width: 24px;
+  color: var(--red);
+  font-weight: 700;
+  text-align: center;
+}
+
+.init-table th:nth-child(3), .init-table td:nth-child(3) {
+  width: 80px;
+}
+
+.init-table th:nth-child(4), .init-table td:nth-child(4) {
+  width: 80px;
+}
+
+.init-table tr.is-turn td {
+  background: #fde7e8;
+}
+
+.init-table tr.is-turn td:nth-child(2) input {
+  font-weight: 700;
+}
+
+.init-table tr.is-dead td {
+  opacity: .5;
+}
+
+.init-table input:disabled {
+  color: var(--ink);
+  background: transparent;
+}
+
+.init-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.init-add input {
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: #f8f7f4;
+  padding: 7px;
+  outline: 0;
+}
+
+.init-add input[type=number] {
+  width: 90px;
+}
+
+.init-add .add-row {
+  margin-top: 0;
+}
+
+/* NPC и заметки */
+.world-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.players-table {
+  min-width: 640px;
+}
+
+.panel textarea {
+  font: inherit;
+}
+
+/* Бестиарий */
+.template-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(300px,1fr));
+  gap: 18px;
+}
+
+.template-stats {
+  display: grid;
+  grid-template-columns: repeat(10,minmax(0,1fr));
+  gap: 2px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.template-stats small {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.template-card p {
+  font-size: 13px;
+  color: #555;
+}
+
+.template-card .remove {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+@media(max-width:1100px) {
+  .enemy-list {
+    grid-template-columns: minmax(0,1fr);
+  }
+}
+
+@media(max-width:900px) {
+  .world-grid, .enemy-texts {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media(max-width:560px) {
+  .enemy-stats, .template-stats {
+    grid-template-columns: repeat(5,minmax(0,1fr));
+  }
+
+  .enemy-metrics, .enemy-skills {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+
+  .enemy-head {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-spacer {
+    display: none;
+  }
+}
+
+/* Выбор цели и DV */
+.enemy-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #3b3a39;
+}
+
+.enemy-target select, .row-weapons select {
+  border: 1px solid #999;
+  background: #fff;
+  padding: 4px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.enemy-target input {
+  width: 56px;
+  margin-left: 4px;
+  border: 1px solid #999;
+  text-align: center;
+  padding: 4px 2px;
+}
+
+.enemy-weapons td:first-child input {
+  font-weight: 700;
+}
+
+.enemy-weapons .weapon-type {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+}
+
+.enemy-weapons td:nth-child(2) input + input {
+  margin-top: 2px;
+  color: var(--red);
+}
+
+.enemy-weapons th:nth-child(6) { width: 150px; }
+
+.enemy-weapons td.row-btns {
+  white-space: normal;
+}
+
+.enemy-weapons td.row-btns .weapon-btn {
+  margin: 1px 0;
+}
+
+.add-row.active {
+  background: var(--red);
+  color: #fff;
+}
+
+.file-label {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.file-label input {
+  display: none;
+}
+
+.data-table td.short {
+  width: 70px;
+}
+
+/* Групповое попадание */
+.group-hit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--black);
+  color: #fff;
+  border-left: 7px solid var(--red);
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+.group-title {
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.group-title small {
+  display: block;
+  color: #aaa;
+  font-size: 10px;
+}
+
+.group-hit input:not([type=checkbox]), .group-hit select {
+  border: 1px solid #555;
+  background: #252629;
+  color: #fff;
+  padding: 6px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.group-hit input:not([type=checkbox]) {
+  width: 130px;
+}
+
+.group-hit input[type=checkbox], .enemy-select {
+  accent-color: var(--red);
+}
+
+.group-hit .add-row {
+  margin-top: 0;
+  color: #fff;
+  border-color: #777;
+}
+
+.group-hit .quick-roll {
+  padding: 7px 12px;
+  font-size: 11px;
+}
+
+.enemy-select {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* Компактный режим: противник в одну строку */
+.enemy-list.is-compact {
+  grid-template-columns: minmax(0,1fr);
+  gap: 6px;
+}
+
+.enemy-row {
+  display: grid;
+  grid-template-columns: 18px minmax(130px,1.1fr) minmax(150px,1fr) auto minmax(250px,1.4fr) minmax(0,2.4fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-left-width: 7px;
+}
+
+.enemy-row .row-name {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.enemy-row .row-name b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.enemy-row .row-hp {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.enemy-row .row-hp .hp-bar {
+  flex: 1;
+  height: 8px;
+}
+
+.enemy-row input[type=number] {
+  font-size: 12px;
+  width: 44px;
+  border: 1px solid #999;
+  text-align: center;
+  padding: 3px 1px;
+}
+
+.enemy-row .row-sp {
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.enemy-row .row-hit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.enemy-row .row-hit select {
+  border: 1px solid #999;
+  background: #fff;
+  padding: 3px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.enemy-row .row-hit input[type=number] {
+  width: 56px;
+}
+
+.enemy-row .row-hit .quick-roll {
+  padding: 5px 8px;
+  font-size: 10px;
+}
+
+.enemy-row .row-weapons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 12px;
+}
+
+.row-weapon {
+  white-space: nowrap;
+}
+
+.row-weapon small {
+  color: var(--muted);
+}
+
+.enemy-row .enemy-tools button {
+  color: #555;
+}
+
+.enemy-row.is-serious {
+  border-left-color: var(--warn);
+}
+
+.enemy-row.is-mortal {
+  border-left-color: var(--red);
+}
+
+.enemy-row.is-ok {
+  border-left-color: var(--ok);
+}
+
+/* Панель текущего хода */
+.turn-panel {
+  margin-bottom: 18px;
+}
+
+.turn-panel > .section-title {
+  margin: 0;
+}
+
+.panel.turn-panel > .section-title {
+  margin: -14px -14px 10px;
+}
+
+.turn-panel > p {
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.turn-effects {
+  color: var(--red);
+  font-weight: 700;
+}
+
+/* Эффекты в инициативе */
+.effects-cell {
+  min-width: 190px;
+}
+
+.effect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 2px 4px 2px 0;
+  padding: 2px 2px 2px 6px;
+  background: #202124;
+  color: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.effect-chip button {
+  border: 0;
+  background: transparent;
+  color: var(--red);
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.data-table input.effect-input {
+  width: 110px;
+  font-size: 11px;
+}
+
+/* Сцены, имена */
+.scene-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.scene-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  border-bottom: 1px solid #ddd;
+  padding: 6px 0;
+}
+
+.scene-row .muted {
+  flex: 1;
+  min-width: 160px;
+}
+
+.scene-row .add-row, .scene-row .quick-roll {
+  margin-top: 0;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+/* Сеть */
+.net-list {
+  display: grid;
+  gap: 18px;
+}
+
+.net-name {
+  border: 0;
+  border-bottom: 1px solid #444;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 1px;
+  width: min(420px, 70%);
+  outline: 0;
+}
+
+.net-table {
+  min-width: 900px;
+  table-layout: fixed;
+}
+
+.net-table th:nth-child(1), .net-table th:nth-child(2) { width: 58px; }
+.net-table th:nth-child(3) { width: 160px; }
+.net-table th:nth-child(4) { width: 62px; }
+.net-table th:nth-child(5) { width: auto; }
+.net-table th:nth-child(6) { width: 130px; }
+.net-table th:nth-child(7) { width: 72px; }
+.net-table th:nth-child(8) { width: 160px; }
+
+.net-table td {
+  vertical-align: top;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.net-table td.short, .net-table td.rez {
+  width: auto;
+}
+
+.net-table .grow-field {
+  background: transparent;
+  border-bottom: 1px solid #aaa;
+  font-size: 13px;
+  line-height: 1.35;
+  resize: none;
+  field-sizing: content;
+}
+
+/* Карточка Чёрного ЛЬДа в строке этажа */
+.ice-view {
+  display: grid;
+  gap: 5px;
+}
+
+.ice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ice-head b {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.ice-edit {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 0 4px;
+}
+
+.ice-edit:hover {
+  color: var(--red);
+}
+
+.ice-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ice-stats span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  background: #202124;
+  color: #fff;
+  padding: 2px 8px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.ice-stats small {
+  color: #bbb;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.ice-view p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #3b3a39;
+}
+
+.net-table select {
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px;
+}
+
+.net-table td.rez {
+  width: 130px;
+  white-space: nowrap;
+}
+
+.net-table td.rez input {
+  width: 48px;
+}
+
+.net-table tr.is-ice td {
+  background: #fde7e8;
+}
+
+.net-table tr.is-done td {
+  opacity: .5;
+}
+
+.net-table input[type=checkbox] {
+  width: auto;
+  accent-color: var(--red);
+}
+
+.net-panel > textarea, .random-table textarea {
+  margin-top: 10px;
+}
+
+.generators-grid {
+  grid-template-columns: minmax(0,1fr) minmax(0,2fr);
+  margin-top: 0;
+}
+
+.random-table .quick-roll {
+  margin-top: 8px;
+  padding: 7px 14px;
+}
+
+@media(max-width:1200px) {
+  .enemy-row {
+    grid-template-columns: 18px minmax(0,1fr) minmax(0,1fr) auto;
+  }
+
+  .enemy-row .row-hit, .enemy-row .row-weapons {
+    grid-column: 2 / -1;
+  }
+
+  .enemy-row .enemy-tools {
+    grid-row: 1;
+    grid-column: 4;
+  }
+
+  .enemy-row .row-sp {
+    grid-column: 2 / 4;
+  }
+}
+
+@media(max-width:900px) {
+  .generators-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Печать карточек противников: ../styles.css прячет при печати всё, кроме .print-sheet. */
+@media print {
+  .dm-print {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 4mm;
+  }
+
+  .dp-card {
+    border: .4mm solid #111;
+    border-left: 2mm solid var(--red);
+    padding: 2.5mm 3mm;
+    break-inside: avoid;
+  }
+
+  .dp-card h2 {
+    margin: 0 0 1.5mm;
+    font-size: 12pt;
+    text-transform: uppercase;
+  }
+
+  .dp-card h2 small {
+    margin-left: 2mm;
+    font-size: 8pt;
+    color: #666;
+    text-transform: none;
+  }
+
+  .dp-card p {
+    margin: 1mm 0;
+  }
+
+  .dp-stats {
+    display: grid;
+    grid-template-columns: repeat(10,1fr);
+    text-align: center;
+    font-weight: 700;
+    border: .3mm solid #999;
+  }
+
+  .dp-stats small {
+    display: block;
+    font-size: 6pt;
+    color: #666;
+  }
+
+  .dp-boxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6mm;
+    margin: 1mm 0;
+  }
+
+  .dp-boxes i {
+    width: 2.6mm;
+    height: 2.6mm;
+    border: .25mm solid #111;
+  }
+
+  .dp-card table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+  }
+
+  .dp-card th {
+    background: #202124;
+    color: #fff;
+    text-align: left;
+    padding: .6mm 1mm;
+  }
+
+  .dp-card td {
+    border-bottom: .2mm solid #bbb;
+    padding: .6mm 1mm;
+  }
+}
+
+/* Генератор Сети */
+.net-gen #netName {
+  width: 220px;
+}
+
+.net-gen #netFloors {
+  width: 120px;
+}
+
+.net-details {
+  margin-bottom: 14px;
+  padding: 0;
+}
+
+.net-details summary {
+  cursor: pointer;
+  background: var(--black);
+  color: #fff;
+  border-left: 7px solid var(--red);
+  padding: 7px 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.net-details > :not(summary) {
+  margin: 12px 14px;
+}
+
+.net-gen-tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(200px,1fr));
+  gap: 12px;
+}
+
+.net-gen-tables label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #3b3a39;
+}
+
+.net-gen-tables textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 12px;
+  text-transform: none;
+}
+
+.ice-table td {
+  vertical-align: top;
+  padding: 5px 6px;
+}
+
+.ice-table td:nth-child(n+2):nth-child(-n+6) {
+  width: 46px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.net-table td.row-btns {
+  width: 150px;
+  white-space: nowrap;
+}
+
+.net-panel .section-title span {
+  margin-right: 12px;
+}
+
+.ice-table td:first-child {
+  width: 220px;
+}
+
+.ice-table td:last-child {
+  width: auto;
+}
+
+/* Поля, растущие вместе с текстом */
+.players-table .grow-field, .npc-card .grow-field {
+  display: block;
+  width: 100%;
+  resize: none;
+  field-sizing: content;
+  overflow: hidden;
+  font: inherit;
+  line-height: 1.4;
+}
+
+.players-table .grow-field {
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 5px;
+  font-size: 13px;
+  outline: 0;
+}
+
+/* NPC */
+.npc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.npc-toolbar .add-row {
+  margin-top: 0;
+}
+
+.npc-toolbar input {
+  flex: 1 1 260px;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: #f8f7f4;
+  padding: 8px;
+  font: inherit;
+  outline: 0;
+}
+
+.npc-list {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.npc-card {
+  min-width: 0;
+  border: 2px solid var(--line);
+  background: #fff;
+}
+
+.npc-card[hidden] {
+  display: none;
+}
+
+.npc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #202124;
+  border-left: 5px solid var(--red);
+  padding: 5px 8px;
+  color: #fff;
+}
+
+.npc-head input {
+  flex: 1 1 45%;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid #444;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: .5px;
+  padding: 3px 2px;
+  outline: 0;
+}
+
+.npc-head input:focus {
+  border-bottom-color: var(--red);
+}
+
+.npc-summary {
+  flex: 1 1 40%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #aaa;
+  font-size: 11px;
+}
+
+.npc-card.is-collapsed .npc-body {
+  display: none;
+}
+
+.npc-body {
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.npc-fields {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 8px;
+}
+
+.npc-body label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #555;
+}
+
+.npc-fields input {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 4px 2px;
+  font: inherit;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  outline: 0;
+}
+
+.npc-fields input:focus, .npc-notes textarea:focus {
+  border-bottom-color: var(--red);
+}
+
+.npc-notes textarea {
+  min-height: 80px;
+  margin-top: 3px;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: #f8f7f4;
+  padding: 8px;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  outline: 0;
+}
+
+@media(max-width:1000px) {
+  .npc-list {
+    grid-template-columns: minmax(0,1fr);
+  }
+}
+
+@media(max-width:560px) {
+  .npc-fields {
+    grid-template-columns: minmax(0,1fr);
+  }
+}
+
+/* Подписи жирные и мелкие — поля внутри них пишутся обычным шрифтом. */
+.npc-card .npc-body input, .npc-card .npc-body textarea {
+  font-family: inherit;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+/* field-sizing: content из ../styles.css игнорирует rows — задаём минимальную высоту. */
+.npc-notes textarea {
+  min-height: 90px;
+}
+
+.world-grid textarea, #session .panel > textarea {
+  min-height: 150px;
+}
+
+.session-panel textarea {
+  min-height: 70px;
+}
+
+.session-panel input, .session-panel textarea {
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  text-transform: none;
+}

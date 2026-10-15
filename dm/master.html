@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CYBERPUNK RED // Лист Мастера</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="dm.css">
+</head>
+<body>
+  <div class="scanlines"></div>
+  <header class="topbar">
+    <div class="brand"><span>CYBERPUNK</span><b>RED</b><small>// GAME MASTER CONSOLE</small></div>
+    <div class="top-actions">
+      <button class="ghost" id="printBtn" type="button" title="Печать карточек противников: отмеченных галочкой или всех">Печать</button>
+      <a class="ghost link-btn" href="../index.html" title="Открыть лист персонажа">Лист игрока</a>
+      <button class="ghost" id="resetBtn" type="button">Очистить</button>
+      <button class="primary" id="exportBtn" type="button">Экспорт JSON</button>
+      <label class="file-btn">Импорт JSON<input id="importInput" type="file" accept=".json"></label>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <nav class="tabs" aria-label="Разделы листа мастера">
+      <button class="tab active" data-tab="session" type="button">00 // Сессия</button>
+      <button class="tab" data-tab="enemies" type="button">01 // Противники</button>
+      <button class="tab" data-tab="initiative" type="button">02 // Инициатива</button>
+      <button class="tab" data-tab="world" type="button">03 // NPC и заметки</button>
+      <button class="tab" data-tab="bestiary" type="button">04 // Бестиарий и сцены</button>
+      <button class="tab" data-tab="net" type="button">05 // Сеть</button>
+      <button class="tab" data-tab="generators" type="button">06 // Генераторы</button>
+    </nav>
+
+    <section class="status-strip">
+      <span><i class="dot"></i> GM LINK ONLINE</span>
+      <span id="saveStatus">АВТОСОХРАНЕНИЕ ВКЛ.</span>
+      <span id="combatStatus"></span>
+      <button class="dice-toggle" id="diceToggle" type="button">КУБИК // 1D10</button>
+    </section>
+    <aside class="dice-drawer" id="diceDrawer" aria-label="Кубик мастера">
+      <div class="dice-head"><strong>КУБИК // GM</strong><button id="diceClose" type="button" aria-label="Закрыть">×</button></div>
+      <div class="dice-controls">
+        <label>КУБИКИ<input id="diceFormula" value="1d10" placeholder="1d10, 2d6, 3d6+2"></label>
+        <label>МОДИФИКАТОР<input id="diceModifier" type="number" value="0"></label>
+        <button class="primary roll-button" id="rollDice" type="button">БРОСИТЬ</button>
+      </div>
+      <div class="dice-result" id="diceResult">—</div>
+      <div class="dice-log" id="diceLog"></div>
+    </aside>
+
+    <section class="tab-panel active" id="session">
+      <div class="page-heading">
+        <div><span class="eyebrow">GM DECK // 00</span><h1>ПАНЕЛЬ МАСТЕРА</h1></div>
+        <p id="sessionSummary">СИСТЕМА ГОТОВА</p>
+      </div>
+      <div class="dashboard-grid">
+        <div class="panel session-panel">
+          <div class="section-title">СЕССИЯ</div>
+          <label>Название сессии<input data-key="sessionTitle" placeholder="Ночная смена в Хейвуде"></label>
+          <label>Текущая сцена<textarea data-key="scene" rows="3" placeholder="Где команда, что происходит, кто рядом?"></textarea></label>
+          <label>Цели и зацепки<textarea data-key="hooks" rows="3" placeholder="Что должно случиться, что игроки могут найти..."></textarea></label>
+        </div>
+        <div class="panel">
+          <div class="section-title">ПОЛЕ БОЯ <span>HP // SP</span></div>
+          <div id="battleOverview" class="battle-overview"></div>
+        </div>
+        <div class="panel session-notes">
+          <div class="section-title">ИГРОКИ <span>ЧТО ЗНАЕТ МАСТЕР</span></div>
+          <div class="table-scroll">
+            <table class="data-table players-table">
+              <thead><tr><th>Игрок</th><th>Персонаж</th><th>Роль</th><th>РЕФ</th><th>Хиты</th><th>SP г/т</th><th>Заметки</th><th></th></tr></thead>
+              <tbody id="playersBody"></tbody>
+            </table>
+          </div>
+          <div class="enemy-row-add">
+            <button class="add-row" type="button" data-add="players">+ ИГРОК</button>
+            <button class="add-row" type="button" id="playersFromBrowser" title="Взять персонажей из листов игрока, открытых в этом же браузере">ИЗ ЛИСТОВ БРАУЗЕРА</button>
+            <label class="add-row file-label" title="Файлы «Экспорт JSON» из листа игрока; можно выбрать несколько">ИМПОРТ ЛИСТА JSON<input id="playerImport" type="file" accept=".json" multiple></label>
+            <button class="add-row" type="button" id="playersToInit">ИГРОКОВ В ИНИЦИАТИВУ</button>
+          </div>
+        </div>
+        <div class="panel activity-panel">
+          <div class="section-title">ПОСЛЕДНИЕ БРОСКИ <button class="clear-log" id="clearLog" type="button">ОЧИСТИТЬ</button></div>
+          <div id="dashboardLog" class="dashboard-log">Пока нет бросков.</div>
+        </div>
+        <div class="panel">
+          <div class="section-title">ЗАМЕТКИ МАСТЕРА</div>
+          <textarea data-key="notes" rows="8" placeholder="Секреты, импровизация, что сказали игроки..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="enemies">
+      <div class="page-heading">
+        <div><span class="eyebrow">HOSTILES // 01</span><h1>ПРОТИВНИКИ</h1></div>
+        <p id="enemiesSummary">НЕТ ЦЕЛЕЙ</p>
+      </div>
+      <div class="dm-toolbar">
+        <button class="quick-roll" type="button" id="addEnemy">+ ПРОТИВНИК</button>
+        <label>Из бестиария<select id="spawnTemplate"></select></label>
+        <label class="narrow">Кол-во<input id="spawnCount" type="number" min="1" max="20" value="1"></label>
+        <button class="add-row" type="button" id="spawnBtn">ДОБАВИТЬ</button>
+        <span class="toolbar-spacer"></span>
+        <button class="add-row" type="button" id="compactToggle" aria-pressed="false" title="Все противники одной строкой">КОМПАКТНО</button>
+        <button class="add-row" type="button" id="allToInit" title="Добавить всех живых противников в инициативу и бросить 1d10 + РЕФ">ВСЕ В ИНИЦИАТИВУ</button>
+        <button class="add-row" type="button" id="clearDead" title="Убрать с поля всех мёртвых">УБРАТЬ ПАВШИХ</button>
+      </div>
+      <div class="rules-note">Выберите в карточке дистанцию до цели: «АТАКА» сравнит бросок с DV по таблице книги и при попадании сразу бросит урон. Укрытие и особые условия — в поле DV вручную. Хиты: 10 + 5 × ⌈(ТЕЛ + ВОЛ) / 2⌉, если поле «макс.» пустое. Урон минус SP зоны; в голову ×2; холодное оружие — SP/2. Пробитая броня теряет 1 SP. Тяжёлое ранение −2 ко всем броскам, смертельное −4 — лист учитывает это сам.</div>
+      <div class="group-hit">
+        <span class="group-title">ГРУППОВОЕ ПОПАДАНИЕ <small id="groupCount">НИКТО НЕ ОТМЕЧЕН</small></span>
+        <input id="groupDamage" placeholder="урон или 6d6" aria-label="Урон: число или формула" title="Формула бросается один раз на всех — как граната или взрыв">
+        <select id="groupZone" aria-label="Зона"><option value="Body">Тело</option><option value="Head">Голова ×2</option></select>
+        <label title="Холодное оружие: SP вдвое меньше"><input type="checkbox" id="groupMelee"> SP/2</label>
+        <button class="quick-roll" type="button" id="groupHit">ПО ОТМЕЧЕННЫМ</button>
+        <button class="add-row" type="button" id="selectAll">ОТМЕТИТЬ ВСЕХ / СНЯТЬ</button>
+      </div>
+      <div id="enemyList" class="enemy-list"></div>
+    </section>
+
+    <section class="tab-panel" id="initiative">
+      <div class="page-heading">
+        <div><span class="eyebrow">COMBAT // 02</span><h1>ИНИЦИАТИВА</h1></div>
+        <p id="roundLabel">РАУНД 1</p>
+      </div>
+      <div class="dm-toolbar">
+        <button class="quick-roll" type="button" id="nextTurn">СЛЕДУЮЩИЙ ХОД ▸</button>
+        <button class="add-row" type="button" id="sortInit">СОРТИРОВАТЬ</button>
+        <button class="add-row" type="button" id="rerollInit" title="Перебросить 1d10 + РЕФ всем противникам">ПЕРЕБРОСИТЬ ПРОТИВНИКОВ</button>
+        <span class="toolbar-spacer"></span>
+        <button class="add-row" type="button" id="resetCombat">НОВЫЙ БОЙ</button>
+      </div>
+      <div id="turnPanel"></div>
+      <div class="panel">
+        <div class="section-title">ОЧЕРЁДНОСТЬ <span>БОЛЬШЕ — РАНЬШЕ</span></div>
+        <div class="table-scroll">
+          <table class="data-table init-table">
+            <thead><tr><th></th><th>Участник</th><th>Иниц.</th><th>Хиты</th><th>Состояние</th><th>Эффекты</th><th>Заметка</th><th></th></tr></thead>
+            <tbody id="initBody"></tbody>
+          </table>
+        </div>
+        <div class="init-add">
+          <input id="initName" placeholder="Имя игрока или NPC">
+          <input id="initValue" type="number" placeholder="Иниц.">
+          <button class="add-row" type="button" id="initAdd">+ В ОЧЕРЕДЬ</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="world">
+      <div class="page-heading">
+        <div><span class="eyebrow">NIGHT CITY // 03</span><h1>NPC И ЗАМЕТКИ</h1></div>
+        <p>КТО ЕСТЬ КТО</p>
+      </div>
+      <div class="panel">
+        <div class="section-title">NPC <span id="npcCount"></span></div>
+        <div class="npc-toolbar">
+          <input id="npcSearch" type="search" placeholder="Поиск по имени, фракции, заметкам..." aria-label="Поиск NPC">
+          <button class="add-row" type="button" data-add="npcs">+ NPC</button>
+          <button class="add-row" type="button" id="npcCollapseAll" title="Свернуть или развернуть все карточки">СВЕРНУТЬ / РАЗВЕРНУТЬ ВСЕ</button>
+        </div>
+        <div id="npcList" class="npc-list"></div>
+      </div>
+      <div class="world-grid">
+        <div class="panel">
+          <div class="section-title">ЛОКАЦИИ</div>
+          <textarea data-key="locations" rows="7" placeholder="Бар «Последний шанс», склад в Уотсоне..."></textarea>
+        </div>
+        <div class="panel">
+          <div class="section-title">УЛИКИ И СЕКРЕТЫ</div>
+          <textarea data-key="clues" rows="7" placeholder="Что игроки ещё не знают"></textarea>
+        </div>
+        <div class="panel">
+          <div class="section-title">ДОБЫЧА И НАГРАДЫ</div>
+          <textarea data-key="loot" rows="7" placeholder="Эдди, снаряжение, очки улучшения (IP)"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="bestiary">
+      <div class="page-heading">
+        <div><span class="eyebrow">DATABASE // 04</span><h1>БЕСТИАРИЙ И СЦЕНЫ</h1></div>
+        <p id="bestiarySummary">ШАБЛОНОВ НЕТ</p>
+      </div>
+      <div class="rules-note">Соберите противника на вкладке «Противники» и нажмите ★ — он сохранится здесь как шаблон. Шаблон с тем же именем заменяется. Из шаблона можно выставить сразу несколько копий: они получат номера.</div>
+      <div id="templateList" class="template-list"></div>
+      <div class="panel gap-top">
+        <div class="section-title">СЦЕНЫ <span>ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ</span></div>
+        <p class="muted">Соберите противников на поле и сохраните их как сцену: потом она выставляется целиком, со свежими хитами, бронёй и магазинами.</p>
+        <div class="init-add">
+          <input id="sceneName" placeholder="Засада на мосту">
+          <button class="add-row" type="button" id="saveScene">СОХРАНИТЬ ПОЛЕ КАК СЦЕНУ</button>
+        </div>
+        <div id="sceneList" class="scene-list"></div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="net">
+      <div class="page-heading">
+        <div><span class="eyebrow">NET ARCHITECTURE // 05</span><h1>СЕТЬ</h1></div>
+        <p>АРХИТЕКТУРЫ</p>
+      </div>
+      <div class="group-hit net-gen">
+        <span class="group-title">ГЕНЕРАТОР АРХИТЕКТУРЫ <small>ЛОББИ + ЭТАЖИ ПО СЛОЖНОСТИ</small></span>
+        <input id="netName" placeholder="Название (необязательно)" aria-label="Название архитектуры">
+        <select id="netDifficulty" aria-label="Сложность"></select>
+        <input id="netFloors" type="number" min="2" max="40" placeholder="этажей: 3d6" aria-label="Этажей" title="Пусто — 3d6">
+        <label title="Часть этажей уходит в боковую ветку Б"><input type="checkbox" id="netBranch"> ветвление</label>
+        <button class="quick-roll" type="button" id="generateNet">СГЕНЕРИРОВАТЬ</button>
+      </div>
+      <div class="rules-note">Этажи 1–2 берутся из таблицы лобби, остальные — из таблицы выбранной сложности; СЛ паролей, файлов и узлов — по сложности. ⟳ перебрасывает один этаж. REZ ЛЬДа уменьшайте прямо в таблице, пройденные этажи отмечайте галочкой.</div>
+      <details class="panel net-details">
+        <summary>ТАБЛИЦЫ ГЕНЕРАТОРА</summary>
+        <p class="muted">Это заготовки листа, а не таблицы книги — замените их своими. Одна строка — один вариант с равным шансом; повторите строку, чтобы он выпадал чаще. Строки: «Пароль», «Файл: что внутри», «Узел управления: что контролирует», «ЛЁД: Адская гончая», «Демон», любой другой текст.</p>
+        <div id="netGenTables" class="net-gen-tables"></div>
+        <button class="add-row" type="button" id="netGenReset">ВЕРНУТЬ ЗАГОТОВКИ</button>
+      </details>
+      <details class="panel net-details">
+        <summary>СПРАВОЧНИК: ЧЁРНЫЙ ЛЁД</summary>
+        <p class="muted">Значения из английского издания (стр. 204–205) — сверьте со своей книгой.</p>
+        <div class="table-scroll">
+          <table class="data-table ice-table">
+            <thead><tr><th>ЛЁД</th><th>PER</th><th>SPD</th><th>ATK</th><th>DEF</th><th>REZ</th><th>Эффект</th></tr></thead>
+            <tbody id="iceList"></tbody>
+          </table>
+        </div>
+      </details>
+      <div id="netList" class="net-list"></div>
+      <button class="quick-roll gap-top" type="button" id="addNet">+ АРХИТЕКТУРА</button>
+    </section>
+
+    <section class="tab-panel" id="generators">
+      <div class="page-heading">
+        <div><span class="eyebrow">RANDOM // 06</span><h1>ГЕНЕРАТОРЫ</h1></div>
+        <p>ИМПРОВИЗАЦИЯ</p>
+      </div>
+      <div class="world-grid generators-grid">
+        <div class="panel">
+          <div class="section-title">ИМЕНА <span>СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ</span></div>
+          <div id="nameList" class="scene-list"></div>
+          <button class="quick-roll gap-top" type="button" id="genNames">ЕЩЁ ИМЕНА</button>
+        </div>
+        <div class="panel generators-tables">
+          <div class="section-title">СВОИ ТАБЛИЦЫ <span>СЛУЧАЙНАЯ СТРОКА</span></div>
+          <p class="muted">Перенесите сюда таблицы из книги (Ночной рынок, случайные встречи) или придумайте свои: одна строка — один вариант. Результат попадает в журнал.</p>
+          <div id="tableList" class="template-list"></div>
+          <button class="add-row" type="button" id="addTable">+ ТАБЛИЦА</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden><span id="toastText"></span><button type="button" id="toastUndo" hidden>Вернуть</button></div>
+
+  <script src="../data.js"></script>
+  <script src="dm.js"></script>
+</body>
+</html>
