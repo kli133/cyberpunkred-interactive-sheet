@@ -2279,3 +2279,331 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Вкладка «Генераторы» */
+.gen-card {
+  background: #f4f1ed;
+  border-left: 5px solid var(--red);
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.gen-card.is-fresh {
+  animation: gen-pop .35s ease-out;
+}
+
+@keyframes gen-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.gen-card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-bottom: 6px;
+}
+
+.gen-card header b {
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.gen-card header span {
+  color: var(--red);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.gen-card p {
+  margin: 4px 0;
+}
+
+.gen-card .quick-roll, .gen-card .add-row {
+  margin-top: 6px;
+}
+
+.gen-sub {
+  background: #fff;
+  border-left: 3px solid var(--warn);
+  padding: 4px 8px;
+}
+
+.gen-tables summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  margin: 8px 0;
+}
+
+.loot-list {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.loot-list small {
+  display: inline-block;
+  min-width: 92px;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.loot-list em {
+  color: var(--red);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.gig-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(320px,1fr));
+  gap: 10px;
+}
+
+.gig-card {
+  margin: 0;
+}
+
+.gig-card.is-1 { border-left-color: var(--warn); }
+.gig-card.is-2 { border-left-color: var(--ok); opacity: .75; }
+.gig-card.is-3 { border-left-color: #5a5856; opacity: .6; }
+
+.gig-card header input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-weight: 700;
+  border: 0;
+  background: transparent;
+}
+
+.gig-card select, .gig-card textarea {
+  border: 1px solid #c9c4be;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+}
+
+.gig-card textarea {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.npc-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+
+.trait-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid #c9c4be;
+  background: #fff;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  transition: border-color .15s, transform .1s, background .2s;
+}
+
+.trait-chip small {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.trait-chip:hover {
+  border-color: var(--red);
+}
+
+.trait-chip:active {
+  transform: scale(.95);
+}
+
+.trait-chip.is-rerolled {
+  animation: trait-flash .5s ease-out;
+}
+
+@keyframes trait-flash {
+  from { background: #ffe2a8; }
+  to { background: #fff; }
+}
+
+.npc-head .is-pinned {
+  color: var(--warn);
+}
+
+.rep-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.rep-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  background: #f4f1ed;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.rep-row b {
+  min-width: 110px;
+}
+
+.rep-level input {
+  width: 48px;
+}
+
+.rep-row input, .cal-add input, .cal-now input {
+  border: 1px solid #c9c4be;
+  background: #fff;
+  padding: 3px 5px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.faction-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(280px,1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.faction-card {
+  background: #f4f1ed;
+  border-top: 4px solid #8a8580;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  transition: border-color .2s;
+}
+
+.faction-card.st-neg { border-top-color: var(--red); }
+.faction-card.st-pos { border-top-color: var(--ok); }
+
+.faction-card header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.faction-card header input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  border: 0;
+  background: transparent;
+}
+
+.faction-card header small {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.faction-card p {
+  margin: 4px 0;
+}
+
+.faction-card textarea {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid #c9c4be;
+  font: inherit;
+  font-size: 12px;
+}
+
+.standing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.standing input {
+  flex: 1;
+  accent-color: var(--red);
+}
+
+.st-pos .standing input { accent-color: var(--ok); }
+
+.cal-now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cal-now b {
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cal-buttons, .cal-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cal-buttons .add-row, .cal-add .quick-roll {
+  margin-top: 0;
+}
+
+.cal-add input:not([type=date]) {
+  flex: 1 1 220px;
+}
+
+.cal-events {
+  display: grid;
+  gap: 4px;
+}
+
+.cal-event {
+  display: grid;
+  grid-template-columns: 130px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  background: #f4f1ed;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.cal-event small {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.cal-event.is-past {
+  opacity: .5;
+}
+
+#calendarStatus {
+  color: var(--red);
+  font-weight: 700;
+}
+
+@media(max-width:560px) {
+  .cal-event {
+    grid-template-columns: 1fr auto;
+  }
+}

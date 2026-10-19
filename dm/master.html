@@ -38,6 +38,7 @@
       <span><i class="dot"></i> GM LINK ONLINE</span>
       <span id="saveStatus">АВТОСОХРАНЕНИЕ ВКЛ.</span>
       <span id="combatStatus"></span>
+      <span id="calendarStatus" title="Календарь — вкладка «Генераторы»"></span>
       <button class="dice-toggle" id="diceToggle" type="button">КУБИК // 1D10</button>
     </section>
     <aside class="dice-drawer" id="diceDrawer" aria-label="Кубик мастера">
@@ -232,7 +233,8 @@
         <div><span class="eyebrow">RANDOM // 06</span><h1>ГЕНЕРАТОРЫ</h1></div>
         <p>ИМПРОВИЗАЦИЯ</p>
       </div>
-      <div class="world-grid generators-grid">
+      <div id="genList" class="rules-list"></div>
+      <div class="world-grid generators-grid gap-top">
         <div class="panel">
           <div class="section-title">ИМЕНА <span>СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ</span></div>
           <div id="nameList" class="scene-list"></div>
@@ -287,10 +289,12 @@
   <script src="net-data.js"></script>
   <script src="ref-data.js"></script>
   <script src="econ-data.js"></script>
+  <script src="gen-data.js"></script>
   <script src="dm.js"></script>
   <script src="rules.js"></script>
   <script src="net.js"></script>
   <script src="ref.js"></script>
   <script src="econ.js"></script>
+  <script src="gen.js"></script>
 </body>
 </html>
