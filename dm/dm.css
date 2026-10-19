@@ -2607,3 +2607,339 @@
     grid-template-columns: 1fr auto;
   }
 }
+
+/* Вкладка «Развлечения» */
+.punish-btn {
+  margin-top: 0;
+}
+
+.punish-btn.punish-light { background: #6f6b67; }
+.punish-btn.punish-medium { background: #b07d10; }
+.punish-out .punish-heavy, .gen-card.punish-heavy { border-left-color: #6d1fb0; }
+.gen-card.punish-medium { border-left-color: var(--warn); }
+.gen-card.punish-light { border-left-color: #8a8580; }
+
+.punish-what {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tarot-table {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.tarot-slot {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.tarot-slot > small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tarot-card {
+  position: relative;
+  width: 132px;
+  height: 214px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  perspective: 900px;
+  cursor: pointer;
+  animation: tarot-deal .45s ease-out both;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes tarot-deal {
+  from { opacity: 0; transform: translateY(-30px) rotate(-6deg); }
+  to { opacity: 1; transform: none; }
+}
+
+.tarot-card > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  backface-visibility: hidden;
+  transition: transform .6s cubic-bezier(.3,1.4,.5,1);
+}
+
+.tarot-back {
+  background: repeating-linear-gradient(45deg, #1a0b10 0 8px, #2a0d14 8px 16px);
+  border: 2px solid var(--red);
+  box-shadow: 0 0 14px rgba(229,43,50,.45) inset;
+  color: var(--red);
+  font-size: 46px;
+}
+
+.tarot-card:hover .tarot-back {
+  box-shadow: 0 0 22px rgba(229,43,50,.8) inset, 0 0 12px rgba(229,43,50,.6);
+}
+
+.tarot-face {
+  transform: rotateY(180deg);
+  grid-template-rows: auto 1fr auto auto;
+  padding: 10px 8px;
+  background: linear-gradient(170deg, #121316, #22070c);
+  border: 2px solid #3fd0ff;
+  box-shadow: 0 0 16px rgba(63,208,255,.5);
+  color: #fff;
+  text-align: center;
+}
+
+.tarot-face em {
+  font-style: normal;
+  font-weight: 700;
+  color: #3fd0ff;
+}
+
+.tarot-face i {
+  font-style: normal;
+  font-size: 54px;
+  color: #ff4fd8;
+  text-shadow: 0 0 12px #ff4fd8;
+}
+
+.tarot-face b {
+  font-size: 13px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.tarot-face small {
+  color: #9a9693;
+  font-size: 10px;
+}
+
+.tarot-card.is-open .tarot-back { transform: rotateY(-180deg); }
+.tarot-card.is-open .tarot-face { transform: rotateY(0); }
+.tarot-card.is-open.is-reversed .tarot-face { transform: rotateY(0) rotate(180deg); }
+
+.bank {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.bank b {
+  font-size: 20px;
+  color: var(--red);
+}
+
+.bank-bar {
+  flex: 1;
+  height: 10px;
+  background: #3a3a3f;
+}
+
+.bank-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  transition: width .4s;
+}
+
+.card-table {
+  background: radial-gradient(ellipse at center, #14432c, #0b2318);
+  border: 3px solid #4a2c12;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  border-radius: 14px;
+}
+
+.card-table:empty {
+  display: none;
+}
+
+.card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-who {
+  width: 100%;
+  color: #cfe8d8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.play-card {
+  display: inline-grid;
+  grid-template-rows: auto 1fr;
+  justify-items: start;
+  width: 58px;
+  height: 84px;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  color: #111;
+  font: inherit;
+  box-shadow: 0 2px 4px rgba(0,0,0,.4);
+  animation: card-in .3s ease-out both;
+  transition: transform .15s, box-shadow .15s;
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(-14px) rotate(4deg); }
+  to { opacity: 1; transform: none; }
+}
+
+.play-card b {
+  font-size: 16px;
+}
+
+.play-card i {
+  justify-self: center;
+  align-self: center;
+  font-style: normal;
+  font-size: 30px;
+}
+
+.play-card.is-red {
+  color: #c4161c;
+}
+
+button.play-card {
+  cursor: pointer;
+}
+
+button.play-card:hover {
+  transform: translateY(-4px);
+}
+
+.play-card.is-marked {
+  transform: translateY(-10px);
+  opacity: .55;
+  box-shadow: 0 0 0 3px var(--warn);
+}
+
+.play-card.is-back {
+  background: repeating-linear-gradient(45deg, var(--red) 0 6px, #7a0f14 6px 12px);
+  border-color: #fff;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-actions .add-row, .card-actions .quick-roll {
+  margin-top: 0;
+}
+
+.card-actions .add-row {
+  color: #fff;
+  border-color: #fff;
+}
+
+.card-result {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.card-result.is-win { color: var(--ok); }
+.card-result.is-loss { color: var(--red); }
+.card-verdict.is-win { border-left-color: var(--ok); }
+.card-verdict.is-loss { border-left-color: #6d1fb0; }
+
+.fidget-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 18px;
+  background: #101113;
+  border-radius: 10px;
+}
+
+.fidget {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--red);
+  border-radius: 14px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 26px;
+  background: #1b1c1f;
+  box-shadow: 0 0 12px rgba(229,43,50,.4);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: transform .55s cubic-bezier(.3,1.8,.4,1), box-shadow .2s;
+}
+
+.fidget.is-held {
+  cursor: grabbing;
+  transition: none;
+  box-shadow: 0 0 24px rgba(229,43,50,.9);
+  z-index: 3;
+}
+
+.fidget.is-spin {
+  animation: fidget-spin .7s cubic-bezier(.3,1.4,.5,1);
+}
+
+@keyframes fidget-spin {
+  0% { transform: rotate(0) scale(1); }
+  40% { transform: rotate(200deg) scale(1.25); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Отклик кнопок и вспышка результата кубика по всему листу Мастера */
+.quick-roll, .add-row, .weapon-btn, .tab {
+  transition: transform .1s, background .15s, color .15s;
+}
+
+.quick-roll:active, .add-row:active, .weapon-btn:active, .tab:active {
+  transform: scale(.94);
+}
+
+#diceResult.is-rolled .formula-roll-total {
+  animation: dice-flash .5s ease-out;
+}
+
+@keyframes dice-flash {
+  0% { color: var(--red); transform: scale(1.25); }
+  100% { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tarot-card, .play-card, .gen-card.is-fresh, .fidget.is-spin, #diceResult.is-rolled .formula-roll-total {
+    animation: none;
+  }
+}
+
+.play-card {
+  position: relative;
+}
+
+.play-card.is-marked::after {
+  content: 'СМЕНИТЬ';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -16px;
+  color: var(--warn);
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+}
