@@ -839,6 +839,9 @@ function renderTemplates(){
 
 // --- Сеть ---
 const plain = text => text.toLowerCase().replace(/ё/g, 'е').trim();
+// Заполнить строку этажа ЛЬДОМ или Демоном из книги: тип, статы с эффектом, REZ.
+function setFloorIce(f, key){ const ice = blackIce[key]; f[2] = 'Чёрный ЛЁД'; f[3] = ''; f[4] = iceText(ice); f[5] = f[6] = String(ice[6]); }
+function setFloorDemon(f, key){ const dm = demons[key]; f[2] = 'Демон'; f[3] = ''; f[4] = demonFloorText(dm); f[5] = f[6] = String(dm[1]); }
 // ЛЁД ищется по русскому или английскому названию, по прежнему имени листа, затем по началу названия.
 function findIce(name){
   const q = plain(name);
@@ -949,11 +952,26 @@ function autoGrow(el){
   el.style.height = 'auto';
   el.style.height = `${el.scrollHeight}px`;
 }
+// Этаж с ЛЬДОМ или Демоном: выбор из книги подставляет статы, эффект и REZ.
+const iceOptions = value => `<option value="">${value ? 'сменить ЛЁД…' : 'выберите ЛЁД из книги…'}</option>${['против нетраннера', 'против программ'].map(target=>`<optgroup label="${target}">${Object.entries(blackIce).filter(([, ice])=>ice[1] === target).map(([k, ice])=>`<option value="${k}">${esc(ice[0].split(' (')[0])} — REZ ${ice[6]}</option>`).join('')}</optgroup>`).join('')}`;
+const demonFloorText = ([name, rez, iface, actions, combat, icon]) => `${name}: REZ ${rez} · Интерфейс ${iface} · действий ${actions} · боевой № ${combat} — ${icon}`;
+const floorDemon = f => Object.values(demons).find(dm=>f[4].split(':')[0].trim() === dm[0]);
 function floorContent(n, r, f){
+  if(f[2] === 'Демон'){
+    const dm = floorDemon(f);
+    const pickDemon = `<select data-floor-demon="${n}" data-r="${r}" aria-label="Демон из книги">${options([['', dm ? 'сменить Демона…' : 'выберите Демона…'], ...Object.entries(demons).map(([k, d])=>[k, `${d[0]} — REZ ${d[1]}`])], '')}</select>`;
+    if(!dm) return `${pickDemon}<textarea class="grow-field" data-floor="${n}" data-r="${r}" data-j="4" rows="1" aria-label="Содержимое" placeholder="или опишите своего">${esc(f[4])}</textarea>`;
+    return `<div class="ice-view">
+      <div class="ice-head"><b>${esc(dm[0])}</b>${pickDemon}</div>
+      <div class="ice-stats"><span><small>ИНТЕРФЕЙС</small>${dm[2]}</span><span><small>ДЕЙСТВИЙ</small>${dm[3]}</span><span><small>БОЕВОЙ №</small>${dm[4]}</span></div>
+      <p>${esc(dm[5])}. Встаёт первым в очереди; сначала триггеры Узлов, остальными действиями — Разряд.</p>
+    </div>`;
+  }
+  const pickIce = f[2] === 'Чёрный ЛЁД' ? `<select data-floor-ice="${n}" data-r="${r}" aria-label="ЛЁД из книги">${iceOptions(f[4])}</select>` : '';
   const ice = f[2] === 'Чёрный ЛЁД' && !editingFloors.has(`${n}:${r}`) && parseIce(f[4]);
-  if(!ice) return `<textarea class="grow-field" data-floor="${n}" data-r="${r}" data-j="4" rows="1" aria-label="Содержимое" placeholder="${f[2] === 'Чёрный ЛЁД' ? 'Имя: PER 6 SPD 6 ATK 6 DEF 2 — эффект' : 'что здесь, пароль, файл...'}">${esc(f[4])}</textarea>`;
+  if(!ice) return `${pickIce}<textarea class="grow-field" data-floor="${n}" data-r="${r}" data-j="4" rows="1" aria-label="Содержимое" placeholder="${f[2] === 'Чёрный ЛЁД' ? 'Имя: PER 6 SPD 6 ATK 6 DEF 2 — эффект' : 'что здесь, пароль, файл...'}">${esc(f[4])}</textarea>`;
   return `<div class="ice-view">
-      <div class="ice-head"><b>${esc(ice.name)}</b><button type="button" class="ice-edit" data-floor-edit="${n}" data-r="${r}" title="Править текст ЛЬДа">✎</button></div>
+      <div class="ice-head"><b>${esc(ice.name)}</b>${pickIce}<button type="button" class="ice-edit" data-floor-edit="${n}" data-r="${r}" title="Править текст ЛЬДа">✎</button></div>
       <div class="ice-stats">${iceStats.map((k,i)=>`<span><small>${k}</small>${esc(ice.stats[i])}</span>`).join('')}</div>
       ${ice.effect ? `<p>${esc(ice.effect)}</p>` : ''}
     </div>`;
@@ -993,6 +1011,14 @@ function demonRoll(n, kind){
   const r = roll({count:1, sides:10, bonus:0}, kind === 'combat' ? combat : iface, `${name}: ${label.toLowerCase()}`, {crits:true, note});
   if(kind === 'zap') roll({count:1, sides:6, bonus:0}, 0, `${name}: урон Разряда`, {note:`если ${r.total} больше защиты цели`, noCrit:true});
 }
+// Демон на этаже: те же броски, что у Демона архитектуры.
+function floorDemonRoll(n, r, kind){
+  const [name, , iface, , combat] = floorDemon(state.nets[n].floors[r]);
+  const [label, note] = demonRolls[kind];
+  const res = roll({count:1, sides:10, bonus:0}, kind === 'combat' ? combat : iface, `${name}: ${label.toLowerCase()}`, {crits:true, note});
+  if(kind === 'zap') roll({count:1, sides:6, bonus:0}, 0, `${name}: урон Разряда`, {note:`если ${res.total} больше защиты цели`, noCrit:true});
+}
+const floorDemonButtons = (n, r, f) => f[2] === 'Демон' && floorDemon(f) ? Object.entries(demonRolls).map(([kind, [label, note]])=>`<button type="button" class="weapon-btn" data-floor-demon-roll="${n}" data-r="${r}" data-kind="${kind}" title="${esc(note)}">${label}</button>`).join('') : '';
 function demonBlock(net, n){
   const select = `<select data-net="${n}" data-k="demon" aria-label="Демон архитектуры">${options([['','без Демона'], ...Object.entries(demons).map(([k, dm])=>[k, `Демон: ${dm[0]}`])], net.demon)}</select>`;
   const demon = demons[net.demon];
@@ -1024,12 +1050,13 @@ function renderNets(){
             <td>${floorContent(n, r, f)}</td>
             <td class="rez"><input data-floor="${n}" data-r="${r}" data-j="5" type="number" value="${esc(f[5])}" aria-label="REZ"><span class="slash">/</span><input data-floor="${n}" data-r="${r}" data-j="6" type="number" value="${esc(f[6])}" aria-label="REZ макс."></td>
             <td class="short"><input type="checkbox" data-floor="${n}" data-r="${r}" data-j="7"${f[7] === 'true' ? ' checked' : ''} aria-label="Пройден"></td>
-            <td class="row-btns">${iceButtons(n, r, f)}${f[2] === 'Чёрный ЛЁД' && floorDice(f) ? `<button type="button" class="weapon-btn" data-ice-effect="${n}" data-r="${r}" title="Кубики эффекта ЛЬДа">ЭФФЕКТ</button>` : ''}<button type="button" class="weapon-btn" data-floor-reroll="${n}" data-r="${r}" title="Перебросить этаж по таблице">⟳</button><button type="button" class="remove" data-floor-del="${n}" data-r="${r}" title="Удалить этаж">×</button></td>
+            <td class="row-btns">${iceButtons(n, r, f)}${floorDemonButtons(n, r, f)}${f[2] === 'Чёрный ЛЁД' || f[2] === 'Демон' ? `<button type="button" class="weapon-btn" data-floor-same="${n}" data-r="${r}" title="Ещё один ЛЁД на этот же этаж">+ЛЁД</button>` : ''}${f[2] === 'Чёрный ЛЁД' && floorDice(f) ? `<button type="button" class="weapon-btn" data-ice-effect="${n}" data-r="${r}" title="Кубики эффекта ЛЬДа">ЭФФЕКТ</button>` : ''}<button type="button" class="weapon-btn" data-floor-reroll="${n}" data-r="${r}" title="Перебросить этаж по таблице">⟳</button><button type="button" class="remove" data-floor-del="${n}" data-r="${r}" title="Удалить этаж">×</button></td>
           </tr>`).join('') || '<tr><td colspan="8" class="empty-cell">Этажей нет</td></tr>'}</tbody>
         </table>
       </div>
       <div class="enemy-row-add">
         <button type="button" class="add-row" data-floor-add="${n}">+ ЭТАЖ</button>
+        <select class="floor-quick" data-floor-quick="${n}" aria-label="Новый этаж с ЛЬДОМ или Демоном"><option value="">+ этаж с ЛЬДОМ / Демоном…</option><optgroup label="Чёрный ЛЁД">${Object.entries(blackIce).map(([k, ice])=>`<option value="ice:${k}">${esc(ice[0].split(' (')[0])} — ${esc(ice[1])}</option>`).join('')}</optgroup><optgroup label="Демоны">${Object.entries(demons).map(([k, d])=>`<option value="demon:${k}">${esc(d[0])}</option>`).join('')}</optgroup><optgroup label="Препятствия">${['Пароль', 'Файл', 'Узел управления'].map(kind=>`<option value="kind:${kind}">${kind}</option>`).join('')}</optgroup></select>
         <button type="button" class="add-row" data-net-reset="${n}" title="Снять отметки «пройден» и восстановить REZ">СБРОСИТЬ ПРОХОД</button>
         <button type="button" class="add-row${openNetImages.has(n) ? ' active' : ''}" data-net-image="${n}" title="Картинка архитектуры для Owlbear: с текстом, значками или без">КАРТИНКА</button>
       </div>
@@ -1191,7 +1218,28 @@ document.addEventListener('change', ev=>{
     if(el.dataset.f === 'selected') updateSummary();
     else if(!el.dataset.f.startsWith('weapons')) renderInit();
   }
-  if(el.dataset.floor !== undefined){ editingFloors.delete(`${el.dataset.floor}:${el.dataset.r}`); renderNets(); }
+  if(el.dataset.floor !== undefined){
+    const net = state.nets[Number(el.dataset.floor)], f = net.floors[Number(el.dataset.r)];
+    // Смена типа этажа убирает статы ЛЬДА или Демона, которые к новому типу не подходят.
+    if(el.dataset.j === '2' && ((f[2] !== 'Чёрный ЛЁД' && parseIce(f[4])) || (f[2] !== 'Демон' && floorDemon(f)))){ f[4] = ''; f[5] = ''; f[6] = ''; }
+    // Пароль, Файл, Узел: СЛ по сложности архитектуры, если не задана.
+    if(el.dataset.j === '2' && ['Пароль', 'Файл', 'Узел управления'].includes(f[2]) && isBlank(f[3]) && net.difficulty) f[3] = String(netDifficulties[net.difficulty][1]);
+    editingFloors.delete(`${el.dataset.floor}:${el.dataset.r}`);
+    renderNets(); save();
+  }
+  if(el.dataset.floorIce !== undefined && el.value){ setFloorIce(state.nets[Number(el.dataset.floorIce)].floors[Number(el.dataset.r)], el.value); renderNets(); save(); }
+  if(el.dataset.floorDemon !== undefined && el.value){ setFloorDemon(state.nets[Number(el.dataset.floorDemon)].floors[Number(el.dataset.r)], el.value); renderNets(); save(); }
+  if(el.dataset.floorQuick !== undefined && el.value){
+    const net = state.nets[Number(el.dataset.floorQuick)];
+    const top = net.floors.filter(f=>!['Б','В','Г','Д'].includes(f[1])).reduce((m, f)=>Math.max(m, num(f[0])), 0);
+    const f = [String(top + 1), net.floors.some(x=>x[1] === 'А') ? 'А' : '', '', '', '', '', '', ''];
+    const [type, key] = el.value.split(':');
+    if(type === 'ice') setFloorIce(f, key);
+    else if(type === 'demon') setFloorDemon(f, key);
+    else { f[2] = key; f[3] = net.difficulty ? String(netDifficulties[net.difficulty][1]) : ''; }
+    net.floors.push(f);
+    renderNets(); save();
+  }
   if(el.dataset.act === 'armor'){
     const e = state.enemies[Number(el.dataset.i)];
     e.armor = el.value;
@@ -1349,6 +1397,12 @@ const clickHandlers = [
   }],
   ['floorReroll', (n, el)=>rerollFloor(Number(n), Number(el.dataset.r))],
   ['iceRoll', (n, el)=>iceRoll(Number(n), Number(el.dataset.r), el.dataset.kind)],
+  ['floorDemonRoll', (n, el)=>floorDemonRoll(Number(n), Number(el.dataset.r), el.dataset.kind)],
+  ['floorSame', (n, el)=>{
+    const floors = state.nets[Number(n)].floors, r = Number(el.dataset.r);
+    floors.splice(r + 1, 0, [floors[r][0], floors[r][1], 'Чёрный ЛЁД', '', '', '', '', '']);
+    renderNets(); save();
+  }],
   ['demonRoll', (n, el)=>demonRoll(Number(n), el.dataset.kind)],
   ['netImage', n=>{ n = Number(n); if(openNetImages.has(n)) openNetImages.delete(n); else openNetImages.add(n); renderNets(); }],
   ['iceEffect', (n, el)=>iceEffect(Number(n), Number(el.dataset.r))],

@@ -2943,3 +2943,29 @@ button.play-card:hover {
   font-weight: 700;
   text-align: center;
 }
+
+/* Выбор ЛЬДА и Демона из книги в таблице этажей */
+.net-table select[data-floor-ice], .net-table select[data-floor-demon] {
+  max-width: 180px;
+  border: 1px solid #c9c4be;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+  margin-bottom: 4px;
+}
+
+.ice-head select {
+  margin: 0 0 0 auto;
+}
+
+.floor-quick {
+  border: 1px solid var(--red);
+  background: #fff;
+  color: var(--red);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 6px;
+  margin-top: 10px;
+}
