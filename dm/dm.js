@@ -6,8 +6,8 @@ const STAT_REF = 1, STAT_DEX = 2, STAT_WILL = 5, STAT_MOVE = 7, STAT_BODY = 8;
 // Игроки: j — индекс в сохранённой строке. 6 — РЕФ, 7 — id листа персонажа в этом браузере (скрытое).
 const PLAYER_WIDTH = 8;
 const playerColumns = [{j:0,label:'Игрок'},{j:1,label:'Персонаж'},{j:2,label:'Роль'},{j:6,label:'РЕФ',short:true},{j:3,label:'Хиты',short:true},{j:4,label:'SP г/т',short:true},{j:5,label:'Заметки',note:true}];
-// NPC: 0 имя, 1 кто / фракция, 2 отношение, 3 где найти, 4 заметки, 5 свёрнут.
-const NPC_WIDTH = 6;
+// NPC: 0 имя, 1 кто / фракция, 2 отношение, 3 где найти, 4 заметки, 5 свёрнут, 6 закреплён (переживает «Очистить»).
+const NPC_WIDTH = 7;
 const npcFields = [{j:0,label:'Имя',placeholder:'Имя NPC'},{j:1,label:'Кто / фракция',placeholder:'фиксер, Тигриные когти...'},{j:2,label:'Отношение',placeholder:'союзник, должник, враг...'},{j:3,label:'Где найти',placeholder:'бар, район, номер...'}];
 // Оружие противника: 0 название, 1 атака (стат + навык), 2 урон, 3 ROF, 4 патроны, 5 магазин, 6 тип из книги, 7 база автоогня.
 const WEAPON_WIDTH = 8;
@@ -50,8 +50,12 @@ const blankEnemy = () => ({
 const blankState = () => ({
   sessionTitle:'', scene:'', hooks:'', notes:'', locations:'', clues:'', loot:'',
   players:[], npcs:[], enemies:[], templates:[], scenes:[], nets:[], tables:[], netGen:{}, covers:[], economy:{people:[]},
+  gigs:[], factions:defaultFactions(), reputation:[], calendar:{now:'2045-06-01T20:00', events:[]},
   init:[], turn:0, round:1, log:[], compact:false
 });
+
+// Фракции по умолчанию — банды и силы Найт-Сити из книги (gen-data.js), отношение 0.
+const defaultFactions = () => factionPresets.map(([name, kind, desc])=>({name, kind, desc, standing:0, notes:''}));
 
 // --- Хранение ---
 function normalizeEnemy(raw){
@@ -86,6 +90,14 @@ function normalize(raw){
   const people = Array.isArray(s.economy?.people) ? s.economy.people : [];
   s.economy = {people:people.map(p=>({...Object.fromEntries(['name','roleId','rank','housing','lifestyle','trauma','extra','cash','ipGroup','ipStyle','ipStyleLevel'].map(k=>[k, String(p?.[k] ?? '')])), paid:p?.paid === true}))
     .map(p=>({...p, housing:p.housing || 'container', lifestyle:p.lifestyle || 'kibble'}))};
+  // Генераторы: доска заказов, репутация игроков, отношения фракций, календарь.
+  const str = v => String(v ?? '');
+  s.gigs = (Array.isArray(s.gigs) ? s.gigs : []).map(g=>Object.fromEntries(['title','client','job','place','twist','tier','pay','status','notes'].map(k=>[k, str(g?.[k])])));
+  s.reputation = (Array.isArray(s.reputation) ? s.reputation : []).map(p=>({name:str(p?.name), rep:str(p?.rep), coward:p?.coward === true}));
+  s.factions = Array.isArray(s.factions) ? s.factions.map(f=>({name:str(f?.name), kind:str(f?.kind), desc:str(f?.desc), standing:Math.max(-3, Math.min(3, Math.round(num(f?.standing)))), notes:str(f?.notes)})) : defaultFactions();
+  const cal = s.calendar && typeof s.calendar === 'object' ? s.calendar : {};
+  s.calendar = {now:/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(cal.now) ? cal.now : '2045-06-01T20:00',
+    events:(Array.isArray(cal.events) ? cal.events : []).map(ev=>({date:str(ev?.date).slice(0, 10), text:str(ev?.text), done:ev?.done === true})).filter(ev=>/^\d{4}-\d\d-\d\d$/.test(ev.date))};
   s.init = (Array.isArray(s.init) ? s.init : []).map(item=>({
     id:String(item?.id || uid()), name:String(item?.name ?? ''), value:String(item?.value ?? ''),
     enemyId:item?.enemyId ? String(item.enemyId) : '', note:String(item?.note ?? ''),
@@ -496,6 +508,7 @@ function injuryBlock(i, e){
 const statusBlock = (i, e) => `<div class="enemy-status"><span class="injury-title">СОСТОЯНИЕ</span>${statusFlags.map(([k, label, hint])=>`<button type="button" class="status-chip${e.status[k] ? ' active' : ''}" data-act="status" data-i="${i}" data-j="${k}" aria-pressed="${e.status[k]}" title="${esc(hint)}">${label}</button>`).join('')}<select data-act="fire" data-i="${i}" aria-label="Горит" title="Урон огнём в конце хода противника, мимо брони">${options(fireLevels, e.status.fire)}</select></div>`;
 const headTools = (i, e) => `<span class="enemy-tools">
     <button type="button" data-act="init" data-i="${i}" title="${state.init.some(item=>item.enemyId === e.id) ? 'Уже в инициативе — перебросить' : 'В инициативу: 1d10 + РЕФ'}">⚑</button>
+    <button type="button" data-act="loot" data-i="${i}" title="Обыскать: оружие, патроны, снаряжение, наличные">$</button>
     <button type="button" data-act="dup" data-i="${i}" title="Копия">⧉</button>
     <button type="button" data-act="template" data-i="${i}" title="Сохранить в бестиарий">★</button>
     <button type="button" data-act="dead" data-i="${i}" title="${e.dead ? 'Вернуть в бой' : 'Отметить мёртвым'}">☠</button>
@@ -654,6 +667,7 @@ function renderNpcs(){
         ${rowField('npcs', i, 0, row[0], 'Имя', false, 'Имя NPC')}
         <span class="npc-summary">${esc([row[1], row[2]].filter(s=>s.trim()).join(' · '))}${collapsed && lines ? ` · заметки: ${lines} стр.` : ''}</span>
         <span class="enemy-tools">
+          <button type="button" class="${row[6] === 'true' ? 'is-pinned' : ''}" data-npc-pin="${i}" title="${row[6] === 'true' ? 'Закреплён: переживёт «Очистить». Нажмите, чтобы открепить' : 'Закрепить: NPC останется после «Очистить»'}">★</button>
           <button type="button" data-npc-toggle="${i}" title="${collapsed ? 'Развернуть' : 'Свернуть'}">${collapsed ? '▾' : '▴'}</button>
           <button type="button" data-npc-del="${i}" title="Удалить NPC">×</button>
         </span>
@@ -1108,6 +1122,7 @@ function renderAll(){
   renderLog();
   if(typeof renderCovers === 'function') renderCovers(); // вкладка правил (rules.js)
   if(typeof renderEcon === 'function') renderEcon(); // вкладка экономики (econ.js)
+  if(typeof renderGen === 'function') renderGen(); // генераторы (gen.js)
 }
 function activateTab(id){
   $$('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab === id));
@@ -1300,6 +1315,7 @@ const clickHandlers = [
     $('#npcList .npc-card:last-child input')?.focus();
   }],
   ['delRow', (type, el)=>{ state[type].splice(Number(el.dataset.i), 1); renderPlayers(); save(); }],
+  ['npcPin', i=>{ const row = state.npcs[Number(i)]; row[6] = row[6] === 'true' ? '' : 'true'; renderNpcs(); save(); }],
   ['npcToggle', i=>{ const row = state.npcs[Number(i)]; row[5] = row[5] === 'true' ? '' : 'true'; renderNpcs(); save(); }],
   ['npcDel', i=>{ const row = state.npcs[Number(i)]; withUndo(`${row[0].trim() || 'NPC'}: удалён`, ()=>state.npcs.splice(Number(i), 1)); }],
   ['initDel', i=>{
@@ -1506,8 +1522,9 @@ $('#importInput').addEventListener('change', async ev=>{
 $('#resetBtn').addEventListener('click', ()=>{
   // Бестиарий, сцены, архитектуры и свои таблицы переживают очистку: их готовят на всю кампанию.
   withUndo('Сессия очищена, бестиарий и заготовки сохранены', ()=>{
-    const {templates, scenes, nets, tables, players, netGen, economy} = state;
-    state = {...blankState(), templates, scenes, nets, tables, players, netGen, economy};
+    const {templates, scenes, nets, tables, players, netGen, economy, gigs, factions, reputation, calendar} = state;
+    const npcs = state.npcs.filter(row=>row[6] === 'true');
+    state = {...blankState(), templates, scenes, nets, tables, players, netGen, economy, gigs, factions, reputation, calendar, npcs};
   });
 });
 window.addEventListener('beforeunload', ()=>{ if(saveTimer) persist(); });
