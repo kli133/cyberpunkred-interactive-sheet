@@ -50,7 +50,7 @@ const blankEnemy = () => ({
 const blankState = () => ({
   sessionTitle:'', scene:'', hooks:'', notes:'', locations:'', clues:'', loot:'',
   players:[], npcs:[], enemies:[], templates:[], scenes:[], nets:[], tables:[], netGen:{}, covers:[], economy:{people:[]},
-  gigs:[], factions:defaultFactions(), reputation:[], calendar:{now:'2045-06-01T20:00', events:[]},
+  gigs:[], factions:defaultFactions(), reputation:[], calendar:{now:'2045-06-01T20:00', events:[]}, fun:{gm:100, dealer:100},
   init:[], turn:0, round:1, log:[], compact:false
 });
 
@@ -95,6 +95,8 @@ function normalize(raw){
   s.gigs = (Array.isArray(s.gigs) ? s.gigs : []).map(g=>Object.fromEntries(['title','client','job','place','twist','tier','pay','status','notes'].map(k=>[k, str(g?.[k])])));
   s.reputation = (Array.isArray(s.reputation) ? s.reputation : []).map(p=>({name:str(p?.name), rep:str(p?.rep), coward:p?.coward === true}));
   s.factions = Array.isArray(s.factions) ? s.factions.map(f=>({name:str(f?.name), kind:str(f?.kind), desc:str(f?.desc), standing:Math.max(-3, Math.min(3, Math.round(num(f?.standing)))), notes:str(f?.notes)})) : defaultFactions();
+  // Фишки Мастера и дилера (вкладка «Развлечения»).
+  s.fun = {gm:Math.max(0, num(s.fun?.gm ?? 100)), dealer:Math.max(0, num(s.fun?.dealer ?? 100))};
   const cal = s.calendar && typeof s.calendar === 'object' ? s.calendar : {};
   s.calendar = {now:/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(cal.now) ? cal.now : '2045-06-01T20:00',
     events:(Array.isArray(cal.events) ? cal.events : []).map(ev=>({date:str(ev?.date).slice(0, 10), text:str(ev?.text), done:ev?.done === true})).filter(ev=>/^\d{4}-\d\d-\d\d$/.test(ev.date))};
@@ -1123,6 +1125,7 @@ function renderAll(){
   if(typeof renderCovers === 'function') renderCovers(); // вкладка правил (rules.js)
   if(typeof renderEcon === 'function') renderEcon(); // вкладка экономики (econ.js)
   if(typeof renderGen === 'function') renderGen(); // генераторы (gen.js)
+  if(typeof renderFun === 'function') renderFun(); // развлечения (fun.js)
 }
 function activateTab(id){
   $$('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab === id));
@@ -1522,9 +1525,9 @@ $('#importInput').addEventListener('change', async ev=>{
 $('#resetBtn').addEventListener('click', ()=>{
   // Бестиарий, сцены, архитектуры и свои таблицы переживают очистку: их готовят на всю кампанию.
   withUndo('Сессия очищена, бестиарий и заготовки сохранены', ()=>{
-    const {templates, scenes, nets, tables, players, netGen, economy, gigs, factions, reputation, calendar} = state;
+    const {templates, scenes, nets, tables, players, netGen, economy, gigs, factions, reputation, calendar, fun} = state;
     const npcs = state.npcs.filter(row=>row[6] === 'true');
-    state = {...blankState(), templates, scenes, nets, tables, players, netGen, economy, gigs, factions, reputation, calendar, npcs};
+    state = {...blankState(), templates, scenes, nets, tables, players, netGen, economy, gigs, factions, reputation, calendar, fun, npcs};
   });
 });
 window.addEventListener('beforeunload', ()=>{ if(saveTimer) persist(); });
