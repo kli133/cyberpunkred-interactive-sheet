@@ -538,6 +538,7 @@ function enemyCard(e, i){
       ${headTools(i, e)}
     </header>
     <div class="hp-bar"><i data-out="hpbar" style="width:${hpPercent(e)}%"></i></div>
+    ${typeof lootBlock === 'function' ? lootBlock(i, e) : ''}
     <div class="enemy-body">
       <div class="enemy-stats">${stats.map((name,s)=>`<label>${name}${input(i, `stats.${s}`, e.stats[s], 'type="number" min="0" max="20"')}</label>`).join('')}</div>
       <div class="enemy-metrics">
