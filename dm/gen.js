@@ -125,13 +125,25 @@ function lootItems(key, count){
     return {pool, name, price};
   });
 }
-function showLoot(title, cash, items, carried = []){
-  lastLoot = {title, cash, items, carried};
-  $('#lootOut').innerHTML = `<div class="gen-card is-fresh"><header><b>${esc(title)}</b><span>${cash ? `${cash}eb наличными` : 'без наличных'}</span></header>
+function lootCard({title, cash, items, carried}, fresh, notesBtn, closeBtn = ''){
+  return `<div class="gen-card${fresh ? ' is-fresh' : ''}"><header><b>${esc(title)}</b><span>${cash ? `${cash}eb наличными` : 'без наличных'}</span>${closeBtn}</header>
     ${carried.length ? `<p class="gen-sub"><b>При себе:</b> ${carried.map(esc).join(', ')}</p>` : ''}
     <ul class="loot-list">${items.map(it=>`<li><small>${esc(lootPoolNames[it.pool])}</small> ${esc(it.name)} <em>${esc(it.price || '')}</em></li>`).join('')}</ul>
-    <button type="button" class="add-row" id="lootToNotes">В ЗАМЕТКИ «ДОБЫЧА»</button></div>`;
+    ${notesBtn}</div>`;
+}
+function logLoot({title, cash, items, carried}){
   addLog({kind:'text', tag:'ЛУТ', text:`${title}: ${[cash && `${cash}eb`, ...carried, ...items.map(it=>it.name)].filter(Boolean).join(', ')}`});
+}
+function lootToNotes({title, cash, items, carried}){
+  const line = `${title}: ${[cash && `${cash}eb`, ...carried, ...items.map(it=>`${it.name}${it.price ? ` (${it.price})` : ''}`)].filter(Boolean).join(', ')}`;
+  state.loot = [state.loot.trim(), line].filter(Boolean).join('\n');
+  $$('[data-key="loot"]').forEach(f=>{ f.value = state.loot; });
+  save(); toast('Записано в «Добыча и награды» (вкладка «NPC и заметки»)');
+}
+function showLoot(title, cash, items, carried = []){
+  lastLoot = {title, cash, items, carried};
+  $('#lootOut').innerHTML = lootCard(lastLoot, true, '<button type="button" class="add-row" id="lootToNotes">В ЗАМЕТКИ «ДОБЫЧА»</button>');
+  logLoot(lastLoot);
 }
 let lastLoot = null;
 function rollLoot(){
@@ -140,15 +152,27 @@ function rollLoot(){
   showLoot(title, rollExpr(cash), lootItems(key, rollExpr(count)));
 }
 // Обыскать противника: его оружие с остатком патронов, снаряжение из карточки, наличные и пара находок по уровню.
+// Находка видна прямо в карточке, пока Мастер её не закроет; в сохранение не попадает.
+const enemyLoot = {};
 function lootEnemy(e){
   const tier = /босс/i.test(e.kind) ? 'boss' : /лейтенант/i.test(e.kind) ? 'lieutenant' : 'pockets';
   const [, cash] = lootContainers[tier];
   const carried = [...e.weapons.map(w=>`${w[0] || 'оружие'}${isBlank(w[4]) ? '' : ` (${w[4]} патр.)`}`), ...e.implants.map(imp=>`${imp.name} (${imp.kind === 'drug' ? 'наркотик' : 'имплант — только с хирургом'})`)];
   if(e.gear.trim()) carried.push(e.gear.trim());
-  activateTab('generators');
-  showLoot(`Обыск: ${enemyName(e)}`, rollExpr(cash), lootItems(tier, d(2)), carried);
-  $('[data-rules="loot"]').open = true;
-  $('#lootOut').scrollIntoView({behavior:'smooth', block:'center'});
+  const loot = {title:`Обыск: ${enemyName(e)}`, cash:rollExpr(cash), items:lootItems(tier, d(2)), carried, fresh:true};
+  enemyLoot[e.id] = loot;
+  logLoot(loot);
+  renderCombat();
+}
+// Блок лута в карточке противника (dm.js). Анимация — только при первом показе, а не при каждой перерисовке.
+function lootBlock(i, e){
+  const loot = enemyLoot[e.id];
+  if(!loot) return '';
+  const html = `<div class="enemy-loot">${lootCard(loot, loot.fresh,
+    `<button type="button" class="add-row" data-act="lootNotes" data-i="${i}">В ЗАМЕТКИ «ДОБЫЧА»</button>`,
+    `<button type="button" class="loot-close" data-act="lootClose" data-i="${i}" title="Закрыть" aria-label="Закрыть">×</button>`)}</div>`;
+  loot.fresh = false;
+  return html;
 }
 
 // --- Заказы ---
@@ -306,12 +330,7 @@ $('#genList').addEventListener('click', ev=>{
   if(el.id === 'encRoll') rollEncounter();
   if(el.id === 'encSpawn') spawnEncounter();
   if(el.id === 'lootRoll') rollLoot();
-  if(el.id === 'lootToNotes' && lastLoot){
-    const line = `${lastLoot.title}: ${[lastLoot.cash && `${lastLoot.cash}eb`, ...lastLoot.carried, ...lastLoot.items.map(it=>`${it.name}${it.price ? ` (${it.price})` : ''}`)].filter(Boolean).join(', ')}`;
-    state.loot = [state.loot.trim(), line].filter(Boolean).join('\n');
-    $$('[data-key="loot"]').forEach(f=>{ f.value = state.loot; });
-    save(); toast('Записано в «Добыча и награды» (вкладка «NPC и заметки»)');
-  }
+  if(el.id === 'lootToNotes' && lastLoot) lootToNotes(lastLoot);
   if(el.id === 'gigRoll') rollGig();
   if(el.id === 'gigToBoard' && lastGig){ state.gigs.unshift({...lastGig}); renderGigs(); save(); toast('Заказ на доске'); }
   if(el.id === 'gigToHooks' && lastGig){
@@ -357,5 +376,7 @@ $('#genList').addEventListener('click', ev=>{
 });
 // Обыск противника — кнопка $ в заголовке его карточки (dm.js).
 enemyActions.loot = e => lootEnemy(e);
+enemyActions.lootNotes = e => { if(enemyLoot[e.id]) lootToNotes(enemyLoot[e.id]); };
+enemyActions.lootClose = e => { delete enemyLoot[e.id]; renderCombat(); };
 
 renderGen();

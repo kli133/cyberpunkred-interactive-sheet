@@ -252,10 +252,12 @@
   text-align: center;
   padding: 4px 0;
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .enemy-card input[type=number]::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  appearance: none;
 }
 
 .enemy-metrics {
@@ -270,6 +272,7 @@
 
 .enemy-metrics .metric strong input {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .enemy-metrics .metric strong input::placeholder {
@@ -2340,6 +2343,28 @@
   font-size: 12px;
   text-transform: uppercase;
   margin: 8px 0;
+}
+
+.enemy-loot {
+  padding: 0 12px;
+}
+
+.enemy-loot .gen-card header span {
+  margin-left: auto;
+}
+
+.loot-close {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.loot-close:hover {
+  color: var(--red);
 }
 
 .loot-list {
