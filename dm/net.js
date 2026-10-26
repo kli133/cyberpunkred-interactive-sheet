@@ -78,6 +78,7 @@ function filterNetRef(){
     sec.hidden = !match;
     if(q && match) sec.open = true;
   });
+  highlightSearch($('#netRef'), q);
 }
 function programRoll(id, kind){
   const [name, , atk, def, , dmg, , , effect, iceDmg, type] = programPresets[id];

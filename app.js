@@ -270,9 +270,9 @@ function renderStats(){
       const key = i === 6 ? 'luckCurrent' : 'humanityCurrent';
       const max = i === 6 ? numeric('stat6') : numeric('stat9') * 10;
       const current = `<input class="resource-value" data-key="${key}" type="number" min="0" max="${max}" value="${esc(state[key] ?? max)}" aria-label="Текущее ${name}">`;
-      return `<div class="stat-row has-resource"><span>${name}</span><div class="resource-pair">${current}<span class="resource-separator">из</span>${statValue}</div></div>`;
+      return `<div class="stat-row has-resource"><span class="has-tip" data-tip="${esc(statTitle(name))}">${name}</span><div class="resource-pair">${current}<span class="resource-separator">из</span>${statValue}</div></div>`;
     }
-    return `<div class="stat-row"><span>${name}</span>${statValue}</div>`;
+    return `<div class="stat-row"><span class="has-tip" data-tip="${esc(statTitle(name))}">${name}</span>${statValue}</div>`;
   }).join('');
   if(state.creationMode !== false){
     $('#statsGrid').insertAdjacentHTML('beforebegin', `<div class="point-budget">ПУЛ СОЗДАНИЯ: <strong>${total}</strong> / ${STAT_POOL} <small>Минимум 2, максимум 8.</small></div>`);
@@ -318,15 +318,16 @@ function skillRowHtml(ref, maxLevel){
   const name = skills[base];
   const rollButton = `<button class="skill-roll" data-roll-skill="${ref}" title="Бросить 1d10 + стат + навык">1d10</button>`;
   // Специализация — в контейнере с переносом, чтобы на узком экране поле и кнопка не наезжали на колонку «Стат».
+  const tip = esc(skillTitle(name));
   const title = custom
-    ? `<div class="skill-name"><span class="skill-variant">${esc(name)}:</span><input class="skill-spec" data-key="cskill${j}_spec" value="${esc(customSkill(ref).spec)}" placeholder="специализация" aria-label="Специализация">${rollButton}</div>`
-    : `${esc(name)}${basicSkills.includes(name) ? '<span class="basic-mark" title="Базовый навык: при создании не ниже 2">Б</span>' : ''}${rollButton}`;
+    ? `<div class="skill-name"><span class="skill-variant has-tip" data-tip="${tip}">${esc(name)}:</span><input class="skill-spec" data-key="cskill${j}_spec" value="${esc(customSkill(ref).spec)}" placeholder="специализация" aria-label="Специализация">${rollButton}</div>`
+    : `<span class="has-tip" data-tip="${tip}">${esc(name)}</span>${basicSkills.includes(name) ? '<span class="basic-mark" title="Базовый навык: при создании не ниже 2">Б</span>' : ''}${rollButton}`;
   const actions = [
     `<button type="button" class="skill-upgrade" data-upgrade="${ref}" hidden></button>`,
     !custom && variantSkills.includes(name) ? `<button type="button" class="skill-add-variant" data-add-variant="${esc(name)}" title="Добавить специализацию">+</button>` : '',
     custom ? `<button type="button" class="remove" data-remove-skill="${j}" title="Удалить специализацию">×</button>` : ''
   ].join('');
-  return `<tr class="${custom ? 'is-variant' : ''}"><td>${title}</td><td>${esc(skillEntries[base][1])}</td><td><input data-key="${custom ? `cskill${j}_level` : `skill${base}`}" type="number" min="${refMin(ref)}" max="${maxLevel}" value="${refLevel(ref)}" aria-label="Уровень навыка"></td><td class="skill-total" data-skill-total="${ref}">${refTotal(ref)}</td><td class="skill-actions">${actions}</td></tr>`;
+  return `<tr class="${custom ? 'is-variant' : ''}"><td>${title}</td><td><span class="has-tip" data-tip="${esc(statTitle(skillEntries[base][1]))}">${esc(skillEntries[base][1])}</span></td><td><input data-key="${custom ? `cskill${j}_level` : `skill${base}`}" type="number" min="${refMin(ref)}" max="${maxLevel}" value="${refLevel(ref)}" aria-label="Уровень навыка"></td><td class="skill-total" data-skill-total="${ref}">${refTotal(ref)}</td><td class="skill-actions">${actions}</td></tr>`;
 }
 
 function renderSkills(){
@@ -334,10 +335,10 @@ function renderSkills(){
   $('#skillBudget').closest('strong').classList.toggle('is-hidden', !creation);
   $('#ipInfo').closest('strong').classList.toggle('is-hidden', creation);
   $('.rules-note').classList.toggle('is-hidden', !creation);
-  const query = ($('#skillSearch')?.value || '').trim().toLocaleLowerCase('ru');
+  const query = searchFold(($('#skillSearch')?.value || '').trim());
   const activeCategory = $('.skill-filter.active')?.dataset.category || 'Все';
   const maxLevel = creation ? 6 : MAX_SKILL;
-  const matches = text => !query || text.toLocaleLowerCase('ru').includes(query);
+  const matches = text => !query || searchFold(text).includes(query);
   $('#skillsCategories').innerHTML = Object.entries(skillCategories).map(([category, entries]) => {
     if(activeCategory !== 'Все' && activeCategory !== category) return '';
     const rows = entries.flatMap(([name, stat]) => {
@@ -351,6 +352,12 @@ function renderSkills(){
   }).join('') || '<div class="empty-search">НАВЫКИ НЕ НАЙДЕНЫ</div>';
   renderSkillFilters();
   refreshSkills();
+  highlightSearch($('#skillsCategories'), query);
+}
+
+function toggleSkillFilters(open){
+  $('.skill-search').classList.toggle('is-open', open);
+  $('#skillFilterToggle').setAttribute('aria-expanded', String(open));
 }
 
 function renderSkillFilters(){
@@ -358,6 +365,8 @@ function renderSkillFilters(){
   $('#skillFilters').innerHTML = ['Все', ...Object.keys(skillCategories)].map(category =>
     `<button class="skill-filter ${category === active ? 'active' : ''}" data-category="${category}">${category}</button>`
   ).join('');
+  // На узком экране категории свёрнуты в кнопку рядом с поиском, на ней — выбранная категория.
+  $('#skillFilterToggle').textContent = `${active} ▾`;
 }
 
 function renderLife(){
@@ -434,7 +443,7 @@ function teamCard(data, i){
       <select data-key="roleTeam${i}_4" aria-label="Тип подчинённого"><option value="">Тип —</option>${Object.entries(execSubordinates).map(([id,item])=>`<option value="${id}"${id === data[4] ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}</select>
       ${growField(`roleTeam${i}_1`, data[1] || '', 'Работа')}
     </div>
-    <div class="team-stats">${execStatNames.map((name,k)=>`<label><span>${name}</span><input data-team-stat="${i}" data-stat-index="${k}" type="number" min="0" max="10" value="${esc(stats[k])}" aria-label="${name}"></label>`).join('')}</div>
+    <div class="team-stats">${execStatNames.map((name,k)=>`<label><span class="has-tip" data-tip="${esc(statTitle(name))}">${name}</span><input data-team-stat="${i}" data-stat-index="${k}" type="number" min="0" max="10" value="${esc(stats[k])}" aria-label="${name}"></label>`).join('')}</div>
     <input type="hidden" data-key="roleTeam${i}_5" value="${esc(data[5] || '')}">
     ${type ? `<details class="team-details"><summary>Навыки и снаряжение</summary><p><strong>Прикрытие:</strong> ${esc(type.cover)}</p><ul>${skills}</ul><p><strong>Киберимпланты и снаряжение:</strong> ${esc(type.gear)}</p></details>` : ''}
     ${growField(`roleTeam${i}_3`, data[3] || '', 'Заметки')}
@@ -1986,7 +1995,8 @@ document.addEventListener('click',e=>{
   const formula=e.target.closest('[data-formula]');
   if(formula) rollFormula(parseFormula(formula.dataset.formula));
   const filter=e.target.closest('.skill-filter');
-  if(filter){$$('.skill-filter').forEach(x=>x.classList.remove('active'));filter.classList.add('active');renderSkills();bindInputs();}
+  if(filter){$$('.skill-filter').forEach(x=>x.classList.remove('active'));filter.classList.add('active');renderSkills();bindInputs();toggleSkillFilters(false);}
+  if(e.target.closest('#skillFilterToggle')) toggleSkillFilters(!$('.skill-search').classList.contains('is-open'));
 });
 // Галочки улучшений транспорта собираются в строку (свои улучшения, вписанные текстом раньше, сохраняются).
 document.addEventListener('change',e=>{

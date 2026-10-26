@@ -540,7 +540,7 @@ function enemyCard(e, i){
     <div class="hp-bar"><i data-out="hpbar" style="width:${hpPercent(e)}%"></i></div>
     ${typeof lootBlock === 'function' ? lootBlock(i, e) : ''}
     <div class="enemy-body">
-      <div class="enemy-stats">${stats.map((name,s)=>`<label>${name}${input(i, `stats.${s}`, e.stats[s], 'type="number" min="0" max="20"')}</label>`).join('')}</div>
+      <div class="enemy-stats">${stats.map((name,s)=>`<label data-tip="${esc(statTitle(name))}">${name}${input(i, `stats.${s}`, e.stats[s], 'type="number" min="0" max="20"')}</label>`).join('')}</div>
       <div class="enemy-metrics">
         <div class="metric"><span>Хиты</span><strong>${input(i, 'hp', e.hp, `type="number" min="0" placeholder="${maxHp(e)}" aria-label="Текущие хиты"`)} / ${input(i, 'hpMax', e.hpMax, `type="number" min="0" placeholder="${formulaHp(e)}" aria-label="Максимум хитов" title="Пусто — по формуле"`)}</strong></div>
         <div class="metric"><span>Порог ранения</span><strong data-out="wound">${woundThreshold(e)}</strong></div>
@@ -693,6 +693,7 @@ function filterNpcs(){
     card.hidden = !match;
     if(match) shown++;
   });
+  highlightSearch($('#npcList'), q);
   $('#npcCount').textContent = state.npcs.length ? (q ? `НАЙДЕНО ${shown} ИЗ ${state.npcs.length}` : `ВСЕГО ${state.npcs.length}`) : '';
 }
 
@@ -822,7 +823,7 @@ function renderTemplates(){
   $('#bestiarySummary').textContent = `ШАБЛОНОВ: ${state.templates.length} // СЦЕН: ${state.scenes.length}`;
   $('#templateList').innerHTML = state.templates.map((t,i)=>`<div class="panel template-card">
       <div class="section-title">${esc(t.name || 'Без имени')} <span>${esc(t.kind)}</span></div>
-      <div class="template-stats">${stats.map((n,s)=>`<span><small>${n}</small>${esc(t.stats[s] || '—')}</span>`).join('')}</div>
+      <div class="template-stats">${stats.map((n,s)=>`<span data-tip="${esc(statTitle(n))}"><small>${n}</small>${esc(t.stats[s] || '—')}</span>`).join('')}</div>
       <p>Хиты ${maxHp(t)} · SP ${num(t.headSpMax || t.headSp)}/${num(t.bodySpMax || t.bodySp)}${t.weapons.length ? ` · ${t.weapons.map(w=>esc(w[0] || 'оружие')).join(', ')}` : ''}</p>
       <div class="enemy-row-add">
         <input type="number" min="0" max="20" value="1" data-tpl-count="${i}" aria-label="Количество">

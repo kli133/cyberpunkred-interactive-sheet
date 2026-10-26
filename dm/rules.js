@@ -208,6 +208,7 @@ function filterRules(){
     sec.hidden = !match;
     if(q && match) sec.open = true;
   });
+  highlightSearch($('#rulesList'), q);
 }
 
 $('#rulesSearch').addEventListener('input', filterRules);

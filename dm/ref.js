@@ -149,7 +149,7 @@ function implantBlock(i, e){
 function refHtml(){
   const statRows = statInfo.map(([s, n, g, t])=>[`<b>${s}</b>`, n, g, t]);
   const skills = Object.entries(skillCategories).map(([cat, list])=>`<h3>${esc(cat)}</h3>` + table(['Навык', 'СТАТ', 'Что это', '10', '14', '18'],
-    list.map(([name, st])=>{ const info = skillInfo[name] || ['', '', '', '']; return [`<b>${esc(name)}</b>`, statAliases[st] || st, esc(info[0]), esc(info[1]), esc(info[2]), esc(info[3])]; }), 'skill-ref-table')).join('');
+    list.map(([name, st])=>{ const info = skillInfo[name] || ['', '', '', '']; return [`<b>${esc(name)}</b>`, `<span class="has-tip" data-tip="${esc(statTitle(st))}">${statAliases[st] || st}</span>`, esc(info[0]), esc(info[1]), esc(info[2]), esc(info[3])]; }), 'skill-ref-table')).join('');
   const cyber = Object.entries(cyberCatalog).map(([group, items])=>`<h3>${esc(group)}</h3>` + table(['Имплант', 'Установка', 'Что делает', 'Цена', 'Потеря Человечности', 'На враге'],
     items.map(([n, inst, t, p, h, fx])=>[`<b>${esc(n)}</b>`, inst, esc(t), p, h, fx ? '★' : '']), 'cyber-ref-table')).join('');
   return [
@@ -190,6 +190,7 @@ function filterRef(){
     // внутри раздела прячем строки таблиц, где нет совпадения
     sec.querySelectorAll('tbody tr').forEach(tr=>{ tr.hidden = q && !plain(tr.textContent).includes(q) && !plain(sec.querySelector('summary').textContent).includes(q); });
   });
+  highlightSearch($('#refList'), q);
 }
 
 $('#refSearch').addEventListener('input', filterRef);
