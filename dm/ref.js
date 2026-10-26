@@ -52,11 +52,8 @@ function renderRole(){
 }
 // Игроки из таблицы «Игроки»: роль и ранг берутся из колонки «Роль» («Соло 4»).
 function playerRoleButtons(){
-  return state.players.map(row=>{
-    const m = String(row[2]).trim().match(/^(.*?)\s*(\d+)?$/);
-    const id = m && Object.keys(roles).find(k=>roles[k].aliases.some(a=>plain(m[1]).startsWith(a)) || plain(roles[k].name) === plain(m[1]));
-    return id ? `<button type="button" class="add-row" data-player-role="${id}" data-rank="${m[2] || 4}">${esc(row[1] || row[0] || 'Игрок')}: ${esc(roles[id].name)} ${m[2] || ''}</button>` : '';
-  }).join('');
+  return state.players.flatMap(row=>parsePlayerRoles(row[2]).map(({id, rank})=>
+    `<button type="button" class="add-row" data-player-role="${id}" data-rank="${rank || 4}">${esc(row[1] || row[0] || 'Игрок')}: ${esc(roles[id].name)} ${rank}</button>`)).join('');
 }
 
 // --- Бестиарий книги ---
@@ -167,7 +164,7 @@ function refHtml(){
     section('bestiary', 'БЕСТИАРИЙ КНИГИ', 'стр. 412–416', bestiaryHtml()),
     section('drugs', 'НАРКОТИКИ, ПРЕПАРАТЫ, ЯДЫ', 'стр. 149–150, 227–230, 355–357',
       list(drugRules)
-      + table(['Наркотик', 'Цена', 'Действует', 'СЛ', 'Основной эффект', 'Вторичный эффект (зависимость)', ''], streetDrugs.map(([n, p, t, dv, a, b], k)=>[`<b>${n}</b>`, p, t, dv, esc(a), esc(b), `<button type="button" class="weapon-btn" data-drug-check="${k}" title="ВОЛ + Сопрот. пыткам/наркотикам + 1d10 против СЛ">ЗАВИСИМОСТЬ</button>`]))
+      + table(['Наркотик', 'Цена', 'Действует', 'СЛ', 'Основной эффект', 'Вторичный эффект (зависимость)', ''], streetDrugs.map(([n, p, t, dv, a, b], k)=>[`<b>${n}</b>`, p, t, dv, esc(a), esc(b), `<button type="button" class="weapon-btn" data-drug-check="${k}" title="ВОЛЯ + Сопрот. пыткам/наркотикам + 1d10 против СЛ">ЗАВИСИМОСТЬ</button>`]))
       + '<h3>Препараты медтехника (синтез: Медтехнологии СЛ 13, час, 200eb)</h3>' + table(['Препарат', 'Эффект'], Object.values(medDrugs).map(([n, t])=>[`<b>${n}</b>`, esc(t)]))
       + '<h3>Яды для клинков</h3>' + table(['Флакон', 'Цена', 'Эффект'], bladePoisons)
       + '<h3>Терапия</h3>' + table(['Терапия', 'Что это', 'Цена', 'Эффект', 'СЛ Медтехнологий'], therapies)
@@ -217,7 +214,7 @@ $('#refList').addEventListener('click', ev=>{
   }
   if(el.dataset.drugCheck !== undefined){
     const [name, , , dv] = streetDrugs[Number(el.dataset.drugCheck)];
-    roll({count:1, sides:10, bonus:0}, 0, `${name}: проверка зависимости`, {crits:true, judge: entry => `прибавьте ВОЛ + Сопрот. пыткам/наркотикам; нужно больше ${dv}`});
+    roll({count:1, sides:10, bonus:0}, 0, `${name}: проверка зависимости`, {crits:true, judge: entry => `прибавьте ВОЛЯ + Сопрот. пыткам/наркотикам; нужно больше ${dv}`});
   }
 });
 

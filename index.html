@@ -40,7 +40,7 @@
         <button type="button" id="newSheet" title="Новый персонаж">+ НОВЫЙ</button>
         <button type="button" id="deleteSheet" title="Удалить персонажа">УДАЛИТЬ</button>
       </span>
-      <button class="dice-toggle" id="initiativeBtn" type="button" title="1d10 + РЕФ">ИНИЦИАТИВА</button>
+      <button class="dice-toggle" id="initiativeBtn" type="button" title="1d10 + РЕА">ИНИЦИАТИВА</button>
       <button class="dice-toggle" id="diceToggle">КУБИК // 1D10</button>
     </section>
     <aside class="dice-drawer" id="diceDrawer" aria-label="Кубик Cyberpunk RED">
@@ -88,6 +88,7 @@
             <label>Роль<select data-key="roleId" id="roleSelect"></select></label>
             <label title="Ранг способности роли: 1–10, при создании персонажа — 4">Ранг<input data-key="roleRank" type="number" min="1" max="10"></label>
           </div>
+          <p class="role-extra-info" id="roleExtraInfo" hidden></p>
           <label>Особая способность<textarea data-key="ability" rows="2"></textarea></label>
           <div class="character-resources">
             <label>Репутация<input data-key="reputation" type="number" value="0"></label>
@@ -119,7 +120,7 @@
             <label>из<input data-key="armorHead" type="number" min="0" aria-label="Максимальное SP головы"></label>
             <label>Тело: SP<input data-key="armorBodyCurrent" type="number" min="0" aria-label="Текущее SP тела"></label>
             <label>из<input data-key="armorBody" type="number" min="0" aria-label="Максимальное SP тела"></label>
-            <label title="Вычитается из РЕФ, ЛВК и СКО в навыках, бросках и скорости">Штраф РЕФ/ЛВК/СКО<input data-key="armorPenalty" type="number" min="0"></label>
+            <label title="Вычитается из РЕА, ЛВК и СКО в навыках, бросках и скорости">Штраф РЕА/ЛВК/СКО<input data-key="armorPenalty" type="number" min="0"></label>
           </div>
           <div class="damage-box">
             <div class="armor-form">

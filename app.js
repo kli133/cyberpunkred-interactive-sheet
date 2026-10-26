@@ -1,7 +1,7 @@
 // Логика интерактивного листа Cyberpunk RED. Справочные таблицы — в data.js.
 const skillEntries = Object.values(skillCategories).flat();
 const skills = skillEntries.map(([name]) => name);
-const penalizedStats = [1, 2, 7]; // РЕФ, ЛВК, СКО
+const penalizedStats = [1, 2, 7]; // РЕА, ЛВК, СКО
 const rowTypes = {gear:3, weapon:11, relationship:3, ammo:3};
 // Порядок колонок в таблицах: j — индекс значения в сохранённой строке (новые колонки оружия добавлены в конец).
 // short — короткое однострочное значение (числа, урон); остальные текстовые ячейки многострочные и растут вместе с текстом.
@@ -35,7 +35,7 @@ rowColumns.roleTeam = [{j:0},{j:4,select:'teamType'},{j:1},{j:2,short:true},{j:5
 rowTypes.roleVehicles = 7;
 rowColumns.roleVehicles = [{j:0},{j:3,select:'vehicleType'},{j:4,short:true},{j:5,short:true},{j:6},{j:1},{j:2}];
 const structuredKey = new RegExp(`^(${Object.keys(rowTypes).join('|')})\\d+_\\d+$|^cyberSlot_|^cskill\\d+_`);
-const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent|armorHeadCurrent|armorBodyCurrent|roleRank)$/;
+const clampedKey = /^(stat|skill)\d+$|^(currentHp|luckCurrent|humanityCurrent|armorHeadCurrent|armorBodyCurrent|roleRank)$|^roleRank_\w+$/;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -69,8 +69,8 @@ const refMin = ref => state.creationMode !== false && ref[0] === 'b' && basicSki
 const fieldExpertiseSkills = ['Знания техники','Кибертехника','Электроника/Безопасность (x2)','Оружейник','Автомеханика','Морская технология','Авиационные технологии'];
 function roleSkillBonus(name){
   if(name === 'Внимательность' && soloLevel('threat')) return [soloLevel('threat'), 'Обнаружение угроз'];
-  if(state.roleId === 'tech' && fieldExpertiseSkills.includes(name) && numeric(rolePointsKey('tech','field'))) return [numeric(rolePointsKey('tech','field')), 'Полевая экспертиза (не для работ Создателя)'];
-  if(state.roleId === 'nomad' && motoSkills.includes(name)) return [roleRank(), 'Мото'];
+  if(hasRole('tech') && fieldExpertiseSkills.includes(name) && numeric(rolePointsKey('tech','field'))) return [numeric(rolePointsKey('tech','field')), 'Полевая экспертиза (не для работ Создателя)'];
+  if(hasRole('nomad') && motoSkills.includes(name)) return [rankOf('nomad'), 'Мото'];
   return [0, ''];
 }
 const refTotal = ref => { const s = skillStatIndex(refBase(ref)); return refLevel(ref) + statValue(s) - statPenalty(s) - woundPenalty() + roleSkillBonus(skills[refBase(ref)])[0]; };
@@ -84,13 +84,26 @@ function setRefLevel(ref, level){
   else customSkill(ref).level = level;
 }
 // Роль персонажа: способность с рангом и направлениями (см. roles в data.js).
-const currentRole = () => roles[state.roleId];
-const roleRank = () => Math.max(0, Math.min(ROLE_MAX_RANK, numeric('roleRank')));
+// Мультикласс (стр. 143): первая роль — roleId с рангом roleRank, следующие — extraRoles по порядку, ранг в roleRank_<id>.
+const charRoles = () => state.roleId && roles[state.roleId] ? [state.roleId, ...(state.extraRoles || []).filter(id=>roles[id] && id !== state.roleId)] : [];
+const hasRole = id => charRoles().includes(id);
+const rankKey = id => id === state.roleId ? 'roleRank' : `roleRank_${id}`;
+const rankOf = id => hasRole(id) ? Math.max(0, Math.min(ROLE_MAX_RANK, numeric(rankKey(id)))) : 0;
+// На вкладке 06 показана одна роль — выбранная переключателем; на Улице персонажа знают по последней взятой.
+const viewRoleId = () => hasRole(state.roleView) ? state.roleView : state.roleId;
+const lastRoleId = () => charRoles().at(-1);
+const currentRole = () => roles[viewRoleId()];
+const roleRank = () => rankOf(viewRoleId());
+const rolesLabel = () => charRoles().map(id=>`${roles[id].name} ${rankOf(id)}`).join(' / ');
+// Почему сейчас нельзя взять новую роль (пусто — можно).
+const multiclassBlock = () => state.creationMode !== false ? 'Нельзя начать сразу в двух ролях: новую роль берут в режиме игры'
+  : rankOf(lastRoleId()) < MULTICLASS_MIN_RANK ? `Сначала доведите роль «${roles[lastRoleId()].name}» до ранга ${MULTICLASS_MIN_RANK}`
+  : numeric('ip') < ROLE_RANK_IP ? `Нужно ${ROLE_RANK_IP} IP` : '';
 const rolePointsKey = (roleId, key) => `rolePts_${roleId}_${key}`;
 const rolePointsBudget = () => roleRank() * (currentRole()?.pointsPerRank || 1);
 const rolePointsSpent = roleId => (roles[roleId]?.specialties || []).reduce((sum,item)=>sum + numeric(rolePointsKey(roleId, item.key)) * item.cost, 0);
 // Уровень направления Соло (Боевая готовность) — для автоматических бонусов.
-const soloLevel = key => state.roleId === 'solo' ? numeric(rolePointsKey('solo', key)) : 0;
+const soloLevel = key => hasRole('solo') ? numeric(rolePointsKey('solo', key)) : 0;
 // NET-действий за ход по рангу Интерфейса.
 const netActions = rank => rank >= 10 ? 5 : rank >= 7 ? 4 : rank >= 4 ? 3 : 2;
 const roleUpgradeCost = () => (roleRank() + 1) * ROLE_RANK_IP;
@@ -143,6 +156,8 @@ function migrate(data){
   }
   if(s.roleId && !roles[s.roleId]) delete s.roleId;
   if(s.roleId && isBlank(s.roleRank)) s.roleRank = ROLE_START_RANK;
+  if(Array.isArray(s.extraRoles)) s.extraRoles = [...new Set(s.extraRoles.filter(id=>roles[id] && id !== s.roleId))];
+  else delete s.extraRoles;
   Object.entries(rowTypes).forEach(([type,width])=>{
     if(!Array.isArray(s[type])) { delete s[type]; return; }
     s[type] = s[type].map(row=>Array.from({length:width},(_,j)=>String(row?.[j] ?? '')));
@@ -424,7 +439,7 @@ function row(type,data=[],index){
     : '';
   return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}${ammoActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
-// СТАТы подчинённого хранятся строкой «ИНТ 5 · РЕФ 7 · …»; на карточке — сеткой полей.
+// СТАТы подчинённого хранятся строкой «ИНТ 5 · РЕА 7 · …»; на карточке — сеткой полей.
 const parseTeamStats = text => execStatNames.map(name=>{ const match = new RegExp(`${name}\\s*(\\d+)`).exec(String(text || '')); return match ? match[1] : ''; });
 const formatTeamStats = values => values.map((value,i)=>isBlank(value) ? '' : `${execStatNames[i]} ${value}`).filter(Boolean).join(' · ');
 // Карточка подчинённого корпората: шапка, сетка СТАТов, навыки и снаряжение из книги (свёрнуты), заметки.
@@ -478,7 +493,7 @@ function vehicleCard(data, i){
   const k = j => `roleVehicles${i}_${j}`;
   const preset = vehicleTypes[data[3]];
   const chosen = vehicleUpgradeList(data);
-  const rank = roleRank();
+  const rank = rankOf('nomad');
   const stats = preset
     ? `<div class="vehicle-stats"><div><span>Мест</span><strong>${esc(preset[2])}</strong></div><div><span>СКО в бою</span><strong>${preset[3]}</strong></div><div><span>Скорость</span><strong>${preset[4]} км/ч</strong></div></div><input type="hidden" data-key="${k(6)}" value="${esc(data[6] || '')}">`
     : growField(k(6), data[6] || '', 'Места, СКО в бою, скорость');
@@ -545,7 +560,7 @@ function refreshWeaponRows(){
     const damage = tr.querySelector('[data-weapon-damage]');
     if(attack){
       attack.textContent = 'ПОПАДАНИЕ';
-      attack.title = on ? 'Бросок на попадание очередью: 10 патронов, 1d10 + РЕФ + «Автоматический огонь»; результат назовите мастеру' : 'Бросок на попадание: 1d10 + стат + навык; результат назовите мастеру';
+      attack.title = on ? 'Бросок на попадание очередью: 10 патронов, 1d10 + РЕА + «Автоматический огонь»; результат назовите мастеру' : 'Бросок на попадание: 1d10 + стат + навык; результат назовите мастеру';
     }
     if(damage){
       const loaded = loadedAmmo(data);
@@ -613,7 +628,7 @@ function applyHumanityLoss(key, value){
 
 function updateDerived(){
   const body=numeric('stat8'), emp=numeric('stat9');
-  // Cyberpunk RED: ХИТЫ = 10 + 5 × ⌈(ТЕЛ + ВОЛ) / 2⌉.
+  // Cyberpunk RED: ХИТЫ = 10 + 5 × ⌈(ТЕЛ + ВОЛЯ) / 2⌉.
   const hp=maxHp();
   updateResource('currentHp', hp);
   $('#hpMaximum').textContent=hp;
@@ -766,7 +781,7 @@ function rollCheck(ref, label = refLabel(ref), judge, extras = [], {attack = fal
 }
 const rollSkill = ref => rollCheck(typeof ref === 'number' ? `b${ref}` : String(ref));
 
-// Инициатива: 1d10 + РЕФ (со штрафом брони).
+// Инициатива: 1d10 + РЕА (со штрафом брони).
 function rollInitiative(){
   const armor = statPenalty(1);
   const reaction = soloLevel('initiative');
@@ -825,7 +840,7 @@ const damageTable = (entry, multiplier) => [
   isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`
 ].filter(Boolean).join('. ');
 // Атака: одиночный выстрел или удар — 1d10 + стат + навык оружия, дальний бой тратит 1 патрон.
-// С включённым «Авто» — очередь: 10 патронов, 1d10 + РЕФ + «Автоматический огонь».
+// С включённым «Авто» — очередь: 10 патронов, 1d10 + РЕА + «Автоматический огонь».
 // Попала ли атака, решает мастер: сравнивает результат с DV или броском уклонения цели.
 function weaponAttack(index){
   const data = weaponRow(index);
@@ -1047,6 +1062,7 @@ function save(changedKey){
   });
   if(changedKey === 'currentHp') syncWoundsWithHp();
   if(state.roleId) state.roleRank = Math.max(1, Math.min(ROLE_MAX_RANK, Math.floor(numeric('roleRank')) || ROLE_START_RANK));
+  charRoles().slice(1).forEach(id=>{ state[rankKey(id)] = Math.max(1, Math.min(ROLE_MAX_RANK, Math.floor(numeric(rankKey(id))) || 1)); });
   normalizeStats();
   normalizeSkills(changedKey);
   // Значения строк собираются по индексу колонки из ключа, а не по порядку в таблице.
@@ -1197,7 +1213,10 @@ function bindInputs(){
       // Одно и то же значение может быть в нескольких полях (человечность).
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
       save(key);
-      if(key === 'roleId'){ renderRolePanel(); bindInputs(); }
+      if(key === 'roleId'){
+        if(state.extraRoles) state.extraRoles = state.extraRoles.filter(id=>id !== state.roleId);
+        renderRolePanel(); bindInputs(); refreshSkills();
+      }
       else if(/^weapon\d+_8$/.test(key)){ renderRows('weapon'); bindInputs(); }
       // Смена калибра сбрасывает неподходящий тип — перерисовать и сохранить; остатки видны в списках «Боеприпасы» у оружия.
       else if(/^ammo\d+_[01]$/.test(key)){ renderRows('ammo'); bindInputs(); save(); refreshWeaponRows(); }
@@ -1272,7 +1291,7 @@ function printSheetHtml(blank){
   const armor = `<div class="p-grid p-grid-3">
     ${field('Голова: SP текущее / макс.', armorValue('Head'))}
     ${field('Тело: SP текущее / макс.', armorValue('Body'))}
-    ${field('Штраф РЕФ/ЛВК/СКО', blank ? '' : armorPenalty() ? `−${armorPenalty()}` : '0')}
+    ${field('Штраф РЕА/ЛВК/СКО', blank ? '' : armorPenalty() ? `−${armorPenalty()}` : '0')}
   </div>${wounds}`;
 
   const weaponRows = (state.weapon || []).map(data=>{
@@ -1311,7 +1330,7 @@ function printSheetHtml(blank){
       <div class="p-title">
         <div class="p-brand">CYBERPUNK <b>RED</b> // ЛИСТ ПЕРСОНАЖА</div>
         ${blank ? field('Имя персонажа', '') : `<h1>${text(state.name) || '&nbsp;'}</h1>`}
-        <div class="p-grid p-grid-4">${field(blank ? 'Роль и ранг' : 'Роль', blank ? '' : currentRole() ? `${currentRole().name}, ранг ${roleRank()}` : state.role)}${field('Репутация', state.reputation)}${field('Евродоллары', state.eddies)}${field('Очки улучшения', state.ip)}</div>
+        <div class="p-grid p-grid-4">${field(blank ? 'Роль и ранг' : 'Роль', blank ? '' : charRoles().length ? rolesLabel() : state.role)}${field('Репутация', state.reputation)}${field('Евродоллары', state.eddies)}${field('Очки улучшения', state.ip)}</div>
         <div class="p-grid p-grid-1">${field('Особая способность', state.ability)}</div>
       </div>
     </header>
@@ -1330,15 +1349,15 @@ function printSheetHtml(blank){
     ${section(cyberTitle, table('p-cyber', ['Слот','Имплант','Информация','ПЧ'], rowsOrBlank(cyberRows, 4, blank ? 8 : 4)), 'p-page-break')}
     ${section('Жизненный путь', `<div class="p-grid p-grid-2">${[['Образ жизни', state.lifeStyle], ['Арендная плата', state.lifeRent], ['Жильё', state.lifeHousing], ['Образ и стиль', state.lifeLook], ...lifeRows].map(([label,value])=>field(esc(label), value)).join('')}</div>`)}
     ${section('Связи', table('p-relations', ['Персонаж','Кто это?','Что ему нужно?'], rowsOrBlank((state.relationship || []).map(row=>row.map(text)), 3, blank ? 6 : 4)))}
-    ${blank || !currentRole() ? '' : printRoleSection(section, table, rowsOrBlank, text, multiline)}
+    ${blank ? '' : charRoles().map(id=>printRoleSection(id, section, table, rowsOrBlank, text, multiline)).join('')}
     ${section('Заметки', `<div class="p-note">${[multiline(state.roleplay), multiline(state.sessionNotes)].filter(Boolean).join('<br><br>') || '&nbsp;'}</div>`)}
   `;
 }
-function printRoleSection(section, table, rowsOrBlank, text, multiline){
-  const role = currentRole(), id = state.roleId;
+function printRoleSection(id, section, table, rowsOrBlank, text, multiline){
+  const role = roles[id], rank = rankOf(id);
   const specialties = (role.specialties || []).filter(item=>numeric(rolePointsKey(id, item.key)))
     .map(item=>`${esc(item.name)} — ${numeric(rolePointsKey(id, item.key))}`).join('; ');
-  const net = role.interfaceAbilities ? `NET-действий за ход: ${netActions(roleRank())}${isBlank(state.netDeck) ? '' : `; кибердека: ${text(state.netDeck)}`}${isBlank(state.netSlots) ? '' : `, слотов ${text(state.netSlots)}`}` : '';
+  const net = role.interfaceAbilities ? `NET-действий за ход: ${netActions(rank)}${isBlank(state.netDeck) ? '' : `; кибердека: ${text(state.netDeck)}`}${isBlank(state.netSlots) ? '' : `, слотов ${text(state.netSlots)}`}` : '';
   const programs = role.table?.key === 'rolePrograms';
   const head = programs ? ['Программа','Класс','ATK','DEF','REZ','Вкл','Урон / свойство','Эффект'] : role.table?.columns.map(esc);
   const tableRows = (state[role.table?.key] || []).map(row=>programs
@@ -1346,7 +1365,7 @@ function printRoleSection(section, table, rowsOrBlank, text, multiline){
     : rowColumns[role.table.key].map(({j,select})=>select === 'teamType' ? text(execSubordinates[row[j]]?.name) : select === 'vehicleType' ? text(vehicleTypes[row[j]]?.[0]) : text(row[j])));
   const rows = role.table ? table('p-role', head, rowsOrBlank(tableRows, head.length, 2)) : '';
   const notes = multiline(state[`roleNotes_${id}`]);
-  return section(`${esc(role.ability)} <small>${esc(role.name)}, ранг ${roleRank()}</small>`,
+  return section(`${esc(role.ability)} <small>${esc(role.name)}, ранг ${rank}</small>`,
     [specialties && `<p>${specialties}</p>`, net && `<p>${net}</p>`, rows, notes && `<div class="p-note">${notes}</div>`].filter(Boolean).join(''));
 }
 function printSheet(blank){
@@ -1357,15 +1376,16 @@ function printSheet(blank){
 
 // Вкладка роли: появляется после выбора роли и собирается из описания роли в data.js.
 function renderRolePanel(){
-  const role = currentRole(), id = state.roleId;
+  const role = currentRole(), id = viewRoleId();
   const tab = $('#roleTab'), panel = $('#role');
   tab.hidden = !role;
+  renderRoleSummary();
   if(!role){
     panel.innerHTML = '';
     if(panel.classList.contains('active')) switchTab('character');
     return;
   }
-  tab.textContent = `06 // ${role.name}`;
+  tab.textContent = `06 // ${charRoles().length > 1 ? `Роли (${charRoles().length})` : role.name}`;
   const specialties = role.specialties ? `<div class="panel role-specialties">
       <div class="section-title">НАПРАВЛЕНИЯ <span id="rolePointsInfo"></span></div>
       <table class="data-table"><thead><tr><th>Направление</th><th>Цена</th><th>Уровень</th></tr></thead><tbody>${role.specialties.map(item=>`<tr>
@@ -1405,10 +1425,11 @@ function renderRolePanel(){
     <div class="page-heading">
       <div><span class="eyebrow">ROLE ABILITY // 06</span><h1>${esc(role.name).toUpperCase()}</h1></div>
       <div class="role-rank">
-        <label>РАНГ<input data-key="roleRank" type="number" min="1" max="${ROLE_MAX_RANK}" value="${roleRank()}" aria-label="Ранг способности роли"></label>
+        <label>РАНГ<input data-key="${rankKey(id)}" type="number" min="1" max="${ROLE_MAX_RANK}" value="${roleRank()}" aria-label="Ранг способности роли"></label>
         <button type="button" class="skill-upgrade" data-role-upgrade hidden></button>
       </div>
     </div>
+    ${multiclassPanel(id)}
     <div class="role-grid">
       <div class="panel role-ability">
         <div class="section-title">${esc(role.ability).toUpperCase()}</div>
@@ -1497,7 +1518,7 @@ function roleExtraPanels(id){
 }
 
 function refreshRoleExtras(){
-  const id = state.roleId, rank = roleRank();
+  const id = viewRoleId(), rank = roleRank();
   const info = name => $(`[data-role-info="${name}"]`);
   const list = items => `<ul class="role-list">${items.map(([on, html])=>`<li class="${on ? '' : 'is-locked'}">${html}</li>`).join('')}</ul>`;
   if(id === 'rockerboy' && info('rbTier')){
@@ -1825,7 +1846,7 @@ function refreshRolePanel(){
   const rank = roleRank();
   const info = $('#rolePointsInfo');
   if(info){
-    const spent = rolePointsSpent(state.roleId), budget = rolePointsBudget();
+    const spent = rolePointsSpent(viewRoleId()), budget = rolePointsBudget();
     info.textContent = `ОЧКИ ${spent} / ${budget}`;
     info.classList.toggle('is-over', spent > budget);
     info.title = spent > budget ? 'Распределено больше очков, чем даёт ранг' : '';
@@ -1836,7 +1857,7 @@ function refreshRolePanel(){
   refreshVehicleCards();
   refreshRoleExtras();
   const tableInfo = $('#roleTableInfo');
-  if(tableInfo) tableInfo.textContent = state.roleId === 'netrunner' && !isBlank(state.netSlots) ? `ПРОГРАММ ${(state.rolePrograms || []).filter(row=>!isBlank(row[0])).length} / ${numeric('netSlots')}` : '';
+  if(tableInfo) tableInfo.textContent = viewRoleId() === 'netrunner' && !isBlank(state.netSlots) ? `ПРОГРАММ ${(state.rolePrograms || []).filter(row=>!isBlank(row[0])).length} / ${numeric('netSlots')}` : '';
   const upgrade = $('[data-role-upgrade]');
   if(upgrade){
     const cost = roleUpgradeCost();
@@ -1845,6 +1866,59 @@ function refreshRolePanel(){
     upgrade.disabled = numeric('ip') < cost;
     upgrade.title = `Повысить ранг до ${rank + 1} за ${cost} IP`;
   }
+  $$('[data-role-view]').forEach(btn=>{ btn.querySelector('b').textContent = rankOf(btn.dataset.roleView); });
+  const take = $('[data-multiclass]');
+  if(take){
+    const reason = multiclassBlock();
+    take.disabled = Boolean(reason) || !$('#multiclassPick')?.value;
+    $('#multiclassNote').textContent = reason || `Ранг 1 новой роли — ${ROLE_RANK_IP} IP. Следующую роль можно будет взять, когда эта дойдёт до ранга ${MULTICLASS_MIN_RANK}.`;
+  }
+  renderRoleSummary();
+}
+// Переключатель ролей на вкладке 06 и взятие новой роли (стр. 143).
+function multiclassPanel(id){
+  const owned = charRoles();
+  const free = Object.entries(roles).filter(([rid])=>!owned.includes(rid));
+  const tabs = owned.map(rid=>`<button type="button" class="skill-filter${rid === id ? ' active' : ''}" data-role-view="${rid}" aria-pressed="${rid === id}">${esc(roles[rid].name)} <b>${rankOf(rid)}</b></button>${rid === owned[0] ? '' : `<button type="button" class="remove" data-role-drop="${rid}" title="Убрать роль «${esc(roles[rid].name)}» (IP не возвращаются)">×</button>`}`).join('');
+  return `<div class="panel role-multiclass">
+    <div class="role-switch">${tabs}</div>
+    ${free.length ? `<div class="role-take">
+      <span class="role-take-title">МУЛЬТИКЛАСС</span>
+      <select id="multiclassPick" aria-label="Новая роль"><option value="">новая роль…</option>${free.map(([rid, item])=>`<option value="${rid}">${esc(item.name)} — ${esc(item.ability)}</option>`).join('')}</select>
+      <button type="button" class="add-row" data-multiclass>ВЗЯТЬ РОЛЬ ЗА ${ROLE_RANK_IP} IP</button>
+      <small id="multiclassNote"></small>
+    </div>` : ''}
+    ${owned.length > 1 ? `<small class="role-street">На Улице персонажа знают как: <b>${esc(roles[lastRoleId()].name)}</b></small>` : ''}
+  </div>`;
+}
+// Строка под выбором роли на вкладке «Персонаж»: остальные роли.
+function renderRoleSummary(){
+  const box = $('#roleExtraInfo');
+  if(!box) return;
+  const extra = charRoles().slice(1);
+  box.hidden = !extra.length;
+  box.textContent = extra.length ? `Мультикласс: ${extra.map(id=>`${roles[id].name} ${rankOf(id)}`).join(', ')}. На Улице — ${roles[lastRoleId()].name}.` : '';
+}
+function takeRole(id){
+  const reason = multiclassBlock();
+  if(reason){ toast(reason); return; }
+  if(!roles[id] || hasRole(id)) return;
+  state.ip = numeric('ip') - ROLE_RANK_IP;
+  state.extraRoles = [...(state.extraRoles || []), id];
+  state[rankKey(id)] = 1;
+  state.roleView = id;
+  setInput('ip', state.ip);
+  renderRolePanel(); bindInputs(); refreshSkills();
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  toast(`${roles[id].name}: ${roles[id].ability}, ранг 1 за ${ROLE_RANK_IP} IP`);
+}
+function dropRole(id){
+  const before = [...(state.extraRoles || [])], rank = state[rankKey(id)], view = state.roleView;
+  const apply = () => { renderRolePanel(); bindInputs(); refreshSkills(); if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now(); };
+  state.extraRoles = before.filter(rid=>rid !== id);
+  if(state.roleView === id) state.roleView = state.roleId;
+  apply();
+  toast(`Роль «${roles[id].name}» убрана, IP не возвращены`, 'Вернуть', ()=>{ state.extraRoles = before; state[rankKey(id)] = rank; state.roleView = view; apply(); });
 }
 // Проверка способности роли: 1d10 + ранг (удачу можно добавить после броска).
 function rollRoleAbility(label, extras = []){
@@ -1853,13 +1927,14 @@ function rollRoleAbility(label, extras = []){
 function upgradeRole(){
   const cost = roleUpgradeCost();
   if(roleRank() >= ROLE_MAX_RANK || numeric('ip') < cost) return;
+  const key = rankKey(viewRoleId());
   state.ip = numeric('ip') - cost;
-  state.roleRank = roleRank() + 1;
+  state[key] = roleRank() + 1;
   setInput('ip', state.ip);
-  setInput('roleRank', state.roleRank);
+  setInput(key, state[key]);
   refreshSkills(); refreshRolePanel();
   if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
-  toast(`${currentRole().ability}: ранг ${state.roleRank} за ${cost} IP`);
+  toast(`${currentRole().ability}: ранг ${state[key]} за ${cost} IP`);
 }
 
 function render(){
@@ -1942,6 +2017,7 @@ $$('[data-key]').forEach(el=>{ el.dataset.static='true'; });
 $('#applyDamage').onclick=applyDamage;
 $('#repairArmor').onclick=repairArmor;
 $('#damageInput').onkeydown=e=>{ if(e.key==='Enter') applyDamage(); };
+document.addEventListener('change', e=>{ if(e.target.id === 'multiclassPick') refreshRolePanel(); });
 $('#creationMode').onchange=()=>{state.creationMode=$('#creationMode').checked;save();render();};
 
 document.addEventListener('click',e=>{
@@ -1986,6 +2062,11 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-zap-damage]')) rollDicePool([{sides:6,count:1}], 0, 'Разряд: урон', {crits:false});
   if(e.target.closest('[data-role-roll]')) rollRoleAbility(currentRole()?.roll || 'Способность роли');
   if(e.target.closest('[data-role-upgrade]')) upgradeRole();
+  const roleView = e.target.closest('[data-role-view]');
+  if(roleView && roleView.dataset.roleView !== viewRoleId()){ state.roleView = roleView.dataset.roleView; renderRolePanel(); bindInputs(); save(); }
+  const roleDrop = e.target.closest('[data-role-drop]');
+  if(roleDrop) dropRole(roleDrop.dataset.roleDrop);
+  if(e.target.closest('[data-multiclass]')) takeRole($('#multiclassPick')?.value);
   const upgrade=e.target.closest('[data-upgrade]');
   if(upgrade) upgradeSkill(upgrade.dataset.upgrade);
   const addSkill=e.target.closest('[data-add-variant]');

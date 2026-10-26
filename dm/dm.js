@@ -3,9 +3,9 @@
 const DM_KEY = 'cyberred-dm';
 const LOG_LIMIT = 60;
 const STAT_REF = 1, STAT_DEX = 2, STAT_WILL = 5, STAT_MOVE = 7, STAT_BODY = 8;
-// Игроки: j — индекс в сохранённой строке. 6 — РЕФ, 7 — id листа персонажа в этом браузере (скрытое).
+// Игроки: j — индекс в сохранённой строке. 6 — РЕА, 7 — id листа персонажа в этом браузере (скрытое).
 const PLAYER_WIDTH = 8;
-const playerColumns = [{j:0,label:'Игрок'},{j:1,label:'Персонаж'},{j:2,label:'Роль'},{j:6,label:'РЕФ',short:true},{j:3,label:'Хиты',short:true},{j:4,label:'SP г/т',short:true},{j:5,label:'Заметки',note:true}];
+const playerColumns = [{j:0,label:'Игрок'},{j:1,label:'Персонаж'},{j:2,label:'Роль'},{j:6,label:'РЕА',short:true},{j:3,label:'Хиты',short:true},{j:4,label:'SP г/т',short:true},{j:5,label:'Заметки',note:true}];
 // NPC: 0 имя, 1 кто / фракция, 2 отношение, 3 где найти, 4 заметки, 5 свёрнут, 6 закреплён (переживает «Очистить»).
 const NPC_WIDTH = 7;
 const npcFields = [{j:0,label:'Имя',placeholder:'Имя NPC'},{j:1,label:'Кто / фракция',placeholder:'фиксер, Тигриные когти...'},{j:2,label:'Отношение',placeholder:'союзник, должник, враг...'},{j:3,label:'Где найти',placeholder:'бар, район, номер...'}];
@@ -35,10 +35,10 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const rows = (list, width) => (Array.isArray(list) ? list : []).map(row=>Array.from({length:width},(_,j)=>String(row?.[j] ?? '')));
 
 // Состояния противника (стр. 177, 180–181): лёжа, в захвате, без сознания, горит (2 / 4 / 6), тонет, вакуум, под током.
-// vacuumLoss — сколько ИНТ, РЕФ и ЛВК отнял вакуум: возвращается, когда состояние снимают.
+// vacuumLoss — сколько ИНТ, РЕА и ЛВК отнял вакуум: возвращается, когда состояние снимают.
 const blankStatus = () => ({prone:false, grappled:false, unconscious:false, fire:0, drown:false, vacuum:false, shock:false, vacuumLoss:0});
 const statusFlags = [['prone','ЛЁЖА','Лёжа: нельзя перемещаться, пока не встанет'], ['grappled','ЗАХВАТ','В захвате: −2 ко всем броскам'], ['unconscious','БЕЗ СОЗН.','Без сознания: не действует'],
-  ['drown','ТОНЕТ','Тонет или задыхается: в начале хода урон = ТЕЛ мимо брони'], ['vacuum','ВАКУУМ','Вакуум: удушье в начале хода и 1d6 по ИНТ, РЕФ, ЛВК в конце хода'],
+  ['drown','ТОНЕТ','Тонет или задыхается: в начале хода урон = ТЕЛ мимо брони'], ['vacuum','ВАКУУМ','Вакуум: удушье в начале хода и 1d6 по ИНТ, РЕА, ЛВК в конце хода'],
   ['shock','ТОК','Под током: 6d6 в конце хода, броня защищает']];
 const fireLevels = [[0,'не горит'], [2,'горит: слабо (2)'], [4,'горит: сильно (4)'], [6,'горит: смертельно (6)']];
 const blankEnemy = () => ({
@@ -296,7 +296,7 @@ function enemyCheck(e, base, label, options = {}, kind = ''){
   const note = [p.note, e.status.unconscious && 'БЕЗ СОЗНАНИЯ — не может действовать', options.note].filter(Boolean).join('; ');
   return roll({count:1, sides:10, bonus:0}, num(base) - p.total, `${enemyName(e)}: ${label}`, {crits:true, ...options, note});
 }
-const dodgeHint = 'если цель уклоняется (РЕФ 8+) — сравните с её ЛВК + Уклонение + 1d10';
+const dodgeHint = 'если цель уклоняется (РЕА 8+) — сравните с её ЛВК + Уклонение + 1d10';
 // Атака: сравнение с DV по дистанции; при попадании урон бросается сразу. Высокое качество — +1 (стр. 342).
 function weaponAttack(e, j){
   const w = e.weapons[j];
@@ -324,10 +324,10 @@ function weaponDamage(e, j, note = ''){
 function weaponShell(e, j){
   const w = e.weapons[j];
   if(!spendAmmo(w, 1)) return;
-  const attack = enemyCheck(e, w[1], `${w[0] || 'дробовик'}, дробь`, {judge: entry => `${entry.total > SHELL_DV ? 'ПОПАЛ' : 'ПРОМАХ'} (СЛ ${SHELL_DV}); цели с РЕФ 8+ могут уклониться`}, 'ranged');
+  const attack = enemyCheck(e, w[1], `${w[0] || 'дробовик'}, дробь`, {judge: entry => `${entry.total > SHELL_DV ? 'ПОПАЛ' : 'ПРОМАХ'} (СЛ ${SHELL_DV}); цели с РЕА 8+ могут уклониться`}, 'ranged');
   if(attack.total > SHELL_DV) roll(parseDice(SHOTGUN_SHELL_DAMAGE), 0, `${enemyName(e)}: дробь, урон`, {note:'всем, кого видит в 6 м перед собой; один бросок на всех'});
 }
-// Очередь (стр. 173): 10 патронов (Helix — 20), 1d10 + РЕФ + Автоогонь против DV автоогня;
+// Очередь (стр. 173): 10 патронов (Helix — 20), 1d10 + РЕА + Автоогонь против DV автоогня;
 // урон 2d6 × (на сколько превышен DV), не больше множителя оружия.
 function weaponAutofire(e, j){
   const w = e.weapons[j];
@@ -343,12 +343,12 @@ function weaponAutofire(e, j){
   const multiplier = Math.min(mult, attack.total - dv);
   roll({count:2, sides:6, bonus:0}, 0, `${enemyName(e)}: ${w[0] || 'оружие'}, урон очереди`, {multiply:multiplier, note:`превышение ${attack.total - dv}, множитель ×${multiplier} (макс. ×${mult})`});
 }
-// Подавляющий огонь (стр. 173): 10 патронов; все в зоне без укрытия бросают ВОЛ + Концентрация + 1d10 против этого броска.
+// Подавляющий огонь (стр. 173): 10 патронов; все в зоне без укрытия бросают ВОЛЯ + Концентрация + 1d10 против этого броска.
 function weaponSuppress(e, j){
   const w = e.weapons[j];
   if(!autofireMult(w)){ toast('Подавляющий огонь — только из оружия с автоогнём'); return; }
   if(!spendAmmo(w, AUTOFIRE_AMMO_COST)) return;
-  enemyCheck(e, isBlank(w[7]) ? w[1] : w[7], `${w[0] || 'оружие'}, подавляющий огонь`, {judge: entry => `цели в 25 м без укрытия: ВОЛ + Концентрация + 1d10 против ${entry.total}, иначе тратят перемещение на укрытие`}, 'ranged');
+  enemyCheck(e, isBlank(w[7]) ? w[1] : w[7], `${w[0] || 'оружие'}, подавляющий огонь`, {judge: entry => `цели в 25 м без укрытия: ВОЛЯ + Концентрация + 1d10 против ${entry.total}, иначе тратят перемещение на укрытие`}, 'ranged');
 }
 
 // --- Урон ---
@@ -451,14 +451,14 @@ function endTurnEffects(e){
     e.status.vacuumLoss += loss;
     const dead = stat(e, 0) <= 0;
     if(dead) e.dead = true;
-    addLog({kind:'text', tag:'СОСТОЯНИЕ', text:`${enemyName(e)}: вакуум — ИНТ, РЕФ и ЛВК −${loss} (1d6)${dead ? '. ИНТ 0: УМЕР' : ''}`});
+    addLog({kind:'text', tag:'СОСТОЯНИЕ', text:`${enemyName(e)}: вакуум — ИНТ, РЕА и ЛВК −${loss} (1d6)${dead ? '. ИНТ 0: УМЕР' : ''}`});
   }
 }
-// Снятый вакуум возвращает отнятые ИНТ, РЕФ и ЛВК: персонаж глотнул воздуха.
+// Снятый вакуум возвращает отнятые ИНТ, РЕА и ЛВК: персонаж глотнул воздуха.
 function setStatus(e, key, value){
   if(key === 'vacuum' && !value && e.status.vacuumLoss){
     [0, STAT_REF, STAT_DEX].forEach(s=>{ e.stats[s] = String(stat(e, s) + e.status.vacuumLoss); });
-    addLog({kind:'text', tag:'СОСТОЯНИЕ', text:`${enemyName(e)}: глотнул воздуха — ИНТ, РЕФ и ЛВК +${e.status.vacuumLoss}`});
+    addLog({kind:'text', tag:'СОСТОЯНИЕ', text:`${enemyName(e)}: глотнул воздуха — ИНТ, РЕА и ЛВК +${e.status.vacuumLoss}`});
     e.status.vacuumLoss = 0;
   }
   e.status[key] = value;
@@ -509,7 +509,7 @@ function injuryBlock(i, e){
 }
 const statusBlock = (i, e) => `<div class="enemy-status"><span class="injury-title">СОСТОЯНИЕ</span>${statusFlags.map(([k, label, hint])=>`<button type="button" class="status-chip${e.status[k] ? ' active' : ''}" data-act="status" data-i="${i}" data-j="${k}" aria-pressed="${e.status[k]}" title="${esc(hint)}">${label}</button>`).join('')}<select data-act="fire" data-i="${i}" aria-label="Горит" title="Урон огнём в конце хода противника, мимо брони">${options(fireLevels, e.status.fire)}</select></div>`;
 const headTools = (i, e) => `<span class="enemy-tools">
-    <button type="button" data-act="init" data-i="${i}" title="${state.init.some(item=>item.enemyId === e.id) ? 'Уже в инициативе — перебросить' : 'В инициативу: 1d10 + РЕФ'}">⚑</button>
+    <button type="button" data-act="init" data-i="${i}" title="${state.init.some(item=>item.enemyId === e.id) ? 'Уже в инициативе — перебросить' : 'В инициативу: 1d10 + РЕА'}">⚑</button>
     <button type="button" data-act="loot" data-i="${i}" title="Обыскать: оружие, патроны, снаряжение, наличные">$</button>
     <button type="button" data-act="dup" data-i="${i}" title="Копия">⧉</button>
     <button type="button" data-act="template" data-i="${i}" title="Сохранить в бестиарий">★</button>
@@ -522,7 +522,7 @@ function enemyCard(e, i){
   const c = condition(e);
   const weapons = e.weapons.map((w,j)=>`<tr>
       <td>${input(i, `weapons.${j}.0`, w[0], 'placeholder="Оружие"')}<select data-e="${i}" data-f="weapons.${j}.6" class="weapon-type" aria-label="Тип оружия: по нему берётся DV">${weaponTypeOptions(w[6])}</select></td>
-      <td>${input(i, `weapons.${j}.1`, w[1], 'type="number" placeholder="база" title="Стат + навык оружия"')}${autofireMult(w) ? input(i, `weapons.${j}.7`, w[7], 'type="number" placeholder="авто" title="База автоогня: РЕФ + Автоматический огонь"') : ''}</td>
+      <td>${input(i, `weapons.${j}.1`, w[1], 'type="number" placeholder="база" title="Стат + навык оружия"')}${autofireMult(w) ? input(i, `weapons.${j}.7`, w[7], 'type="number" placeholder="авто" title="База автоогня: РЕА + Автоматический огонь"') : ''}</td>
       <td>${input(i, `weapons.${j}.2`, w[2], 'placeholder="3d6"')}</td>
       <td>${input(i, `weapons.${j}.3`, w[3], 'type="number"')}</td>
       <td>${input(i, `weapons.${j}.4`, w[4], 'type="number" placeholder="—"')}<span class="slash">/</span>${input(i, `weapons.${j}.5`, w[5], 'type="number" placeholder="—"')}</td>
@@ -574,7 +574,7 @@ function enemyCard(e, i){
       <div class="enemy-skills">${skills}</div>
       <div class="enemy-row-add">
         <button type="button" class="add-row" data-act="addSkill" data-i="${i}">+ НАВЫК</button>
-        <button type="button" class="add-row" data-act="init" data-i="${i}" title="1d10 + РЕФ">ИНИЦИАТИВА</button>
+        <button type="button" class="add-row" data-act="init" data-i="${i}" title="1d10 + РЕА">ИНИЦИАТИВА</button>
         <button type="button" class="add-row" data-act="evade" data-i="${i}" title="1d10 + ЛВК + навык Уклонение, если он есть в списке">УКЛОНЕНИЕ</button>
       </div>
       <div class="enemy-texts">
@@ -697,13 +697,22 @@ function filterNpcs(){
   $('#npcCount').textContent = state.npcs.length ? (q ? `НАЙДЕНО ${shown} ИЗ ${state.npcs.length}` : `ВСЕГО ${state.npcs.length}`) : '';
 }
 
+// Роли из колонки «Роль» таблицы игроков: «Соло 4 / Кочевник 1» → [{id, rank}]. Несколько ролей — мультикласс.
+const parsePlayerRoles = text => String(text || '').split('/').map(part=>{
+  const m = part.trim().match(/^(.*?)\s*(\d+)?$/);
+  const id = m && m[1] && Object.keys(roles).find(k=>roles[k].aliases.some(a=>plain(m[1]).startsWith(a)) || plain(roles[k].name) === plain(m[1]));
+  return id ? {id, rank:m[2] || ''} : null;
+}).filter(Boolean);
 // Импорт игроков из листа персонажа: те же поля, что в экспорте JSON основного листа.
 function playerFromSheet(sheet, id = ''){
   const n = key => num(sheet[key]);
   const hpMax = 10 + 5*Math.ceil((n('stat8') + n('stat5'))/2);
   const hp = isBlank(sheet.currentHp) ? hpMax : n('currentHp');
-  const role = roles[sheet.roleId]?.name || String(sheet.role || '');
-  return {id, name:String(sheet.name || 'Без имени'), role:`${role}${role && sheet.roleRank ? ` ${sheet.roleRank}` : ''}`, ref:String(n('stat1')), hp:`${hp}/${hpMax}`,
+  // Мультикласс: первая роль — roleId/roleRank, следующие — extraRoles с рангом roleRank_<id>.
+  const ids = roles[sheet.roleId] ? [sheet.roleId, ...(Array.isArray(sheet.extraRoles) ? sheet.extraRoles.filter(r=>roles[r] && r !== sheet.roleId) : [])] : [];
+  const rank = r => r === sheet.roleId ? sheet.roleRank : sheet[`roleRank_${r}`];
+  const role = ids.length ? ids.map(r=>`${roles[r].name}${rank(r) ? ` ${rank(r)}` : ''}`).join(' / ') : String(sheet.role || '');
+  return {id, name:String(sheet.name || 'Без имени'), role, ref:String(n('stat1')), hp:`${hp}/${hpMax}`,
     sp:`${n('armorHeadCurrent')}/${n('armorBodyCurrent')}`};
 }
 // Строка обновляется, если такой персонаж уже есть (по id листа или имени), иначе добавляется.

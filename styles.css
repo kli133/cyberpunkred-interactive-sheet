@@ -2211,6 +2211,70 @@ input.search-hit-field, textarea.search-hit-field {
   border-color: #777;
 }
 
+/* Мультикласс: переключатель ролей и взятие новой роли. */
+.role-multiclass {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.role-switch, .role-take {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.role-switch .skill-filter {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.role-switch .skill-filter b {
+  margin-left: 4px;
+}
+
+.role-switch .remove {
+  margin-left: -4px;
+}
+
+.role-take-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #555;
+}
+
+.role-take select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.role-take .add-row {
+  margin: 0;
+}
+
+.role-take button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.role-take small, .role-street {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.role-extra-info {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media print {
+  .role-multiclass { display: none; }
+}
+
 .role-grid {
   display: grid;
   grid-template-columns: minmax(0,1fr) minmax(0,1fr);

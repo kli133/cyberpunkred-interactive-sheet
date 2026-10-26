@@ -65,9 +65,10 @@ function peopleFromPlayers(){
   state.players.forEach(row=>{
     const name = row[1].trim() || row[0].trim();
     if(!name || state.economy.people.some(p=>p.name === name)) return;
-    const m = String(row[2]).trim().match(/^(.*?)\s*(\d+)?$/);
-    const roleId = m && Object.keys(roles).find(k=>roles[k].aliases.some(a=>plain(m[1]).startsWith(a))) || '';
-    state.economy.people.push(blankPerson(name, roleId, m?.[2] || 4));
+    // У мультикласса берём Корпората (жильё по рангу), иначе последнюю роль — по ней персонажа знают на Улице.
+    const list = parsePlayerRoles(row[2]);
+    const pick = list.find(r=>r.id === 'exec') || list.at(-1);
+    state.economy.people.push(blankPerson(name, pick?.id || '', pick?.rank || 4));
     added++;
   });
   renderMonth(); save();

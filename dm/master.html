@@ -73,7 +73,7 @@
           <div class="section-title">ИГРОКИ <span>ЧТО ЗНАЕТ МАСТЕР</span></div>
           <div class="table-scroll">
             <table class="data-table players-table">
-              <thead><tr><th>Игрок</th><th>Персонаж</th><th>Роль</th><th>РЕФ</th><th>Хиты</th><th>SP г/т</th><th>Заметки</th><th></th></tr></thead>
+              <thead><tr><th>Игрок</th><th>Персонаж</th><th>Роль</th><th>РЕА</th><th>Хиты</th><th>SP г/т</th><th>Заметки</th><th></th></tr></thead>
               <tbody id="playersBody"></tbody>
             </table>
           </div>
@@ -107,10 +107,10 @@
         <button class="add-row" type="button" id="spawnBtn">ДОБАВИТЬ</button>
         <span class="toolbar-spacer"></span>
         <button class="add-row" type="button" id="compactToggle" aria-pressed="false" title="Все противники одной строкой">КОМПАКТНО</button>
-        <button class="add-row" type="button" id="allToInit" title="Добавить всех живых противников в инициативу и бросить 1d10 + РЕФ">ВСЕ В ИНИЦИАТИВУ</button>
+        <button class="add-row" type="button" id="allToInit" title="Добавить всех живых противников в инициативу и бросить 1d10 + РЕА">ВСЕ В ИНИЦИАТИВУ</button>
         <button class="add-row" type="button" id="clearDead" title="Убрать с поля всех мёртвых">УБРАТЬ ПАВШИХ</button>
       </div>
-      <div class="rules-note">Выберите в карточке дистанцию до цели: «АТАКА» сравнит бросок с DV по таблице книги и при попадании сразу бросит урон. Укрытие и особые условия — в поле DV вручную. Хиты: 10 + 5 × ⌈(ТЕЛ + ВОЛ) / 2⌉, если поле «макс.» пустое. Урон минус SP зоны; в голову ×2; холодное оружие — SP/2. Пробитая броня теряет 1 SP. Штрафы ранения, критических травм и захвата лист учитывает в бросках сам; смертельно раненый от каждой атаки получает новую травму. Состояния (огонь, удушье, ток, вакуум) срабатывают по кнопке «Следующий ход» на вкладке «Инициатива».</div>
+      <div class="rules-note">Выберите в карточке дистанцию до цели: «АТАКА» сравнит бросок с DV по таблице книги и при попадании сразу бросит урон. Укрытие и особые условия — в поле DV вручную. Хиты: 10 + 5 × ⌈(ТЕЛ + ВОЛЯ) / 2⌉, если поле «макс.» пустое. Урон минус SP зоны; в голову ×2; холодное оружие — SP/2. Пробитая броня теряет 1 SP. Штрафы ранения, критических травм и захвата лист учитывает в бросках сам; смертельно раненый от каждой атаки получает новую травму. Состояния (огонь, удушье, ток, вакуум) срабатывают по кнопке «Следующий ход» на вкладке «Инициатива».</div>
       <div class="group-hit">
         <span class="group-title">ГРУППОВОЕ ПОПАДАНИЕ <small id="groupCount">НИКТО НЕ ОТМЕЧЕН</small></span>
         <input id="groupDamage" placeholder="урон или 6d6" aria-label="Урон: число или формула" title="Формула бросается один раз на всех — как граната или взрыв">
@@ -130,7 +130,7 @@
       <div class="dm-toolbar">
         <button class="quick-roll" type="button" id="nextTurn">СЛЕДУЮЩИЙ ХОД ▸</button>
         <button class="add-row" type="button" id="sortInit">СОРТИРОВАТЬ</button>
-        <button class="add-row" type="button" id="rerollInit" title="Перебросить 1d10 + РЕФ всем противникам">ПЕРЕБРОСИТЬ ПРОТИВНИКОВ</button>
+        <button class="add-row" type="button" id="rerollInit" title="Перебросить 1d10 + РЕА всем противникам">ПЕРЕБРОСИТЬ ПРОТИВНИКОВ</button>
         <span class="toolbar-spacer"></span>
         <button class="add-row" type="button" id="resetCombat">НОВЫЙ БОЙ</button>
       </div>
