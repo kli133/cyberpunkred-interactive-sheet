@@ -2166,6 +2166,10 @@ footer {
   accent-color: var(--red);
 }
 
+.combat-row-rule {
+  grid-column: 1 / -1;
+}
+
 .combat-ref-text {
   margin: 0;
   padding: 6px 10px;
@@ -2208,7 +2212,7 @@ footer {
 }
 
 @media(max-width:560px) {
-  .combat-panel .section-title span {
+  .combat-panel .section-title span:not([hidden]) {
     float: none;
     display: block;
     margin-top: 2px;

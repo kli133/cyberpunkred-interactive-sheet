@@ -694,7 +694,8 @@ function updateDerived(){
   $('#hpMaximum').textContent=hp;
   $('#deathSaveValue').textContent=`< ${body}`;
   $('#woundValue').textContent=Math.ceil(hp/2);
-  $('#speedValue').textContent=Math.max(0, numeric('stat7') - statPenalty(7) - (isMortallyWounded() ? 6 : 0));
+  // Перемещение за ход: СКО × 2 метров (стр. 168), с штрафом брони и смертельного ранения (СКО −6).
+  $('#speedValue').textContent=`${Math.max(0, numeric('stat7') - statPenalty(7) - (isMortallyWounded() ? 6 : 0)) * 2} м`;
   updateResource('armorHeadCurrent', numeric('armorHead'));
   updateResource('armorBodyCurrent', numeric('armorBody'));
   updateResource('luckCurrent', numeric('stat6'));
@@ -849,7 +850,6 @@ const shortSkill = name => name.replace(' (x2)', '').replace('Автоматич
 const chipLabels = {'Пилотирование (x2)':'Пилот.', 'Судовождение':'Судно', 'Вождение':'Вожд.', 'Первая помощь':'1-я помощь', 'Парамедик (x2)':'Парамедик'};
 function combatChip(name, roll, many){
   if(roll === 'body') return `<span class="combat-roll is-static" title="Урон, равный ТЕЛ, мимо брони"><small>урон</small>ТЕЛ ${statValue(8)}</span>`;
-  if(roll === 'move') return `<span class="combat-roll is-static" title="СКО × 2 метров за ход"><small>за ход</small>${Math.max(0, statValue(7) - statPenalty(7)) * 2} м</span>`;
   const ref = `b${skills.indexOf(roll)}`;
   return `<button type="button" class="combat-roll" data-combat-roll="${esc(roll)}" data-combat-name="${esc(name)}" title="${esc(`${skillEntries[refBase(ref)][1]} + ${shortSkill(roll)} + 1d10 — нажмите, чтобы бросить`)}">${many ? `<small>${esc(chipLabels[roll] || shortSkill(roll))}</small>` : ''}${withSign(refTotal(ref))}</button>`;
 }
@@ -868,7 +868,14 @@ function renderCombatActions(){
   const shown = sheetCombatActions[combatShown];
   box.innerHTML = `<div class="combat-rows">${rows}</div>
     <div class="combat-refs"><span class="combat-refs-title">ДРУГИЕ ДЕЙСТВИЯ</span>${refs.map(([[name], k])=>`<button type="button" class="combat-tag${k === combatShown ? ' active' : ''}" data-combat-info="${k}" aria-pressed="${k === combatShown}">${esc(name)}</button>`).join('')}</div>
-    ${shown ? `<p class="combat-ref-text"><b>${esc(shown[0])}.</b> ${esc(shown[1])}</p>` : ''}`;
+    ${shown && !shown[2].length ? `<p class="combat-ref-text"><b>${esc(shown[0])}.</b> ${esc(shown[1])}</p>` : ''}`;
+  // Правило действия с бросками — сразу под его рядом сетки: после последней строки того же ряда.
+  const grid = box.querySelector('.combat-rows'), open = grid.querySelector('.combat-action.is-open');
+  if(shown && open){
+    const items = [...grid.children], cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').length);
+    const rowEnd = Math.min(items.length - 1, Math.floor(items.indexOf(open) / cols) * cols + cols - 1);
+    items[rowEnd].insertAdjacentHTML('afterend', `<p class="combat-ref-text combat-row-rule"><b>${esc(shown[0])}.</b> ${esc(shown[1])}</p>`);
+  }
   $('#combatGrappleNote').hidden = !grapple;
 }
 function combatClick(e){
@@ -1489,7 +1496,7 @@ function printSheetHtml(blank){
     ['Хиты', blank ? slash : `${numeric('currentHp')} / ${hp}`],
     ['Порог ранения', blank ? '&nbsp;' : Math.ceil(hp/2)],
     ['Испытание смерти', blank ? '&lt;' : esc(`< ${numeric('stat8')}${numeric('deathSavePenalty') ? ` (+${numeric('deathSavePenalty')})` : ''}`)],
-    ['Скорость', blank ? '&nbsp;' : speed],
+    ['Перемещение', blank ? '&nbsp;' : `${speed * 2} м`],
     ['Человечность', blank ? slash : `${numeric('humanityCurrent')} / ${emp*10}`]
   ].map(([label,value])=>`<div class="p-stat p-derived"><span>${label}</span><strong>${value}</strong></div>`).join('');
   const armorName = zone => armorPresets[state[`armor${zone}Type`]]?.[0] || '';
