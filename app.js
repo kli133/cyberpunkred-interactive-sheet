@@ -130,16 +130,28 @@ function migrate(data){
   delete s.humanityValue;
   Object.keys(s).forEach(key => { if(structuredKey.test(key)) delete s[key]; });
   if(s.portrait && !isSafeImage(s.portrait)) delete s.portrait;
-  // Боеприпасы v0.4.x: строка [калибр, тип, кол-во] → [калибр, «форма:тип», кол-во]; у оружия «калибр:тип» → «форма:тип».
-  const oldKind = id => ({mPistol:'pistol', hPistol:'pistol', vhPistol:'pistol'})[id] || id;
+  // Боеприпасы v0.4.x: строка [калибр, тип, кол-во] → [калибр, «форма:тип», кол-во]. Калибры v0.4 совпадают с нынешними.
   if(Array.isArray(s.ammo)) s.ammo = s.ammo.map(row=>{
-    if(!Array.isArray(row) || String(row[1] || '').includes(':') || !ammoKinds[oldKind(row[0])]) return row;
-    const kind = oldKind(row[0]);
-    return [ammoKinds[kind][1], row[1] ? `${kind}:${row[1]}` : '', row[2] ?? ''];
+    if(!Array.isArray(row) || String(row[1] || '').includes(':') || !ammoKinds[row[0]]) return row;
+    return [ammoKinds[row[0]][1], row[1] ? `${row[0]}:${row[1]}` : '', row[2] ?? ''];
   });
+  // v0.5–0.7: пистолетные были одним калибром, винтовочные с дробовиком — «тактическим», гранаты с ракетами — «крупным».
+  // Делим по книге (стр. 94): заряженное в оружие — по типу оружия, запас — по первому такому оружию персонажа.
+  const weaponTypesOwned = (Array.isArray(s.weapon) ? s.weapon : []).map(row=>row?.[8]).filter(Boolean);
+  const firstKind = (kinds, fallback) => weaponTypesOwned.flatMap(type=>weaponAmmoKinds[type] || []).find(kind=>kinds.includes(kind)) || fallback;
+  const oldKind = {pistol:()=>firstKind(['mPistol','hPistol','vhPistol'], 'mPistol')};
+  const oldCaliber = {pistol:oldKind.pistol, tactical:()=>firstKind(['rifle','slug'], 'rifle'), heavy:()=>firstKind(['grenade','rocket'], 'grenade')};
   if(Array.isArray(s.weapon)) s.weapon.forEach(row=>{
     const [kind, type] = String(row?.[10] || '').split(':');
-    if(kind && type && oldKind(kind) !== kind) row[10] = `${oldKind(kind)}:${type}`;
+    if(kind === 'pistol' && type) row[10] = `${(weaponAmmoKinds[row[8]] || []).find(k=>k.endsWith('Pistol')) || oldKind.pistol()}:${type}`;
+  });
+  if(Array.isArray(s.ammo)) s.ammo = s.ammo.map(row=>{
+    if(!Array.isArray(row)) return row;
+    let [kind, type] = String(row[1] || '').split(':');
+    if(oldKind[kind]) kind = oldKind[kind]();
+    if(ammoKinds[kind]) return [ammoKinds[kind][1], `${kind}:${type || ''}`.replace(/:$/, ''), row[2] ?? ''];
+    if(oldCaliber[row[0]]) return [ammoKinds[oldCaliber[row[0]]()][1], '', row[2] ?? ''];
+    return row;
   });
   if(Array.isArray(s.rolePrograms)) s.rolePrograms.forEach(row=>{
     const preset = programPresets[row?.[6]];
