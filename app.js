@@ -74,7 +74,9 @@ function roleSkillBonus(name){
   if(hasRole('nomad') && motoSkills.includes(name)) return [rankOf('nomad'), 'Мото'];
   return [0, ''];
 }
-const refTotal = ref => { const s = skillStatIndex(refBase(ref)); return refLevel(ref) + statValue(s) - statPenalty(s) - woundPenalty() + roleSkillBonus(skills[refBase(ref)])[0]; };
+// В захвате (стр. 177) — −2 ко всем действиям, пока захват длится.
+const grapplePenalty = () => isChecked('grappled') ? 2 : 0;
+const refTotal = ref => { const s = skillStatIndex(refBase(ref)); return refLevel(ref) + statValue(s) - statPenalty(s) - woundPenalty() - grapplePenalty() + roleSkillBonus(skills[refBase(ref)])[0]; };
 const allRefs = () => [...skills.map((_,i)=>`b${i}`), ...(state.customSkills || []).map((_,j)=>`c${j}`)];
 const skillSpent = () => allRefs().reduce((sum,ref)=>sum + refLevel(ref)*refWeight(ref),0);
 // Повышение навыка за очки улучшения: 20 × новый уровень, для (x2) — вдвое дороже.
@@ -383,6 +385,43 @@ function renderSkills(){
   highlightSearch($('#skillsCategories'), query);
 }
 
+// Выбор категории навыков. На узком экране список категорий сворачивается, а страница плавно прокручивается к началу
+// навыков под панелью поиска: высота списка удерживается на время прокрутки, чтобы браузер не прыгал вверх рывком.
+function pickSkillCategory(filter){
+  const list = $('#skillsCategories'), bar = $('.skill-search');
+  const narrow = matchMedia('(max-width:900px)').matches;
+  if(narrow) list.style.minHeight = `${list.offsetHeight}px`;
+  $$('.skill-filter').forEach(x=>x.classList.remove('active'));
+  filter.classList.add('active');
+  renderSkills(); bindInputs();
+  if(!narrow) return;
+  toggleSkillFilters(false);
+  // Куда ехать: к началу списка под панелью поиска, но не дальше, чем позволит страница после того, как список
+  // станет короче, — иначе при снятии удерживаемой высоты браузер дёрнет прокрутку.
+  const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
+  list.style.alignItems = 'start'; // карточки в сетке растягиваются на удерживаемую высоту — меряем без растяжения
+  const natural = [...list.children].reduce((sum, el)=>sum + el.offsetHeight, 0) + gap * Math.max(0, list.children.length - 1);
+  list.style.alignItems = '';
+  const maxScroll = document.documentElement.scrollHeight - Math.max(0, list.offsetHeight - natural) - innerHeight;
+  const top = Math.max(0, Math.min(list.getBoundingClientRect().top + scrollY - bar.offsetHeight - 16, maxScroll));
+  const release = () => { list.style.minHeight = ''; };
+  if(scrollY > top) smoothScrollTo(top, release); else release();
+}
+// Плавная прокрутка своей анимацией (~0,35 с), done — когда доехали; при «уменьшить движение» — сразу.
+function smoothScrollTo(top, done){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ scrollTo(0, top); done?.(); return; }
+  const start = scrollY, distance = top - start, startedAt = performance.now(), duration = 350;
+  let finished = false;
+  const finish = () => { if(finished) return; finished = true; scrollTo(0, top); done?.(); };
+  const step = now => {
+    if(finished) return;
+    const k = Math.min(1, (now - startedAt) / duration);
+    scrollTo(0, start + distance * (1 - Math.pow(1 - k, 3)));
+    if(k < 1) requestAnimationFrame(step); else finish();
+  };
+  requestAnimationFrame(step);
+  setTimeout(finish, duration + 650); // страховка: вкладка в фоне не получает кадров анимации
+}
 function toggleSkillFilters(open){
   $('.skill-search').classList.toggle('is-open', open);
   $('#skillFilterToggle').setAttribute('aria-expanded', String(open));
@@ -453,7 +492,7 @@ function row(type,data=[],index){
       ? `<button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${index}" title="Полностью починить: ПЗТ = максимум">↺</button>`
       : '';
   const weaponActions = type === 'weapon'
-    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРОН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>${weaponModButtons(index, data)}<input type="hidden" data-key="weapon${index}_11" value="${esc(data[11] || '')}">`
+    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРОН</button><button type="button" class="weapon-btn" data-weapon-suppress="${index}" title="Подавляющий огонь: 10 патронов, РЕА + Автоматический огонь + 1d10; цели в 25 м без укрытия бросают ВОЛЯ + Концентрация против результата" hidden>ПОДАВЛ.</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>${weaponModButtons(index, data)}<input type="hidden" data-key="weapon${index}_11" value="${esc(data[11] || '')}">`
     : '';
   return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}${ammoActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
@@ -575,6 +614,8 @@ function refreshWeaponRows(){
       toggle.title = multiplier ? `Автоматический огонь (множитель до ×${multiplier})` : weaponTypes[data?.[8]] ? 'Этот тип оружия не стреляет очередями' : 'Своё оружие: выберите «очередь ×…» под типом оружия';
     }
     tr.classList.toggle('is-autofire', on);
+    const suppress = tr.querySelector('[data-weapon-suppress]');
+    if(suppress) suppress.hidden = !multiplier;
     const attack = tr.querySelector('[data-weapon-attack]');
     const damage = tr.querySelector('[data-weapon-damage]');
     if(attack){
@@ -791,16 +832,51 @@ const withNotes = (label, notes) => notes.filter(Boolean).length ? `${label} (${
 
 // Проверка навыка: 1d10 + стат + навык с учётом штрафов брони и ранений (удачу можно добавить после броска).
 function rollCheck(ref, label = refLabel(ref), judge, extras = [], {attack = false, onMiss} = {}){
-  const wound = woundPenalty();
+  const wound = woundPenalty(), grapple = grapplePenalty();
   const modifier = refTotal(ref) + extras.reduce((sum,[value])=>sum + value, 0);
   state.dicePool=[{sides:10,count:1}];
   renderDicePool();
   $('#diceModifier').value=modifier;
-  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, ...extras.map(([value,note])=>value && `${note} +${value}`)]), {judge, attack, luck:true, onMiss});
+  return rollDicePool([{sides:10,count:1}], modifier, withNotes(label, [wound && `ранение −${wound}`, grapple && `захват −${grapple}`, ...extras.map(([value,note])=>value && `${note} ${withSign(value)}`)]), {judge, attack, luck:true, onMiss});
 }
 const rollSkill = ref => rollCheck(typeof ref === 'number' ? `b${ref}` : String(ref));
 
 // Инициатива: 1d10 + РЕА (со штрафом брони).
+// Боевые действия на вкладке «Снаряжение» (стр. 168–177): строки одной высоты с итогом броска на кнопке; правило
+// выбранного действия (нажатие на название или на метку справки) — одним блоком под списком.
+let combatShown = null;
+const shortSkill = name => name.replace(' (x2)', '').replace('Автоматический огонь', 'Автоогонь');
+const chipLabels = {'Пилотирование (x2)':'Пилот.', 'Судовождение':'Судно', 'Вождение':'Вожд.', 'Первая помощь':'1-я помощь', 'Парамедик (x2)':'Парамедик'};
+function combatChip(name, roll, many){
+  if(roll === 'body') return `<span class="combat-roll is-static" title="Урон, равный ТЕЛ, мимо брони"><small>урон</small>ТЕЛ ${statValue(8)}</span>`;
+  if(roll === 'move') return `<span class="combat-roll is-static" title="СКО × 2 метров за ход"><small>за ход</small>${Math.max(0, statValue(7) - statPenalty(7)) * 2} м</span>`;
+  const ref = `b${skills.indexOf(roll)}`;
+  return `<button type="button" class="combat-roll" data-combat-roll="${esc(roll)}" data-combat-name="${esc(name)}" title="${esc(`${skillEntries[refBase(ref)][1]} + ${shortSkill(roll)} + 1d10 — нажмите, чтобы бросить`)}">${many ? `<small>${esc(chipLabels[roll] || shortSkill(roll))}</small>` : ''}${withSign(refTotal(ref))}</button>`;
+}
+function renderCombatActions(){
+  const box = $('#combatActions');
+  if(!box) return;
+  const grapple = grapplePenalty();
+  const indexed = combatActions.map((action, k)=>[action, k]);
+  const rows = indexed.filter(([[, , rolls]])=>rolls.length).map(([[name, , rolls, extra], k])=>{
+    const toggle = extra === 'grapple' ? `<label class="combat-toggle" title="В захвате оба получают −2 ко всем действиям"><input type="checkbox" data-combat-grapple${grapple ? ' checked' : ''}> в захвате</label>` : '';
+    return `<div class="combat-action${combatShown === k ? ' is-open' : ''}">
+      <button type="button" class="combat-name" data-combat-info="${k}" aria-expanded="${combatShown === k}" title="Правило из книги">${esc(name)}</button>${toggle}
+      <span class="combat-rolls">${rolls.map(roll=>combatChip(name, roll, rolls.length > 1)).join('')}</span></div>`;
+  }).join('');
+  const refs = indexed.filter(([[, , rolls]])=>!rolls.length);
+  const shown = combatActions[combatShown];
+  box.innerHTML = `<div class="combat-rows">${rows}</div>
+    <div class="combat-refs"><span class="combat-refs-title">ДРУГИЕ ДЕЙСТВИЯ</span>${refs.map(([[name], k])=>`<button type="button" class="combat-tag${k === combatShown ? ' active' : ''}" data-combat-info="${k}" aria-pressed="${k === combatShown}">${esc(name)}</button>`).join('')}</div>
+    ${shown ? `<p class="combat-ref-text"><b>${esc(shown[0])}.</b> ${esc(shown[1])}</p>` : ''}`;
+  $('#combatGrappleNote').hidden = !grapple;
+}
+function combatClick(e){
+  const info = e.target.closest('[data-combat-info]');
+  if(info){ const k = Number(info.dataset.combatInfo); combatShown = combatShown === k ? null : k; renderCombatActions(); return; }
+  const roll = e.target.closest('[data-combat-roll]');
+  if(roll){ const skill = roll.dataset.combatRoll, name = roll.dataset.combatName; rollCheck(`b${skills.indexOf(skill)}`, name === shortSkill(skill) ? name : `${name}: ${shortSkill(skill)}`); }
+}
 function rollInitiative(){
   const armor = statPenalty(1);
   const reaction = soloLevel('initiative');
@@ -867,15 +943,30 @@ function weaponAttack(index){
   const name = data[0] || 'Оружие';
   if(isAutofireOn(data)){
     if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
-    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: попадание очередью`, undefined, [[soloLevel('precision'), 'точная атака'], ...modAttackExtras(data, true)], {attack:true});
+    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: попадание очередью`, entry => qualityJamNote(parseMods(data[11]), entry.die), [[soloLevel('precision'), 'точная атака'], ...modAttackExtras(data, true)], {attack:true});
     return;
   }
   const skill = skills.indexOf(data[5]);
   if(skill < 0){ toast(`${name}: выберите тип или навык оружия`); return; }
   if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, data[5] === AUTOFIRE_SKILL ? AUTOFIRE_AMMO : 1)) return;
   const smart = loadedAmmo(data)?.type === 'smart';
-  rollCheck(`b${skill}`, `${name}: попадание`, smart ? () => 'Умные патроны: если мастер скажет, что вы промахнулись на 4 или меньше, нажмите «НЕ ПОПАЛ» — второй шанс' : undefined,
+  const jam = entry => qualityJamNote(parseMods(data[11]), entry.die);
+  rollCheck(`b${skill}`, `${name}: попадание`, entry => [jam(entry), smart && 'Умные патроны: если мастер скажет, что вы промахнулись на 4 или меньше, нажмите «НЕ ПОПАЛ» — второй шанс'].filter(Boolean).join('. '),
     [[soloLevel('precision'), 'точная атака'], ...modAttackExtras(data, false)], {attack:true, onMiss: smart ? () => smartSecondChance(name) : undefined});
+}
+// Подавляющий огонь (стр. 173): только из оружия с автоогнём, 10 патронов; РЕА + Автоматический огонь + 1d10.
+// Все в 25 м без укрытия бросают ВОЛЯ + Концентрация + 1d10 против результата; проигравшие уходят в укрытие.
+function weaponSuppress(index){
+  const data = weaponRow(index);
+  if(!data) return;
+  const name = data[0] || 'Оружие';
+  if(!autofireMultiplier(data)){ toast(`${name}: подавляющий огонь — только из оружия с автоогнём`); return; }
+  if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
+  rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: подавляющий огонь`,
+    entry => `все в 25 м без укрытия: ВОЛЯ + Концентрация + 1d10 против ${entry.total}; проигравшие уходят в укрытие`);
+  syncAmmoTable();
+  refreshWeaponRows();
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
 }
 // Умные патроны (нужен Тактический прицел): промах на 4 или меньше — повторная проверка 1d10 + 10
 // вместо СТАТ + навык, та же дистанция и СЛ; удачу добавить можно, цель может уклониться как обычно.
@@ -993,10 +1084,12 @@ function applyWeaponAmmo(key, value){
 const modsOf = i => parseMods($(`[data-key="weapon${i}_11"]`)?.value ?? state.weapon?.[i]?.[11]);
 // Модификации только для оружия дальнего боя.
 const isMeleeType = type => weaponTypes[type] && !rangedWeaponSkills.includes(weaponTypes[type][1]);
+const qualityMark = mods => mods.quality === 'excellent' ? ' ★' : mods.quality === 'poor' ? ' ▼' : '';
 function weaponModButtons(index, data){
-  if(isMeleeType(data[8])) return '';
-  const t = modTotals(parseMods(data[11]));
-  return `${t.bayonet ? `<button type="button" class="weapon-btn" data-weapon-bayonet="${index}" title="Удар штыком: 1d10 + ЛВК + «Оружие ближнего боя»">ШТЫК</button><button type="button" class="weapon-btn" data-weapon-bayonet-damage="${index}" title="Урон штыка 1d6 (лёгкое холодное оружие: SP цели вдвое меньше)">1D6</button>` : ''}<button type="button" class="weapon-btn mod-btn${t.slots ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Модификации оружия: слоты, прицелы, магазины, свои модификации">МОД ${t.slots}/${WEAPON_MOD_SLOTS}</button>`;
+  const mods = parseMods(data[11]);
+  if(isMeleeType(data[8])) return `<button type="button" class="weapon-btn mod-btn${mods.quality ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Качество оружия: отличное +1 к атакам, низкое заклинивает">КАЧ.${qualityMark(mods)}</button>`;
+  const t = modTotals(mods);
+  return `${t.bayonet ? `<button type="button" class="weapon-btn" data-weapon-bayonet="${index}" title="Удар штыком: 1d10 + ЛВК + «Оружие ближнего боя»">ШТЫК</button><button type="button" class="weapon-btn" data-weapon-bayonet-damage="${index}" title="Урон штыка 1d6 (лёгкое холодное оружие: SP цели вдвое меньше)">1D6</button>` : ''}<button type="button" class="weapon-btn mod-btn${t.slots ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Модификации и качество оружия: слоты, прицелы, магазины, свои модификации">МОД ${t.slots}/${modSlotLimit(mods)}${qualityMark(mods)}</button>`;
 }
 const modAttackExtras = (data, autofire) => { const mods = parseMods(data[11]); return modAttackParts(mods, !autofire && mods.far); };
 // Магазин пересчитывается по модификациям; патроны в магазине не больше нового размера.
@@ -1033,7 +1126,7 @@ function renderModDialog(i){
   modDialogIndex = i;
   const data = state.weapon[i];
   dialog.innerHTML = modDialogHtml({name:data[0], type:data[8], mods:parseMods(data[11]), magazine:data[6], farMode:'toggle',
-    bayonetHint:'штык: кнопки «ШТЫК» и «1D6» в строке оружия'});
+    bayonetHint:'штык: кнопки «ШТЫК» и «1D6» в строке оружия', melee:isMeleeType(data[8])});
 }
 function openModDialog(i){
   save();
@@ -1175,7 +1268,7 @@ function save(changedKey){
   refreshWeaponRows();
   refreshRolePanel();
   // Ничего не перерисовываем целиком, чтобы не сбивать фокус в поле, которое сейчас редактируется.
-  refreshStats(); updateDerived();
+  refreshStats(); updateDerived(); renderCombatActions();
   $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
   if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
   if(changedKey === 'name') renderSheetSelect();
@@ -1224,10 +1317,21 @@ function applyArmorInput(key, value){
   if(typeKey){
     const preset = armorPresets[value];
     if(!preset) return;
-    setInput(`armor${typeKey[1]}`, preset[1]);
-    setInput(`armor${typeKey[1]}Current`, preset[1]);
+    const sp = preset[1] + ($(`[data-key="armor${typeKey[1]}Tech"]`)?.checked ? 1 : 0);
+    setInput(`armor${typeKey[1]}`, sp);
+    setInput(`armor${typeKey[1]}Current`, sp);
     const penalties = ['Head','Body'].map(zone=>armorPresets[$(`[data-key="armor${zone}Type"]`).value]?.[2] || 0);
     setInput('armorPenalty', Math.max(...penalties));
+    return;
+  }
+  // Модернизация Техника «+1 SP» (стр. 148): галочка прибавляет или убирает единицу у максимума и текущего SP зоны.
+  const techKey = /^armor(Head|Body)Tech$/.exec(key);
+  if(techKey){
+    const delta = $(`[data-key="${key}"]`)?.checked ? 1 : -1;
+    ['', 'Current'].forEach(part=>{
+      const field = $(`[data-key="armor${techKey[1]}${part}"]`);
+      if(field && !isBlank(field.value)) setInput(`armor${techKey[1]}${part}`, Math.max(0, (Number(field.value) || 0) + delta));
+    });
     return;
   }
   const maxKey = /^armor(Head|Body)$/.exec(key);
@@ -1549,6 +1653,7 @@ function renderRolePanel(){
     </div>`;
   if(role.table) renderRows(role.table.key);
   refreshRolePanel();
+  setupPanels();
 }
 // ---------- Дополнительные панели ролей ----------
 const optionList = (entries, value) => entries.map(([id,name])=>`<option value="${esc(id)}"${String(id) === String(value) ? ' selected' : ''}>${esc(name)}</option>`).join('');
@@ -1636,7 +1741,16 @@ function refreshRoleExtras(){
     const notes = {upgrade:'Материалы той же ценовой категории, что и модернизируемый предмет (транспорт — как «Очень дорогое»).',
       fabrication:'Материалы на одну ценовую категорию дешевле (Супер роскошь — половина цены).',
       invention:'Опишите изобретение мастеру: он утверждает цену (минимум «Дорогое») и эффект.'};
-    info('techInfo').innerHTML = `<p>СЛ ${dv}, время ${esc(time)}. Ранг специализации: ${numeric(rolePointsKey('tech', work))}. ${esc(notes[work])}</p><p>Полевая экспертиза ${numeric(rolePointsKey('tech','field'))}: «подлатать» предмет на ${numeric(rolePointsKey('tech','field')) * 10} минут; бонус к ТЕХ-навыкам учтён в навыках.</p>`;
+    // Мастер модернизации (стр. 148): что можно улучшить и где это отметить в листе после успешного броска.
+    const upgrades = [['повысить качество оружия со стандартного до отличного', 'Снаряжение → оружие → МОД / КАЧ. → «Качество»'],
+      ['добавить 1 слот модификаций', 'окно МОД → «Модернизации Техника»'], ['сделать нескрываемое одноручное оружие скрываемым', 'окно МОД / КАЧ. → «Модернизации Техника»'],
+      ['дать экзотическому оружию слоты модификаций или небазовые боеприпасы', 'окно МОД → «Модернизации Техника»'],
+      ['+1 SP броне', 'Персонаж → Броня → «модернизация Техника +1 SP»'], ['снизить потерю Человечности импланта на 1d6 (если 2d6+, кроме Борг-оснащений)', 'бросьте 1d6 и поправьте ПЧ импланта'],
+      ['упростить конструкцию: полный ремонт вдвое быстрее', 'заметка к предмету'], ['улучшение транспорта Кочевника 1-го ранга', 'заметка к транспорту'],
+      ['модернизация, придуманная Мастером изобретателем', 'по описанию изобретения']];
+    info('techInfo').innerHTML = `<p>СЛ ${dv}, время ${esc(time)}. Ранг специализации: ${numeric(rolePointsKey('tech', work))}. ${esc(notes[work])}</p>`
+      + (work === 'upgrade' ? `<p><strong>Модернизация — один способ на раз:</strong></p><ul class="role-list">${upgrades.map(([what, where])=>`<li>${esc(what)} <small>— ${esc(where)}</small></li>`).join('')}</ul>` : '')
+      + `<p>Полевая экспертиза ${numeric(rolePointsKey('tech','field'))}: «подлатать» предмет на ${numeric(rolePointsKey('tech','field')) * 10} минут; бонус к ТЕХ-навыкам учтён в навыках.</p>`;
   }
   if(id === 'medtech' && info('medSkills')){
     info('medSkills').innerHTML = `<p><strong>Хирургия:</strong> ${medSurgeryLevel()} (итог ${medSurgeryLevel() + statValue(3)}) · <strong>Медицинские технологии:</strong> ${medTechLevel()} (итог ${medTechLevel() + statValue(3)})</p>`;
@@ -2011,9 +2125,13 @@ function refreshRolePanel(){
   const info = $('#rolePointsInfo');
   if(info){
     const spent = rolePointsSpent(viewRoleId()), budget = rolePointsBudget();
-    info.textContent = `ОЧКИ ${spent} / ${budget}`;
-    info.classList.toggle('is-over', spent > budget);
-    info.title = spent > budget ? 'Распределено больше очков, чем даёт ранг' : '';
+    // Техник (стр. 147): каждый ранг — по 1 очку в двух разных специализациях, значит ни одна не выше ранга.
+    const capped = viewRoleId() === 'tech' ? (role.specialties || []).filter(item=>numeric(rolePointsKey('tech', item.key)) > rank) : [];
+    $$('.role-specialties input[data-key^="rolePts_"]').forEach(el=>el.classList.toggle('is-over', capped.some(item=>el.dataset.key === rolePointsKey('tech', item.key))));
+    info.textContent = `ОЧКИ ${spent} / ${budget}${capped.length ? ` · ВЫШЕ РАНГА: ${capped.map(item=>item.name).join(', ')}` : ''}`;
+    info.classList.toggle('is-over', spent > budget || capped.length > 0);
+    info.title = [spent > budget && 'Распределено больше очков, чем даёт ранг',
+      capped.length && `Каждый ранг Создателя даёт по 1 очку в двух разных специализациях — ни одна не может быть выше ранга (${rank})`].filter(Boolean).join('. ');
   }
   refreshNetTracker();
   refreshProgramRows();
@@ -2100,10 +2218,87 @@ function upgradeRole(){
   toast(`${currentRole().ability}: ранг ${state[key]} за ${cost} IP`);
 }
 
+// ---------- Свёрнутые и скрытые блоки вкладок ----------
+// Блок с тёмным заголовком сворачивается стрелкой в заголовке; шестерёнка в шапке вкладки скрывает блоки целиком.
+// Это настройка интерфейса, общая для всех персонажей: хранится отдельно от листа и в экспорт не попадает.
+const UI_KEY = 'cyberred-ui';
+const uiPrefs = (() => {
+  try { const v = JSON.parse(localStorage.getItem(UI_KEY) || '{}'); return {collapsed:v.collapsed || {}, hidden:v.hidden || {}}; }
+  catch { return {collapsed:{}, hidden:{}}; }
+})();
+const saveUiPrefs = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(uiPrefs)); } catch {} };
+const PANEL_SELECTOR = '.panel, .stats-card';
+const panelHead = panel => panel.querySelector(':scope > .section-title');
+const panelTitle = panel => [...(panelHead(panel)?.childNodes || [])].filter(node=>node.nodeType === 3).map(node=>node.textContent).join(' ').replace(/\s+/g, ' ').trim();
+const tabPanels = tab => [...tab.querySelectorAll(PANEL_SELECTOR)].filter(panel=>panelHead(panel) && panelTitle(panel) && !panel.parentElement.closest(PANEL_SELECTOR));
+function setupPanels(){
+  $$('.tab-panel').forEach(tab=>{
+    const panels = tabPanels(tab);
+    panels.forEach(panel=>{
+      const key = `${tab.id}:${panelTitle(panel)}`, head = panelHead(panel);
+      panel.dataset.panelKey = key;
+      if(!head.querySelector('.panel-collapse')) head.insertAdjacentHTML('afterbegin', '<button type="button" class="panel-collapse" data-panel-collapse title="Свернуть или развернуть блок"></button>');
+      const collapsed = !!uiPrefs.collapsed[key];
+      panel.classList.toggle('is-collapsed', collapsed);
+      head.querySelector('.panel-collapse').setAttribute('aria-expanded', String(!collapsed));
+      panel.hidden = !!uiPrefs.hidden[key];
+    });
+    const heading = tab.querySelector(':scope > .page-heading');
+    if(heading && panels.length > 1 && !heading.querySelector('.panel-gear')) heading.insertAdjacentHTML('beforeend', '<div class="panel-gear"><button type="button" class="panel-gear-btn" data-panel-gear title="Какие блоки показывать на вкладке" aria-haspopup="true" aria-expanded="false">⚙</button><div class="panel-gear-menu" hidden></div></div>');
+    const hiddenCount = panels.filter(panel=>panel.hidden).length;
+    const gear = heading?.querySelector('.panel-gear-btn');
+    if(gear) gear.dataset.count = hiddenCount ? String(hiddenCount) : '';
+  });
+}
+function renderPanelMenu(tab){
+  const menu = tab.querySelector('.panel-gear-menu');
+  if(!menu) return;
+  menu.innerHTML = `<div class="panel-gear-title">БЛОКИ ВКЛАДКИ</div>${tabPanels(tab).map(panel=>`<label><input type="checkbox" data-panel-show="${esc(panel.dataset.panelKey)}"${panel.hidden ? '' : ' checked'}> ${esc(panelTitle(panel))}</label>`).join('')}
+    <div class="panel-gear-actions"><button type="button" class="weapon-btn" data-panel-all="show">ПОКАЗАТЬ ВСЕ</button><button type="button" class="weapon-btn" data-panel-all="expand">РАЗВЕРНУТЬ ВСЕ</button></div>`;
+}
+function closePanelMenus(except){
+  $$('.panel-gear-menu').forEach(menu=>{ if(menu !== except){ menu.hidden = true; menu.previousElementSibling?.setAttribute('aria-expanded', 'false'); } });
+}
+function panelClick(e){
+  const gear = e.target.closest('[data-panel-gear]');
+  if(gear){
+    const tab = gear.closest('.tab-panel'), menu = gear.nextElementSibling;
+    closePanelMenus(menu);
+    if(menu.hidden){ renderPanelMenu(tab); menu.hidden = false; gear.setAttribute('aria-expanded', 'true'); }
+    else { menu.hidden = true; gear.setAttribute('aria-expanded', 'false'); }
+    return;
+  }
+  const all = e.target.closest('[data-panel-all]');
+  if(all){
+    const tab = all.closest('.tab-panel');
+    tabPanels(tab).forEach(panel=>{ delete uiPrefs[all.dataset.panelAll === 'show' ? 'hidden' : 'collapsed'][panel.dataset.panelKey]; });
+    saveUiPrefs(); setupPanels(); renderPanelMenu(tab);
+    return;
+  }
+  if(!e.target.closest('.panel-gear')) closePanelMenus();
+  // Свернуть: стрелка или пустое место заголовка — не кнопки, поля и ссылки в нём.
+  const head = e.target.closest('.section-title');
+  const panel = head?.parentElement;
+  if(!head || !panel?.dataset.panelKey || panelHead(panel) !== head) return;
+  if(!e.target.closest('[data-panel-collapse]') && e.target.closest('button, input, select, textarea, label, a')) return;
+  const key = panel.dataset.panelKey;
+  if(panel.classList.contains('is-collapsed')) delete uiPrefs.collapsed[key]; else uiPrefs.collapsed[key] = true;
+  saveUiPrefs(); setupPanels();
+}
+document.addEventListener('click', panelClick);
+document.addEventListener('change', e=>{
+  const key = e.target.dataset?.panelShow;
+  if(key === undefined) return;
+  if(e.target.checked) delete uiPrefs.hidden[key]; else uiPrefs.hidden[key] = true;
+  saveUiPrefs(); setupPanels();
+});
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape') closePanelMenus(); });
+
 function render(){
   renderSheetSelect();
   normalizeSkills();
-  renderStats();renderSkills();renderLife();renderRolePanel();Object.keys(rowTypes).forEach(type=>renderRows(type));renderCyber();renderDashboard();
+  renderStats();renderSkills();renderLife();renderRolePanel();renderCombatActions();Object.keys(rowTypes).forEach(type=>renderRows(type));renderCyber();renderDashboard();
+  setupPanels();
   $('#creationMode').checked=state.creationMode !== false;
   renderDicePool();
   renderRollMode();
@@ -2215,9 +2410,10 @@ document.addEventListener('click',e=>{
     const row = state.ammo?.[Number(pack.dataset.ammoPack)];
     if(row){ row[2] = String((Number(row[2]) || 0) + (ammoCalibers[row[0]]?.[1] ?? 10)); syncAmmoTable(); save(); refreshWeaponRows(); }
   }
-  const weapon=e.target.closest('[data-weapon-attack],[data-weapon-damage],[data-weapon-reload]');
+  const weapon=e.target.closest('[data-weapon-attack],[data-weapon-damage],[data-weapon-reload],[data-weapon-suppress]');
   if(weapon){
-    const {weaponAttack:attack, weaponDamage:damage, weaponReload:reload} = weapon.dataset;
+    const {weaponAttack:attack, weaponDamage:damage, weaponReload:reload, weaponSuppress:suppress} = weapon.dataset;
+    if(suppress !== undefined) weaponSuppress(Number(suppress));
     if(attack !== undefined) weaponAttack(Number(attack));
     if(damage !== undefined) weaponDamage(Number(damage));
     if(reload !== undefined) weaponReload(Number(reload));
@@ -2263,7 +2459,7 @@ document.addEventListener('click',e=>{
   const formula=e.target.closest('[data-formula]');
   if(formula) rollFormula(parseFormula(formula.dataset.formula));
   const filter=e.target.closest('.skill-filter');
-  if(filter){$$('.skill-filter').forEach(x=>x.classList.remove('active'));filter.classList.add('active');renderSkills();bindInputs();toggleSkillFilters(false);}
+  if(filter) pickSkillCategory(filter);
   if(e.target.closest('#skillFilterToggle')) toggleSkillFilters(!$('.skill-search').classList.contains('is-open'));
 });
 // Галочки улучшений транспорта собираются в строку (свои улучшения, вписанные текстом раньше, сохраняются).
@@ -2320,6 +2516,13 @@ $('#rollDice').onclick=()=>{
   rollDicePool(pool,Number($('#diceModifier').value)||0,'Свободный бросок',{luck:true});
 };
 $('#initiativeBtn').onclick=rollInitiative;
+$('#combatActions')?.addEventListener('click', combatClick);
+$('#combatActions')?.addEventListener('change', e=>{
+  if(!e.target.matches('[data-combat-grapple]')) return;
+  state.grappled = e.target.checked;
+  refreshSkills(); renderCombatActions();
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+});
 // Удача восстанавливается до значения УДЧ в начале каждой игровой сессии (стр. 130).
 $('#restoreLuck').onclick=()=>{state.luckCurrent=numeric('stat6');setInput('luckCurrent',state.luckCurrent);persist();updateDerived();toast(`Удача восстановлена: ${state.luckCurrent}`);};
 $('#advantageBtn').onclick=()=>{state.rollMode=state.rollMode==='advantage'?'':'advantage';renderRollMode();persist();};

@@ -304,11 +304,12 @@ function weaponAttack(e, j){
   const props = weaponProps(w);
   if(!isMelee(w) && !spendAmmo(w, 1)) return;
   const dv = attackDv(e, w, false);
-  const mods = isMelee(w) ? [] : modParts(e, w, true);
+  const mods = modParts(e, w, !isMelee(w));
   const base = num(w[1]) + (props.quality ? 1 : 0) + mods.reduce((sum, [value])=>sum + value, 0);
   const attack = enemyCheck(e, base, `${name}, атака`, {note: [props.quality && 'высокое качество +1', ...mods.map(([value, label])=>`${label} ${signed(value)}`)].filter(Boolean).join(', '), judge: entry => isMelee(w) ? 'ближний бой: цель защищается ЛВК + Уклонение + 1d10'
     : dv === null ? `DV: выберите дистанцию; ${dodgeHint}` : Number.isNaN(dv) ? 'ВНЕ ДАЛЬНОСТИ'
     : `${entry.total > dv ? 'ПОПАЛ' : 'ПРОМАХ'} (DV ${dv}); ${dodgeHint}`}, isMelee(w) ? 'melee' : 'ranged');
+  jamCheck(e, w, attack);
   if(dv !== null && !Number.isNaN(dv) && attack.total > dv) weaponDamage(e, j, `попадание ${attack.total} > DV ${dv}`);
 }
 // Свойства оружия, которые важны цели: несмертельное, игнор брони ниже 11, урон по площади.
@@ -327,6 +328,7 @@ function weaponShell(e, j){
   if(!spendAmmo(w, 1)) return;
   const mods = modParts(e, w, false);
   const attack = enemyCheck(e, num(w[1]) + mods.reduce((sum, [value])=>sum + value, 0), `${w[0] || 'дробовик'}, дробь`, {note: mods.map(([value, label])=>`${label} ${signed(value)}`).join(', '), judge: entry => `${entry.total > SHELL_DV ? 'ПОПАЛ' : 'ПРОМАХ'} (СЛ ${SHELL_DV}); цели с РЕА 8+ могут уклониться`}, 'ranged');
+  jamCheck(e, w, attack);
   if(attack.total > SHELL_DV) roll(parseDice(SHOTGUN_SHELL_DAMAGE), 0, `${enemyName(e)}: дробь, урон`, {note:'всем, кого видит в 6 м перед собой; один бросок на всех'});
 }
 // Очередь (стр. 173): 10 патронов (Helix — 20), 1d10 + РЕА + Автоогонь против DV автоогня;
@@ -342,6 +344,7 @@ function weaponAutofire(e, j){
   const attack = enemyCheck(e, base, `${w[0] || 'оружие'}, очередь`, {note: [isBlank(w[7]) && 'база автоогня не задана — взята атака', ...mods.map(([value, label])=>`${label} ${signed(value)}`)].filter(Boolean).join(', '),
     judge: entry => dv === null ? `DV автоогня: выберите дистанцию; урон 2d6 × превышение (макс. ×${mult})` : Number.isNaN(dv) ? 'ВНЕ ДАЛЬНОСТИ АВТООГНЯ'
       : entry.total > dv ? `ПОПАЛ (DV ${dv})` : `ПРОМАХ (DV ${dv})`}, 'ranged');
+  jamCheck(e, w, attack);
   if(dv === null || Number.isNaN(dv) || attack.total <= dv) return;
   const multiplier = Math.min(mult, attack.total - dv);
   roll({count:2, sides:6, bonus:0}, 0, `${enemyName(e)}: ${w[0] || 'оружие'}, урон очереди`, {multiply:multiplier, note:`превышение ${attack.total - dv}, множитель ×${multiplier} (макс. ×${mult})`});
@@ -357,8 +360,20 @@ function weaponSuppress(e, j){
 // --- Модификации оружия противника (стр. 342–344; разбор, итоги и окно — в data.js, общие с листом игрока) ---
 // Колонка 9 — JSON модификаций. Снайперский прицел и свои «51 м+» считаются по дистанции, выбранной в карточке.
 const FAR_BAND = 4; // rangeBands[4] — 51–100 м
-const modButton = (i, j, w) => isMelee(w) ? '' : `<button type="button" class="weapon-btn mod-btn${modTotals(parseMods(w[9])).slots ? ' has-mods' : ''}" data-act="mods" data-i="${i}" data-j="${j}" title="Модификации оружия">МОД ${modTotals(parseMods(w[9])).slots}/${WEAPON_MOD_SLOTS}</button>`;
-const modParts = (e, w, single) => modAttackParts(parseMods(w[9]), single && !isBlank(e.range) && num(e.range) >= FAR_BAND);
+const qualityMark = mods => mods.quality === 'excellent' ? ' ★' : mods.quality === 'poor' ? ' ▼' : '';
+const modButton = (i, j, w) => {
+  const mods = parseMods(w[9]);
+  if(isMelee(w)) return `<button type="button" class="weapon-btn mod-btn${mods.quality ? ' has-mods' : ''}" data-act="mods" data-i="${i}" data-j="${j}" title="Качество оружия: отличное +1 к атакам, низкое заклинивает">КАЧ.${qualityMark(mods)}</button>`;
+  return `<button type="button" class="weapon-btn mod-btn${modTotals(mods).slots || mods.quality ? ' has-mods' : ''}" data-act="mods" data-i="${i}" data-j="${j}" title="Модификации и качество оружия">МОД ${modTotals(mods).slots}/${modSlotLimit(mods)}${qualityMark(mods)}</button>`;
+};
+// Бонусы модификаций и качества; у экзотики «высокого качества» +1 уже учтён в её свойствах — второй раз не добавляем.
+const modParts = (e, w, single) => modAttackParts(parseMods(w[9]), single && !isBlank(e.range) && num(e.range) >= FAR_BAND)
+  .filter(([, label])=>!(label === 'отличное качество' && weaponProps(w).quality));
+// Низкое качество: при выпавшей 1 оружие заклинило — запись в журнал.
+function jamCheck(e, w, entry){
+  const note = qualityJamNote(parseMods(w[9]), entry?.dice?.[0]);
+  if(note) addLog({kind:'text', tag:'КАЧЕСТВО', text:`${enemyName(e)}: ${w[0] || 'оружие'} — ${note}`});
+}
 // Магазин с модификациями; патроны в магазине не больше нового размера.
 function applyEnemyModMagazine(w){
   const {size, mods} = modMagazine(parseMods(w[9]), w[6], w[5]);
@@ -382,7 +397,7 @@ function renderEnemyModDialog(){
   const e = modTarget && state.enemies[modTarget[0]], w = e?.weapons[modTarget[1]];
   if(!dialog || !w) return;
   dialog.innerHTML = modDialogHtml({name:`${w[0] || 'Оружие'} — ${enemyName(e)}`, type:w[6], mods:parseMods(w[9]), magazine:w[5], farMode:'auto',
-    bayonetHint:'штык — отдельной строкой оружия'});
+    bayonetHint:'штык — отдельной строкой оружия', melee:isMelee(w)});
 }
 const openEnemyMods = (e, i, j) => {
   modTarget = [i, j];

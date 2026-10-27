@@ -177,11 +177,11 @@ const roles = {
     interfaceAbilities:[
       ['backdoor','Бэкдор','взламывать пароли и другие препятствия в Архитектуре'],
       ['cloak','Плащ','скрыть свои действия в Архитектуре перед уходом'],
-      ['control','Управление','взять под контроль объекты, подключённые к Архитектуре'],
-      ['eyedee','Опознание','определить, что за данные найдены и насколько они важны'],
+      ['control','Управление','взять под контроль объекты, подключённые к Архитектуре (в таблице на стр. 147 — «Контроль»)'],
+      ['eyedee','Опознание','определить, что за данные найдены и насколько они важны (в таблице на стр. 147 — «Расшифровка»)'],
       ['pathfinder','Первопроходец','исследовать «карту» Архитектуры'],
       ['scanner','Сканер','определить расположение систем в области'],
-      ['slide','Ускользнуть','ускользнуть от преследующего Чёрного ЛЬДа'],
+      ['slide','Ускользнуть','ускользнуть от преследующего Чёрного ЛЬДа (в таблице на стр. 147 — «Соскользнуть»)'],
       ['virus','Вирус','оставить свой вирус в ядре Архитектуры'],
       ['zap','Разряд','базовая атака: 1d6 урона программе или мозгу нетраннера']
     ],
@@ -414,6 +414,28 @@ const ammoTypes = {
   smoke:['Дымовые','50eb (Ценное)',['grenade'],'облако дыма 10 × 10 м на минуту, штраф −4'],
   teargas:['Слезоточивый газ','50eb (Ценное)',['grenade'],'урона нет: Сопротивление пыткам/наркотикам СЛ 13, при провале «Повреждение глаза» на минуту']
 };
+// Боевые действия (стр. 168–169, 173–177) для вкладки «Снаряжение»: [название, правило, броски]. Бросок — навык
+// из книги (СТАТ берётся по навыку), 'body' — урон, равный ТЕЛ, 'move' — перемещение по СКО. Пустой список — справка.
+// Атака, автоогонь, подавляющий огонь и перезарядка — кнопки в таблице оружия, инициатива — в шапке,
+// сетевые действия — у Нетраннера.
+const combatActions = [
+  ['Уклонение', 'ЛВК + Уклонение + 1d10 против атаки. От ближних атак — всегда; от пуль и взрывов — только при РЕА 8 и выше.', ['Уклонение']],
+  ['Захват', 'ЛВК + Рукопашный бой + 1d10 против цели. Победили — держите её или выхватываете у неё предмет свободной рукой. В захвате оба получают −2 ко всем действиям; схваченный не перемещается сам, двуручным оружием не пользуется никто. Вырваться — тот же бросок против атакующего (стр. 177).', ['Рукопашный бой'], 'grapple'],
+  ['Удушение', 'Только атакующий в захвате, действием: урон, равный вашему ТЕЛ, мимо брони и не ломая её. Если урон опускает ПЗ до 0 — у цели остаётся 1 ПЗ и она без сознания; три раунда удушения — без сознания в любом случае (стр. 177).', ['body']],
+  ['Бросок', 'Схваченного противника — на землю: урон, равный ТЕЛ, мимо брони; захват заканчивается, цель лежит. Предмет — ЛВК + Атлетика + 1d10 как дальняя атака до 25 м, DV по таблице гранатомёта; холодное оружие наносит свой урон, гранаты — свой (стр. 177).', ['body', 'Атлетика']],
+  ['Стабилизировать', 'Первая помощь или Парамедик против СЛ ранения: чтобы раны начали заживать или чтобы вывести из смертельного ранения (стр. 222).', ['Первая помощь', 'Парамедик (x2)']],
+  ['Манёвр на транспорте', 'Действие во время вождения, чтобы выполнить опасный манёвр против СЛ (стр. 189).', ['Вождение', 'Пилотирование (x2)', 'Судовождение']],
+  ['Перемещение', 'Каждый ход — перемещение на СКО × 2 метров (на поле боя — СКО клеток) и одно действие.', ['move']],
+  ['Бег', 'Ещё одно перемещение вместо действия — только если вы уже перемещались в этот ход.', []],
+  ['Встать', 'Встать из положения лёжа: лёжа перемещаться нельзя.', []],
+  ['Отложить действие', 'Отложить действие в пределах раунда: назовите место в очереди инициативы или событие, само действие и цель.', []],
+  ['Живой щит', 'Прикрыться противником, которого держите в захвате: дальние атаки по вам попадают в него, кроме прицельных в голову. Щит получает урон, пока жив.', []],
+  ['Взять / бросить щит', 'Достать или убрать щит — действие (стр. 183).', []],
+  ['Использовать предмет', 'Взять легкодоступное оружие в свободную руку или бросить оружие на пол (кроме щита) — без действия; убрать за пояс или спрятать — действие.', []],
+  ['Применить навык', 'Небольшая задача — одно действие; большая — несколько действий и ходов, проверка по завершении.', []],
+  ['Атака слабого места транспорта', 'Прицельный выстрел −8 по шинам, двигателю или бензобаку; урон, прошедший через SP, ×2.', []],
+  ['Сесть / завести транспорт', 'Сесть в транспорт — действие; завести — действие, чтобы получить его СКО и встать в начало очереди инициативы (стр. 189).', []]
+];
 // Модификации оружия (стр. 342–344): у неэкзотического оружия дальнего боя 3 слота; одинаковые не складываются,
 // магазин — только один. [название, цена, слоты, подходит ('tactical' — оружие с навыком «Тактическое оружие»,
 // 'ranged' — любое дальнее, кроме луков и арбалетов), эффекты, описание]. Эффекты: atk — к атакам этим оружием,
@@ -438,10 +460,19 @@ const magazineByType = {
 // Модификации оружия — общее для листа игрока и листа Мастера. Хранятся строкой JSON {list, far, base}:
 // list — модификации ({id} из книги или своя {name, slots, atk, far, mag, conceal, note}), far — цель на 51 м и дальше
 // (у игрока — отметка в окне; у Мастера дистанция берётся из карточки), base — магазин без модификаций, пока они его меняют.
+// quality — качество оружия (стр. 342): 'poor' — низкое, '' — стандартное, 'excellent' — отличное (+1 к атаке).
+// tech — модернизации Техника «Мастер модернизации» (стр. 148): slot — ещё 1 слот, conceal — оружие стало скрываемым,
+// exotic — экзотическому дали слоты модификаций, ammo — экзотика стреляет небазовыми боеприпасами.
 const parseMods = raw => {
-  try { const v = JSON.parse(raw || '{}'); return {list:Array.isArray(v.list) ? v.list : [], far:v.far === true, base:v.base ?? ''}; }
-  catch { return {list:[], far:false, base:''}; }
+  try {
+    const v = JSON.parse(raw || '{}'), tech = v.tech && typeof v.tech === 'object' ? v.tech : {};
+    return {list:Array.isArray(v.list) ? v.list : [], far:v.far === true, base:v.base ?? '', quality:['poor', 'excellent'].includes(v.quality) ? v.quality : '',
+      tech:{slot:tech.slot === true, conceal:tech.conceal === true, exotic:tech.exotic === true, ammo:tech.ammo === true}};
+  }
+  catch { return {list:[], far:false, base:'', quality:'', tech:{slot:false, conceal:false, exotic:false, ammo:false}}; }
 };
+const modSlotLimit = mods => WEAPON_MOD_SLOTS + (mods.tech?.slot ? 1 : 0);
+const QUALITY_NAMES = {poor:'низкое', '':'стандартное', excellent:'отличное'};
 const modInfo = m => {
   const p = weaponModPresets[m.id];
   return p ? {name:p[0], price:p[1], slots:p[2], fits:p[3], text:p[5], ...p[4]}
@@ -452,15 +483,19 @@ const modTotals = mods => mods.list.map(modInfo).reduce((t, m)=>({slots:t.slots 
   magPlus:t.magPlus + (m.magPlus || 0), mag:m.mag === 'drum' || t.mag === 'drum' ? 'drum' : m.mag || t.mag, noConceal:t.noConceal || !!m.noConceal,
   bayonet:t.bayonet || !!m.bayonet}), {slots:0, atk:0, far:0, magPlus:0, mag:'', noConceal:false, bayonet:false});
 const isExoticType = type => typeof exoticWeapons !== 'undefined' && !!exoticWeapons[type];
-// Подходит ли модификация из книги: у экзотического оружия их нет; у «Своего» тип неизвестен — разрешаем всё.
-const modFits = (id, type) => {
-  if(isExoticType(type)) return false;
+// Подходит ли модификация из книги: у экзотического оружия их нет (если Техник не дал ему слоты);
+// у «Своего» тип неизвестен — разрешаем всё.
+const modFits = (id, type, mods) => {
+  if(isExoticType(type)) return !!mods?.tech?.exotic && weaponModPresets[id][3] !== 'tactical';
   if(!weaponTypes[type]) return true;
   const [, skill] = weaponTypes[type], fits = weaponModPresets[id][3];
   return fits === 'tactical' ? skill === 'Тактическое оружие' : rangedWeaponSkills.includes(skill) && type !== 'bow';
 };
 // Бонусы к атаке: atk — всегда, far — только одиночным и прицельным выстрелам по цели в 51 м и дальше.
-const modAttackParts = (mods, far) => mods.list.map(modInfo).flatMap(m=>[[m.atk || 0, m.name], [far ? m.far || 0 : 0, `${m.name}, 51 м+`]]).filter(([value])=>value);
+const modAttackParts = (mods, far) => [[mods.quality === 'excellent' ? 1 : 0, 'отличное качество'],
+  ...mods.list.map(modInfo).flatMap(m=>[[m.atk || 0, m.name], [far ? m.far || 0 : 0, `${m.name}, 51 м+`]])].filter(([value])=>value);
+// Низкое качество (стр. 342): при выпавшей 1 на атаке оружие заклинивает — действие на починку.
+const qualityJamNote = (mods, die) => mods.quality === 'poor' && die === 1 ? 'НИЗКОЕ КАЧЕСТВО: оружие заклинило — нужно действие на починку' : '';
 // Магазин с модификациями: увеличенный и барабанный — по таблице книги (у своего оружия — без изменений), плюс свои «+N».
 // Возвращает новый размер магазина ('' — не менять) и обновлённые mods (запоминает или сбрасывает base).
 function modMagazine(mods, type, current){
@@ -477,13 +512,14 @@ function modMagazine(mods, type, current){
 const modSign = value => `${value < 0 ? '−' : '+'}${Math.abs(value)}`;
 const modEsc = text => String(text ?? '').replace(/[&<>"]/g, ch=>({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[ch]));
 // Содержимое окна модификаций. farMode: 'toggle' — отметка «цель на 51 м и дальше», 'auto' — по дистанции в карточке.
-function modDialogHtml({name, type, mods, magazine, farMode, bayonetHint}){
-  const t = modTotals(mods), infos = mods.list.map(modInfo);
+// melee — холодное оружие: модификаций нет, только качество и «сделать скрываемым».
+function modDialogHtml({name, type, mods, magazine, farMode, bayonetHint, melee = false}){
+  const t = modTotals(mods), infos = mods.list.map(modInfo), limit = modSlotLimit(mods), exotic = isExoticType(type);
   const owned = new Set(mods.list.map(m=>m.id).filter(Boolean));
   const hasMag = mods.list.some(m=>weaponModPresets[m.id]?.[4].mag);
   const list = mods.list.map((m, k)=>{
     const info = infos[k];
-    if(!info.custom) return `<li class="mod-item"><div><b>${modEsc(info.name)}</b> <small>${info.slots} ${info.slots === 1 ? 'слот' : 'слота'} · ${modEsc(info.price)}</small>${modFits(m.id, type) ? '' : ' <small class="is-over">не подходит этому оружию</small>'}<p>${modEsc(info.text)}</p></div><button type="button" class="remove" data-mod-del="${k}" title="Снять модификацию">×</button></li>`;
+    if(!info.custom) return `<li class="mod-item"><div><b>${modEsc(info.name)}</b> <small>${info.slots} ${info.slots === 1 ? 'слот' : 'слота'} · ${modEsc(info.price)}</small>${modFits(m.id, type, mods) ? '' : ' <small class="is-over">не подходит этому оружию</small>'}<p>${modEsc(info.text)}</p></div><button type="button" class="remove" data-mod-del="${k}" title="Снять модификацию">×</button></li>`;
     const field = (label, key, value, attrs = '') => `<label>${label}<input data-mod-field="${key}" data-mod="${k}" value="${modEsc(value)}" ${attrs}></label>`;
     return `<li class="mod-item is-custom"><div class="mod-custom">
         ${field('Название', 'name', m.name, 'placeholder="Глушитель, лазерный целеуказатель…"')}
@@ -496,25 +532,40 @@ function modDialogHtml({name, type, mods, magazine, farMode, bayonetHint}){
       </div><button type="button" class="remove" data-mod-del="${k}" title="Снять модификацию">×</button></li>`;
   }).join('') || '<li class="mod-empty">Модификаций нет.</li>';
   const options = Object.entries(weaponModPresets).map(([id, [title, price, slots]])=>{
-    const why = owned.has(id) ? 'уже стоит' : !modFits(id, type) ? 'не подходит этому оружию' : weaponModPresets[id][4].mag && hasMag ? 'магазин уже стоит' : '';
+    const why = owned.has(id) ? 'уже стоит' : !modFits(id, type, mods) ? 'не подходит этому оружию' : weaponModPresets[id][4].mag && hasMag ? 'магазин уже стоит' : '';
     return `<option value="${id}"${why ? ' disabled' : ''}>${modEsc(title)} — ${slots} сл., ${modEsc(price)}${why ? ` (${why})` : ''}</option>`;
   }).join('');
   const farNote = farMode === 'auto' ? ' (по дистанции в карточке)' : mods.far ? '' : ' (цель ближе — не считается)';
-  const effects = [...infos.filter(m=>m.atk).map(m=>`${m.name}: ${modSign(m.atk)} к атакам`),
+  const effects = [mods.quality === 'excellent' && 'отличное качество: +1 к атакам', mods.quality === 'poor' && 'низкое качество: при выпавшей 1 на атаке оружие заклинит',
+    ...infos.filter(m=>m.atk).map(m=>`${m.name}: ${modSign(m.atk)} к атакам`),
     ...infos.filter(m=>m.far).map(m=>`${m.name}: ${modSign(m.far)} одиночным и прицельным на 51 м+${farNote}`),
     (t.mag || t.magPlus) && `магазин ${magazine || '—'}${t.mag && !magazineByType[type] ? ' (своё оружие: впишите размер магазина вручную)' : ''}`,
-    t.noConceal && 'нельзя спрятать под одеждой', t.bayonet && bayonetHint].filter(Boolean);
-  const hint = isExoticType(type) ? 'Экзотическое оружие: по книге модификаций у него нет. Свою можно добавить, если разрешит мастер.'
-    : weaponTypes[type] ? '' : 'Своё оружие: лист не знает его тип, поэтому разрешены любые модификации. Сверьтесь с мастером.';
+    mods.tech.conceal && 'оружие скрываемое (модернизация Техника)', t.noConceal && `нельзя спрятать под одеждой${mods.tech.conceal ? ' — из-за модификаций' : ''}`,
+    t.bayonet && bayonetHint, mods.tech.ammo && 'стреляет небазовыми боеприпасами (модернизация Техника)'].filter(Boolean);
+  const hint = exotic && !mods.tech.exotic ? 'Экзотическое оружие: по книге модификаций у него нет — если Техник не дал ему слоты (ниже). Свою можно добавить, если разрешит мастер.'
+    : weaponTypes[type] || exotic ? '' : 'Своё оружие: лист не знает его тип, поэтому разрешены любые модификации. Сверьтесь с мастером.';
+  const techBox = (key, label, title) => `<label class="mod-check" title="${title}"><input type="checkbox" data-mod-tech="${key}"${mods.tech[key] ? ' checked' : ''}> ${label}</label>`;
+  const tech = [
+    !melee && techBox('slot', '+1 слот модификаций', 'Добавить в предмет ещё один слот того же типа'),
+    techBox('conceal', 'сделать скрываемым', 'Сделать нескрываемое одноручное оружие скрываемым'),
+    exotic && techBox('exotic', 'экзотике — слоты модификаций', 'Дать экзотическому оружию слоты для модификаций'),
+    exotic && techBox('ammo', 'экзотике — небазовые боеприпасы', 'Дать экзотическому оружию стрелять одним из небазовых типов боеприпасов'),
+  ].filter(Boolean).join('');
+  const quality = `<label class="mod-quality">Качество <select data-mod-quality aria-label="Качество оружия">${Object.entries(QUALITY_NAMES).map(([v, label])=>`<option value="${v}"${mods.quality === v ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
+    <small>Отличное — +1 к атакам; низкое — заклинивает при выпавшей 1 (стр. 342). Повысить стандартное до отличного может Техник (Мастер модернизации).</small>`;
   return `<form method="dialog" class="mod-form">
-    <header><div><span class="eyebrow">МОДИФИКАЦИИ ОРУЖИЯ</span><h2>${modEsc(name || 'Оружие')}</h2></div>
-      <strong class="${t.slots > WEAPON_MOD_SLOTS ? 'is-over' : ''}" title="${t.slots > WEAPON_MOD_SLOTS ? 'Занято больше слотов, чем позволяет книга' : 'У неэкзотического оружия дальнего боя 3 слота'}">СЛОТЫ ${t.slots} / ${WEAPON_MOD_SLOTS}</strong>
+    <header><div><span class="eyebrow">${melee ? 'КАЧЕСТВО ОРУЖИЯ' : 'МОДИФИКАЦИИ ОРУЖИЯ'}</span><h2>${modEsc(name || 'Оружие')}</h2></div>
+      ${melee ? '' : `<strong class="${t.slots > limit ? 'is-over' : ''}" title="${t.slots > limit ? 'Занято больше слотов, чем есть' : `У неэкзотического оружия дальнего боя ${WEAPON_MOD_SLOTS} слота${mods.tech.slot ? ', +1 от Техника' : ''}`}">СЛОТЫ ${t.slots} / ${limit}</strong>`}
       <button type="submit" class="remove" aria-label="Закрыть">×</button></header>
-    ${hint ? `<p class="mod-hint">${hint}</p>` : ''}
-    <ul class="mod-list">${list}</ul>
+    <div class="mod-section">${quality}</div>
+    ${hint && !melee ? `<p class="mod-hint">${hint}</p>` : ''}
+    ${melee ? '' : `<ul class="mod-list">${list}</ul>
     <div class="mod-add"><select id="modPick" aria-label="Модификация из книги"><option value="">модификация из книги…</option>${options}</select>
       <button type="button" class="add-row" data-mod-add>ПОСТАВИТЬ</button><button type="button" class="add-row" data-mod-custom>+ СВОЯ МОДИФИКАЦИЯ</button></div>
-    ${farMode === 'toggle' && (t.far || mods.far) ? `<label class="mod-check mod-far"><input type="checkbox" data-mod-far${mods.far ? ' checked' : ''}> Цель на 51 м и дальше — бонус к одиночным и прицельным выстрелам</label>` : ''}
+    ${farMode === 'toggle' && (t.far || mods.far) ? `<label class="mod-check mod-far"><input type="checkbox" data-mod-far${mods.far ? ' checked' : ''}> Цель на 51 м и дальше — бонус к одиночным и прицельным выстрелам</label>` : ''}`}
+    <details class="mod-section mod-tech"${Object.values(mods.tech).some(Boolean) ? ' open' : ''}><summary>Модернизации Техника (Мастер модернизации, стр. 148)</summary>
+      <div class="mod-tech-list">${tech}</div>
+      <small>Модернизацию делает Техник: ТЕХ + навык ремонта + ранг Мастера модернизации + 1d10 против СЛ по цене предмета (вкладка роли Техника). Отличное качество — выше, в «Качестве».</small></details>
     <p class="mod-effects">${effects.length ? `<b>Итог:</b> ${effects.map(modEsc).join(' · ')}` : 'Модификации не меняют броски.'}</p>
   </form>`;
 }
@@ -535,6 +586,8 @@ function modDialogAction(mods, e){
     return null;
   }
   if(el.matches('[data-mod-far]')){ if(e.type !== 'change') return null; next.far = el.checked; return {mods:next, rerender:true}; }
+  if(el.matches('[data-mod-quality]')){ if(e.type !== 'change') return null; next.quality = el.value; return {mods:next, rerender:true}; }
+  if(el.dataset.modTech !== undefined){ if(e.type !== 'change') return null; next.tech = {...mods.tech, [el.dataset.modTech]:el.checked}; return {mods:next, rerender:true}; }
   if(el.dataset.modField === undefined) return null;
   if(el.type === 'checkbox' && e.type !== 'change') return null;
   const m = next.list[Number(el.dataset.mod)];

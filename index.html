@@ -123,6 +123,10 @@
             <label>из<input data-key="armorBody" type="number" min="0" aria-label="Максимальное SP тела"></label>
             <label title="Вычитается из РЕА, ЛВК и СКО в навыках, бросках и скорости">Штраф РЕА/ЛВК/СКО<input data-key="armorPenalty" type="number" min="0"></label>
           </div>
+          <div class="armor-tech" title="Мастер модернизации Техника (стр. 148): +1 SP предмету, у которого есть SP">
+            <label><input type="checkbox" data-key="armorHeadTech"> Голова: модернизация Техника +1 SP</label>
+            <label><input type="checkbox" data-key="armorBodyTech"> Тело: модернизация Техника +1 SP</label>
+          </div>
           <div class="damage-box">
             <div class="armor-form">
               <label>Урон<input id="damageInput" type="number" min="0" placeholder="0"></label>
@@ -206,6 +210,11 @@
             </table>
           </div>
           <button class="add-row" data-add="weapon">+ ДОБАВИТЬ ОРУЖИЕ</button>
+        </div>
+        <div class="panel combat-panel">
+          <div class="section-title">БОЕВЫЕ ДЕЙСТВИЯ <span id="combatGrappleNote" hidden>В ЗАХВАТЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ</span></div>
+          <p class="combat-hint">Число на кнопке — что прибавляется к 1d10, нажмите, чтобы бросить. Нажмите на название — правило из книги. Атака, автоогонь, подавляющий огонь и перезарядка — в таблице оружия выше.</p>
+          <div class="combat-actions" id="combatActions"></div>
         </div>
       </div>
     </section>

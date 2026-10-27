@@ -433,6 +433,167 @@ button {
   position: relative;
 }
 
+/* Сворачивание блока: стрелка в заголовке; свёрнутый блок — только заголовок. */
+[data-panel-key] > .section-title {
+  cursor: pointer;
+}
+
+.panel-collapse {
+  width: 18px;
+  margin: 0 6px 0 -4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #aaa;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.panel-collapse::before {
+  content: '▾';
+}
+
+.is-collapsed .panel-collapse::before {
+  content: '▸';
+}
+
+.panel-collapse:hover {
+  color: #fff;
+}
+
+.panel.is-collapsed > :not(.section-title), .stats-card.is-collapsed > :not(.section-title) {
+  display: none !important;
+}
+
+.panel.is-collapsed > .section-title, .stats-card.is-collapsed > .section-title {
+  margin-bottom: -14px;
+}
+
+/* Шестерёнка в шапке вкладки: какие блоки показывать. */
+.panel-gear {
+  position: relative;
+  align-self: center;
+  margin-left: 12px;
+}
+
+.panel-gear-btn {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.panel-gear-btn:hover, .panel-gear-btn[aria-expanded="true"] {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.panel-gear-btn[data-count]:not([data-count=""])::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  border-radius: 8px;
+}
+
+.panel-gear-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 6px;
+  min-width: 240px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 2px solid var(--line);
+  border-left: 4px solid var(--red);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .2);
+  text-align: left;
+}
+
+.panel-gear-menu[hidden] {
+  display: none;
+}
+
+.panel-gear-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #555;
+}
+
+.panel-gear-menu label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.panel-gear-menu input {
+  accent-color: var(--red);
+}
+
+.panel-gear-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+@media(min-width:561px) and (max-width:900px) {
+  .page-heading:has(.role-rank) .panel-gear {
+    position: static !important;
+    margin-left: 10px !important;
+  }
+
+  .page-heading:has(.role-rank) > div:first-child {
+    padding-right: 0 !important;
+  }
+}
+
+@media(max-width:900px) {
+  .page-heading:has(.panel-gear) {
+    position: relative;
+  }
+
+  .page-heading:has(.panel-gear) > div:first-child {
+    padding-right: 46px;
+  }
+
+  .page-heading .panel-gear {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 0;
+  }
+
+  .panel-gear-menu {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+@media print {
+  .panel-collapse, .panel-gear {
+    display: none;
+  }
+}
+
 .portrait-placeholder {
   height: 165px;
   background: #202124;
@@ -810,6 +971,59 @@ button {
 .mod-effects {
   margin: 0;
   font-size: 13px;
+}
+
+.mod-section {
+  display: grid;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+}
+
+.mod-section small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.mod-quality {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mod-tech summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mod-tech-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 6px 0 2px;
+}
+
+.armor-tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #555;
+}
+
+.armor-tech input {
+  accent-color: var(--red);
+}
+
+.role-specialties input.is-over {
+  color: var(--red);
+  border-bottom-color: var(--red);
 }
 
 /* Телефон: окно на весь экран, шапка с крестиком всегда видна, поля в две колонки, крупные кнопки. */
@@ -1820,6 +2034,196 @@ footer {
   min-height: 120px;
 }
 
+/* Боевые действия на вкладке «Снаряжение»: строки в стиле листа — название, правило по нажатию, кнопки с итогом. */
+.combat-panel .section-title span {
+  color: #ff6b70;
+}
+
+.combat-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.combat-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 6px 10px;
+}
+
+.combat-action {
+  display: flex;
+  flex-wrap: nowrap;
+  min-height: 48px;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 6px 8px 6px 10px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-left: 3px solid var(--red);
+}
+
+.combat-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.combat-name::after {
+  content: ' ▾';
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.combat-action.is-open {
+  border-color: var(--red);
+}
+
+.combat-action.is-open .combat-name {
+  color: var(--red);
+}
+
+.combat-action.is-open .combat-name::after {
+  content: ' ▴';
+}
+
+.combat-rolls {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.combat-roll {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 30px;
+  padding: 1px 7px;
+  border: 1px solid var(--red);
+  background: transparent;
+  color: var(--red);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.05;
+  cursor: pointer;
+}
+
+.combat-roll:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+.combat-roll:hover small {
+  color: #fff;
+}
+
+.combat-roll small {
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.combat-roll.is-static {
+  border-color: #bbb;
+  color: var(--ink);
+  font-size: 13px;
+  cursor: default;
+}
+
+.combat-roll.is-static:hover {
+  background: transparent;
+  color: var(--ink);
+}
+
+.combat-roll.is-static:hover small {
+  color: var(--muted);
+}
+
+.combat-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.combat-toggle input {
+  accent-color: var(--red);
+}
+
+.combat-ref-text {
+  margin: 0;
+  padding: 6px 10px;
+  background: #eeeae5;
+  border-left: 3px solid var(--red);
+  font-size: 12px;
+  line-height: 1.45;
+  color: #444;
+}
+
+.combat-refs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 8px;
+}
+
+.combat-tag {
+  border: 1px solid #bbb;
+  background: #eeeae5;
+  color: #555;
+  padding: 5px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.combat-tag:hover, .combat-tag.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.combat-refs-title {
+  margin-right: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #555;
+}
+
+@media(max-width:560px) {
+  .combat-panel .section-title span {
+    float: none;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .combat-rows {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-roll {
+    min-width: 48px;
+    min-height: 36px;
+  }
+}
+
 .session-notes textarea {
   min-height: 75px;
 }
@@ -2510,6 +2914,12 @@ input.search-hit-field, textarea.search-hit-field {
 .role-take select {
   min-width: 0;
   max-width: 100%;
+}
+
+@media(max-width:560px) {
+  .role-take select {
+    width: 100%;
+  }
 }
 
 .role-take .add-row {
