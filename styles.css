@@ -656,6 +656,268 @@ button {
   background: #fff1f1;
 }
 
+.weapon-btn.mod-btn.has-mods {
+  background: var(--dark);
+  color: #fff;
+}
+
+/* Окно модификаций оружия. */
+.mod-dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 2px solid var(--line);
+  border-left: 7px solid var(--red);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.mod-dialog::backdrop {
+  background: rgba(0, 0, 0, .55);
+}
+
+.mod-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.mod-form header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mod-form header h2 {
+  margin: 2px 0 0;
+  font-size: 20px;
+}
+
+.mod-form header strong {
+  margin-left: auto;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.mod-form .is-over {
+  color: var(--red);
+}
+
+.mod-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mod-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+}
+
+.mod-item p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #444;
+}
+
+.mod-item small {
+  color: var(--muted);
+}
+
+.mod-empty, .mod-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mod-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  flex: 1;
+}
+
+.mod-custom label {
+  display: grid;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #777;
+  text-transform: uppercase;
+}
+
+.mod-custom input {
+  width: 64px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink);
+  text-transform: none;
+  padding: 3px 0;
+}
+
+.mod-custom input[type=checkbox] {
+  width: auto;
+  accent-color: var(--red);
+}
+
+.mod-custom input[data-mod-field="name"] {
+  width: 200px;
+}
+
+.mod-custom label:has(.mod-note) {
+  flex-basis: 100%;
+}
+
+.mod-custom input.mod-note {
+  width: 100%;
+}
+
+.mod-check {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.mod-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mod-add select {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.mod-add .add-row {
+  margin: 0;
+}
+
+.mod-effects {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Телефон: окно на весь экран, шапка с крестиком всегда видна, поля в две колонки, крупные кнопки. */
+@media(max-width:560px) {
+  .mod-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border: 0;
+    border-top: 4px solid var(--red);
+  }
+
+  .mod-form {
+    padding: 0 12px 16px;
+    gap: 10px;
+  }
+
+  .mod-form header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin: 0 -12px;
+    padding: 10px 12px;
+    background: var(--paper);
+    border-bottom: 1px solid #ddd;
+  }
+
+  .mod-form header > div {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .mod-form header h2 {
+    font-size: 17px;
+    overflow-wrap: anywhere;
+  }
+
+  .mod-form header strong {
+    order: 3;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .mod-form header .remove {
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 22px;
+  }
+
+  .mod-item {
+    padding: 10px;
+  }
+
+  .mod-item > .remove {
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 20px;
+  }
+
+  .mod-custom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mod-custom label:has([data-mod-field="name"]), .mod-custom label:has(.mod-note), .mod-custom .mod-check {
+    grid-column: 1 / -1;
+  }
+
+  .mod-custom input, .mod-custom input[data-mod-field="name"] {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  .mod-custom input[type=checkbox] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mod-add {
+    display: grid;
+  }
+
+  .mod-add select, .mod-add .add-row {
+    width: 100%;
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .mod-far {
+    align-items: flex-start;
+  }
+
+  .mod-far input {
+    flex: none;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.weapon-table select.autofire-pick {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
 .weapon-table select {
   width: 100%;
   border: 0;
@@ -2437,6 +2699,40 @@ input.search-hit-field, textarea.search-hit-field {
   text-align: left;
 }
 
+/* Усиления программы: строки «цель + величина», сколько угодно. */
+.program-card .boost-field {
+  flex: 1 1 100%;
+}
+
+.boost-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.boost-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.program-card .mini.wide .boost-row select {
+  width: auto;
+  max-width: 230px;
+}
+
+.program-card .boost-row input[type=number] {
+  width: 44px;
+  text-align: center;
+}
+
+.boost-list .add-row {
+  margin: 0;
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
 .rez-pair {
   display: inline-flex;
   align-items: center;
@@ -2591,8 +2887,93 @@ input.search-hit-field, textarea.search-hit-field {
   color: var(--red);
 }
 
-.net-brain {
-  align-items: end;
+/* Счётчик NET-действий в заголовке «СЕТЬ»: квадратики, счёт, ± от мастера, новый ход. */
+.section-title .net-tracker {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  color: #ddd;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.net-label {
+  margin-right: 2px;
+  color: #aaa;
+  letter-spacing: 1px;
+}
+
+.net-pip {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 2px solid var(--red);
+  background: transparent;
+  cursor: pointer;
+}
+
+.net-pip.is-used {
+  background: #666;
+  border-color: #888;
+}
+
+.net-pip.is-over {
+  border-style: dashed;
+}
+
+.net-pip.is-over.is-used {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.net-count {
+  margin: 0 3px 0 4px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.net-count.is-over, .net-bonus {
+  color: #ff6b70;
+}
+
+.net-bonus {
+  margin-right: 2px;
+}
+
+.net-mini {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border: 1px solid #666;
+  background: transparent;
+  color: #ddd;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.net-mini:hover {
+  border-color: var(--red);
+  color: #fff;
+}
+
+.net-reset {
+  margin-left: 3px;
+  border-color: var(--red);
+}
+
+@media(max-width:560px) {
+  .net-pip {
+    width: 20px;
+    height: 20px;
+  }
+
+  .net-mini {
+    min-width: 26px;
+    height: 26px;
+  }
 }
 
 .role-extra .armor-form {

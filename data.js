@@ -414,6 +414,134 @@ const ammoTypes = {
   smoke:['Дымовые','50eb (Ценное)',['grenade'],'облако дыма 10 × 10 м на минуту, штраф −4'],
   teargas:['Слезоточивый газ','50eb (Ценное)',['grenade'],'урона нет: Сопротивление пыткам/наркотикам СЛ 13, при провале «Повреждение глаза» на минуту']
 };
+// Модификации оружия (стр. 342–344): у неэкзотического оружия дальнего боя 3 слота; одинаковые не складываются,
+// магазин — только один. [название, цена, слоты, подходит ('tactical' — оружие с навыком «Тактическое оружие»,
+// 'ranged' — любое дальнее, кроме луков и арбалетов), эффекты, описание]. Эффекты: atk — к атакам этим оружием,
+// far — к одиночным и прицельным выстрелам на 51 м и дальше, mag — 'ext' / 'drum' по таблице магазинов,
+// noConceal — нельзя спрятать, bayonet — бьёт как лёгкое холодное, under — подствольное оружие (тип и магазин).
+const WEAPON_MOD_SLOTS = 3;
+const weaponModPresets = {
+  bayonet:['Штык','100eb (Премиум)',1,'tactical',{noConceal:true, bayonet:true},'Оружие можно использовать в рукопашной как лёгкое холодное оружие (1d6, навык «Оружие ближнего боя»). Нельзя спрятать под одеждой.'],
+  extMag:['Увеличенный магазин','100eb (Премиум)',1,'ranged',{mag:'ext', noConceal:true},'Больше патронов по таблице магазинов. Магазин можно поставить только один. Нельзя спрятать под одеждой.'],
+  drumMag:['Барабанный магазин','500eb (Дорогое)',1,'ranged',{mag:'drum', noConceal:true},'Ещё больше патронов по таблице магазинов. Магазин можно поставить только один. Нельзя спрятать под одеждой.'],
+  ugl:['Подствольный гранатомёт','500eb (Дорогое)',2,'tactical',{under:['grenadeLauncher', 1], noConceal:true},'Если держать оружие двумя руками, из него можно стрелять как из гранатомёта, 1 граната в подствольнике. Нельзя спрятать под одеждой.'],
+  ushot:['Подствольный дробовик','500eb (Дорогое)',2,'tactical',{under:['shotgun', 2], noConceal:true},'Если держать оружие двумя руками, из него можно стрелять как из дробовика, магазин на 2 патрона. Нельзя спрятать под одеждой.'],
+  ir:['Инфракрасный прицел ночного видения','500eb (Дорогое)',1,'tactical',{},'Убирает штрафы от темноты, дыма, тумана и т. п. Отличает тёплое тело от холодного металла, но не больше.'],
+  smart:['Коннектор смартлинка','500eb (Дорогое)',2,'ranged',{atk:1},'Умное оружие: +1 к дальним атакам, если оно подключено через смартлинк (нужен Нейролинк) или личный порт. Установка и снятие — час.'],
+  scope:['Снайперский прицел','100eb (Премиум)',1,'ranged',{far:1},'+1 к одиночным и прицельным выстрелам по цели в 51 м и дальше. Видно детали до 800 м. Не суммируется с ТелеОптикой.']
+};
+// Таблица магазинов (стр. 344): [стандартный, увеличенный, барабанный].
+const magazineByType = {
+  mediumPistol:[12,18,36], heavyPistol:[8,14,28], veryHeavyPistol:[8,14,28], smg:[30,40,50], heavySmg:[40,50,60],
+  shotgun:[4,8,16], assaultRifle:[25,35,45], sniperRifle:[4,8,12], grenadeLauncher:[2,4,6], rocketLauncher:[1,2,3]
+};
+// Модификации оружия — общее для листа игрока и листа Мастера. Хранятся строкой JSON {list, far, base}:
+// list — модификации ({id} из книги или своя {name, slots, atk, far, mag, conceal, note}), far — цель на 51 м и дальше
+// (у игрока — отметка в окне; у Мастера дистанция берётся из карточки), base — магазин без модификаций, пока они его меняют.
+const parseMods = raw => {
+  try { const v = JSON.parse(raw || '{}'); return {list:Array.isArray(v.list) ? v.list : [], far:v.far === true, base:v.base ?? ''}; }
+  catch { return {list:[], far:false, base:''}; }
+};
+const modInfo = m => {
+  const p = weaponModPresets[m.id];
+  return p ? {name:p[0], price:p[1], slots:p[2], fits:p[3], text:p[5], ...p[4]}
+    : {name:m.name || 'Своя модификация', slots:Number(m.slots) || 0, atk:Number(m.atk) || 0, far:Number(m.far) || 0,
+      magPlus:Number(m.mag) || 0, noConceal:m.conceal === true, text:m.note || '', custom:true};
+};
+const modTotals = mods => mods.list.map(modInfo).reduce((t, m)=>({slots:t.slots + m.slots, atk:t.atk + (m.atk || 0), far:t.far + (m.far || 0),
+  magPlus:t.magPlus + (m.magPlus || 0), mag:m.mag === 'drum' || t.mag === 'drum' ? 'drum' : m.mag || t.mag, noConceal:t.noConceal || !!m.noConceal,
+  bayonet:t.bayonet || !!m.bayonet}), {slots:0, atk:0, far:0, magPlus:0, mag:'', noConceal:false, bayonet:false});
+const isExoticType = type => typeof exoticWeapons !== 'undefined' && !!exoticWeapons[type];
+// Подходит ли модификация из книги: у экзотического оружия их нет; у «Своего» тип неизвестен — разрешаем всё.
+const modFits = (id, type) => {
+  if(isExoticType(type)) return false;
+  if(!weaponTypes[type]) return true;
+  const [, skill] = weaponTypes[type], fits = weaponModPresets[id][3];
+  return fits === 'tactical' ? skill === 'Тактическое оружие' : rangedWeaponSkills.includes(skill) && type !== 'bow';
+};
+// Бонусы к атаке: atk — всегда, far — только одиночным и прицельным выстрелам по цели в 51 м и дальше.
+const modAttackParts = (mods, far) => mods.list.map(modInfo).flatMap(m=>[[m.atk || 0, m.name], [far ? m.far || 0 : 0, `${m.name}, 51 м+`]]).filter(([value])=>value);
+// Магазин с модификациями: увеличенный и барабанный — по таблице книги (у своего оружия — без изменений), плюс свои «+N».
+// Возвращает новый размер магазина ('' — не менять) и обновлённые mods (запоминает или сбрасывает base).
+function modMagazine(mods, type, current){
+  const t = modTotals(mods);
+  if(!t.mag && !t.magPlus){
+    if(mods.base === '') return {size:'', mods};
+    const size = mods.base;
+    return {size, mods:{...mods, base:''}};
+  }
+  const next = {...mods, base:mods.base === '' ? String(current ?? '') : mods.base};
+  const table = magazineByType[type];
+  return {size:String((t.mag && table ? table[t.mag === 'drum' ? 2 : 1] : Number(next.base) || 0) + t.magPlus), mods:next};
+}
+const modSign = value => `${value < 0 ? '−' : '+'}${Math.abs(value)}`;
+const modEsc = text => String(text ?? '').replace(/[&<>"]/g, ch=>({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[ch]));
+// Содержимое окна модификаций. farMode: 'toggle' — отметка «цель на 51 м и дальше», 'auto' — по дистанции в карточке.
+function modDialogHtml({name, type, mods, magazine, farMode, bayonetHint}){
+  const t = modTotals(mods), infos = mods.list.map(modInfo);
+  const owned = new Set(mods.list.map(m=>m.id).filter(Boolean));
+  const hasMag = mods.list.some(m=>weaponModPresets[m.id]?.[4].mag);
+  const list = mods.list.map((m, k)=>{
+    const info = infos[k];
+    if(!info.custom) return `<li class="mod-item"><div><b>${modEsc(info.name)}</b> <small>${info.slots} ${info.slots === 1 ? 'слот' : 'слота'} · ${modEsc(info.price)}</small>${modFits(m.id, type) ? '' : ' <small class="is-over">не подходит этому оружию</small>'}<p>${modEsc(info.text)}</p></div><button type="button" class="remove" data-mod-del="${k}" title="Снять модификацию">×</button></li>`;
+    const field = (label, key, value, attrs = '') => `<label>${label}<input data-mod-field="${key}" data-mod="${k}" value="${modEsc(value)}" ${attrs}></label>`;
+    return `<li class="mod-item is-custom"><div class="mod-custom">
+        ${field('Название', 'name', m.name, 'placeholder="Глушитель, лазерный целеуказатель…"')}
+        ${field('Слоты', 'slots', m.slots, 'type="number" min="0" max="3"')}
+        ${field('К атакам', 'atk', m.atk, 'type="number" step="1" title="Бонус ко всем атакам этим оружием (минус — штраф)"')}
+        ${field('51 м+', 'far', m.far, 'type="number" step="1" title="Бонус к одиночным и прицельным выстрелам по цели в 51 м и дальше"')}
+        ${field('Магазин +', 'mag', m.mag, 'type="number" step="1" title="Сколько патронов добавляет к магазину"')}
+        <label class="mod-check"><input type="checkbox" data-mod-field="conceal" data-mod="${k}"${m.conceal === true ? ' checked' : ''}> нельзя спрятать</label>
+        ${field('Что делает', 'note', m.note, 'class="mod-note" placeholder="Описание и эффекты, которые лист не считает сам"')}
+      </div><button type="button" class="remove" data-mod-del="${k}" title="Снять модификацию">×</button></li>`;
+  }).join('') || '<li class="mod-empty">Модификаций нет.</li>';
+  const options = Object.entries(weaponModPresets).map(([id, [title, price, slots]])=>{
+    const why = owned.has(id) ? 'уже стоит' : !modFits(id, type) ? 'не подходит этому оружию' : weaponModPresets[id][4].mag && hasMag ? 'магазин уже стоит' : '';
+    return `<option value="${id}"${why ? ' disabled' : ''}>${modEsc(title)} — ${slots} сл., ${modEsc(price)}${why ? ` (${why})` : ''}</option>`;
+  }).join('');
+  const farNote = farMode === 'auto' ? ' (по дистанции в карточке)' : mods.far ? '' : ' (цель ближе — не считается)';
+  const effects = [...infos.filter(m=>m.atk).map(m=>`${m.name}: ${modSign(m.atk)} к атакам`),
+    ...infos.filter(m=>m.far).map(m=>`${m.name}: ${modSign(m.far)} одиночным и прицельным на 51 м+${farNote}`),
+    (t.mag || t.magPlus) && `магазин ${magazine || '—'}${t.mag && !magazineByType[type] ? ' (своё оружие: впишите размер магазина вручную)' : ''}`,
+    t.noConceal && 'нельзя спрятать под одеждой', t.bayonet && bayonetHint].filter(Boolean);
+  const hint = isExoticType(type) ? 'Экзотическое оружие: по книге модификаций у него нет. Свою можно добавить, если разрешит мастер.'
+    : weaponTypes[type] ? '' : 'Своё оружие: лист не знает его тип, поэтому разрешены любые модификации. Сверьтесь с мастером.';
+  return `<form method="dialog" class="mod-form">
+    <header><div><span class="eyebrow">МОДИФИКАЦИИ ОРУЖИЯ</span><h2>${modEsc(name || 'Оружие')}</h2></div>
+      <strong class="${t.slots > WEAPON_MOD_SLOTS ? 'is-over' : ''}" title="${t.slots > WEAPON_MOD_SLOTS ? 'Занято больше слотов, чем позволяет книга' : 'У неэкзотического оружия дальнего боя 3 слота'}">СЛОТЫ ${t.slots} / ${WEAPON_MOD_SLOTS}</strong>
+      <button type="submit" class="remove" aria-label="Закрыть">×</button></header>
+    ${hint ? `<p class="mod-hint">${hint}</p>` : ''}
+    <ul class="mod-list">${list}</ul>
+    <div class="mod-add"><select id="modPick" aria-label="Модификация из книги"><option value="">модификация из книги…</option>${options}</select>
+      <button type="button" class="add-row" data-mod-add>ПОСТАВИТЬ</button><button type="button" class="add-row" data-mod-custom>+ СВОЯ МОДИФИКАЦИЯ</button></div>
+    ${farMode === 'toggle' && (t.far || mods.far) ? `<label class="mod-check mod-far"><input type="checkbox" data-mod-far${mods.far ? ' checked' : ''}> Цель на 51 м и дальше — бонус к одиночным и прицельным выстрелам</label>` : ''}
+    <p class="mod-effects">${effects.length ? `<b>Итог:</b> ${effects.map(modEsc).join(' · ')}` : 'Модификации не меняют броски.'}</p>
+  </form>`;
+}
+// Действие в окне модификаций: меняет mods и говорит, что произошло. null — событие не про модификации.
+// rerender — перерисовать окно (после набора числа или текста — только по завершении ввода, чтобы не терять курсор).
+function modDialogAction(mods, e){
+  const el = e.target, next = {...mods, list:mods.list.map(m=>({...m}))};
+  if(e.type === 'click'){
+    if(el.closest('[data-mod-add]')){
+      const id = el.closest('form')?.querySelector('#modPick')?.value;
+      if(!id) return null;
+      next.list.push({id});
+      return {mods:next, rerender:true, added:id};
+    }
+    if(el.closest('[data-mod-custom]')){ next.list.push({name:'', slots:1, atk:'', far:'', mag:'', conceal:false, note:''}); return {mods:next, rerender:true}; }
+    const del = el.closest('[data-mod-del]');
+    if(del){ const [removed] = next.list.splice(Number(del.dataset.modDel), 1); return {mods:next, rerender:true, removed}; }
+    return null;
+  }
+  if(el.matches('[data-mod-far]')){ if(e.type !== 'change') return null; next.far = el.checked; return {mods:next, rerender:true}; }
+  if(el.dataset.modField === undefined) return null;
+  if(el.type === 'checkbox' && e.type !== 'change') return null;
+  const m = next.list[Number(el.dataset.mod)];
+  if(!m) return null;
+  m[el.dataset.modField] = el.type === 'checkbox' ? el.checked : el.value;
+  return {mods:next, rerender:e.type === 'change'};
+}
 // Боеприпасы без урона оружия: вместо урона цель делает проверку; значение — кубики урона мимо брони при провале.
 const ammoNoDamage = {poison:'2d6', biotoxin:'3d6', sleep:'', emp:'', flashbang:'', smoke:'', teargas:''};
 // Выстрел дробью (раздел «Выстрел дробью»): 3d6 всем целям в конусе перед стрелком, один бросок урона на всех.

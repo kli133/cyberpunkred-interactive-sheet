@@ -2,12 +2,13 @@
 const skillEntries = Object.values(skillCategories).flat();
 const skills = skillEntries.map(([name]) => name);
 const penalizedStats = [1, 2, 7]; // РЕА, ЛВК, СКО
-const rowTypes = {gear:3, weapon:11, relationship:3, ammo:3};
+const rowTypes = {gear:3, weapon:12, relationship:3, ammo:3};
 // Порядок колонок в таблицах: j — индекс значения в сохранённой строке (новые колонки оружия добавлены в конец).
 // short — короткое однострочное значение (числа, урон); остальные текстовые ячейки многострочные и растут вместе с текстом.
 const rowColumns = {
   gear:[{j:0},{j:1,short:true},{j:2,note:true}],
-  // weapon: 7 — множитель автоогня (скрытое поле, заполняется типом), 8 — тип, 9 — автоогонь включён.
+  // weapon: 7 — множитель автоогня (скрытое поле, заполняется типом), 8 — тип, 9 — автоогонь включён,
+  // 11 — модификации (JSON, скрытое поле, правится в окне «МОД»).
   weapon:[{j:0,label:'Оружие'},{j:8,select:'type',label:'Тип'},{j:5,select:'skill',label:'Навык'},{j:1,short:true,placeholder:'3d6',label:'Урон'},{j:2,short:true,label:'Патр.'},{j:6,short:true,label:'Маг.'},{j:3,short:true,label:'ROF'},{j:9,toggle:true,label:'Авто'},{j:10,select:'loadedAmmo',label:'Боеприпасы'},{j:4,note:true,label:'Заметки'}],
   // ammo: 0 калибр, 1 тип, 2 количество; колонка «свойство» — справочная, не хранится.
   ammo:[{j:0,select:'caliber',label:'Калибр'},{j:1,select:'ammoType',label:'Тип'},{j:2,short:true,label:'Кол-во'},{j:-1,select:'ammoInfo'}],
@@ -412,7 +413,12 @@ function weaponSkillSelect(key, value){
 }
 function weaponTypeSelect(key, value, multiplierKey, multiplier){
   const options = Object.entries(weaponTypes).map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
-  return `<select data-key="${key}" aria-label="Тип оружия" title="Выбор типа заполняет навык, урон, магазин, ROF и автоогонь"><option value="">Своё</option>${options}</select><input type="hidden" data-key="${multiplierKey}" value="${esc(multiplier)}">`;
+  // У оружия из книги множитель очереди берётся из типа; у своего — выбирается рядом (ПП ×3, штурмовая винтовка ×4).
+  const own = !weaponTypes[value];
+  const multiplierField = own
+    ? `<select class="autofire-pick" data-key="${multiplierKey}" aria-label="Автоматический огонь своего оружия" title="Стреляет ли оружие очередями и максимальный множитель урона очереди (пистолет-пулемёт ×3, штурмовая винтовка ×4)">${[['', 'без очереди'], ['2', 'очередь ×2'], ['3', 'очередь ×3'], ['4', 'очередь ×4']].map(([v, label])=>`<option value="${v}"${String(multiplier || '') === v ? ' selected' : ''}>${label}</option>`).join('')}</select>`
+    : `<input type="hidden" data-key="${multiplierKey}" value="${esc(multiplier)}">`;
+  return `<select data-key="${key}" aria-label="Тип оружия" title="Выбор типа заполняет навык, урон, магазин, ROF и автоогонь"><option value="">Своё</option>${options}</select>${multiplierField}`;
 }
 // Автоогонь доступен, если у оружия есть множитель (из типа оружия).
 const autofireMultiplier = data => Number(data?.[7]) || 0;
@@ -430,7 +436,7 @@ function row(type,data=[],index){
     if(select === 'ammoInfo'){ const item = ammoTypes[String(data[1] || '').split(':')[1]]; return `<td class="ammo-info">${item ? `${esc(item[3])}<small>${esc(item[1])} за ${ammoCalibers[data[0]]?.[1] === 1 ? 'штуку' : '10 шт.'}</small>` : ''}</td>`; }
     if(select === 'loadedAmmo') return `<td><select data-key="${key}" aria-label="Заряжено">${loadedAmmoOptions(data)}</select></td>`;
     if(select === 'program') return `<td>${programPresetSelect(key, data[j] || '')}</td>`;
-    if(select === 'boost') return `<td>${programBoostSelect(key, data[j] || '', `${type}${index}_10`, data[10] || '')}</td>`;
+    if(select === 'boost') return `<td>${programBoostEditor(index, data)}</td>`;
     if(toggle && type !== 'weapon') return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Включено"${data[j] === '1' ? ' checked' : ''}></td>`;
     if(toggle) return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Автоматический огонь"${isAutofireOn(data) ? ' checked' : ''}${autofireMultiplier(data) ? '' : ' disabled'}></td>`;
     return short ? `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>` : `<td>${growField(key, data[j] || '')}</td>`;
@@ -447,7 +453,7 @@ function row(type,data=[],index){
       ? `<button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${index}" title="Полностью починить: ПЗТ = максимум">↺</button>`
       : '';
   const weaponActions = type === 'weapon'
-    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРОН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>`
+    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРОН</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>${weaponModButtons(index, data)}<input type="hidden" data-key="weapon${index}_11" value="${esc(data[11] || '')}">`
     : '';
   return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}${ammoActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
 }
@@ -491,8 +497,9 @@ function programCard(data, i){
         <label class="mini rez" title="REZ сейчас / максимум"><span>REZ</span><span class="rez-pair"><input data-key="${k(7)}" value="${esc(data[7] || '')}" aria-label="REZ сейчас">/<input data-key="${k(4)}" value="${esc(data[4] || '')}" aria-label="REZ максимум"></span></label>
         <label class="mini"><span data-program-roll-label="${i}">${data[13] === 'effect' ? 'Свойство' : !isBlank(data[12]) ? 'Урон: прогр.' : 'Урон'}</span><input data-key="${k(11)}" value="${esc(data[11] || '')}"></label>
         <label class="mini" title="Урон по Чёрному ЛЬДУ, если он отличается"><span>Урон: Ч.ЛЁД</span><input data-key="${k(12)}" value="${esc(data[12] || '')}"></label>
-        <input type="hidden" data-key="${k(13)}" value="${esc(data[13] || '')}">
-        <label class="mini wide"><span>Усиливает</span>${programBoostSelect(k(9), data[9] || '', k(10), data[10] || '')}</label>
+        ${programPresets[data[6]] ? `<input type="hidden" data-key="${k(13)}" value="${esc(data[13] || '')}">`
+          : `<label class="mini wide" title="Кубики своей программы: урон (атака) или свойство — длительность, штраф, как у Суперклея"><span>Кубики</span><select data-key="${k(13)}" aria-label="Что бросают кубики программы"><option value=""${data[13] === 'effect' ? '' : ' selected'}>урон</option><option value="effect"${data[13] === 'effect' ? ' selected' : ''}>свойство</option></select></label>`}
+        <div class="mini wide boost-field"><span>Усиливает</span>${programBoostEditor(i, data)}</div>
       </div>
       <div class="row-actions"><button type="button" class="weapon-btn" data-program-attack="${i}" title="Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-program-damage="${i}">УРОН</button><button type="button" class="weapon-btn" data-program-damage="${i}" data-target="ice" title="Урон по Чёрному ЛЬДУ (после попадания)">ПО ЧЁРНОМУ ЛЬДУ</button><button type="button" class="weapon-btn" data-program-rez="${i}" title="Восстановить REZ до максимума">↺</button><button type="button" class="remove" data-remove="rolePrograms" data-index="${i}" title="Удалить">×</button></div>
     </div>
@@ -565,7 +572,7 @@ function refreshWeaponRows(){
     if(toggle){
       toggle.disabled = !multiplier;
       toggle.checked = on;
-      toggle.title = multiplier ? `Автоматический огонь (множитель до ×${multiplier})` : 'Этот тип оружия не стреляет очередями';
+      toggle.title = multiplier ? `Автоматический огонь (множитель до ×${multiplier})` : weaponTypes[data?.[8]] ? 'Этот тип оружия не стреляет очередями' : 'Своё оружие: выберите «очередь ×…» под типом оружия';
     }
     tr.classList.toggle('is-autofire', on);
     const attack = tr.querySelector('[data-weapon-attack]');
@@ -860,7 +867,7 @@ function weaponAttack(index){
   const name = data[0] || 'Оружие';
   if(isAutofireOn(data)){
     if(!spendAmmo(index, data, AUTOFIRE_AMMO)) return;
-    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: попадание очередью`, undefined, [[soloLevel('precision'), 'точная атака']], {attack:true});
+    rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: попадание очередью`, undefined, [[soloLevel('precision'), 'точная атака'], ...modAttackExtras(data, true)], {attack:true});
     return;
   }
   const skill = skills.indexOf(data[5]);
@@ -868,7 +875,7 @@ function weaponAttack(index){
   if(rangedWeaponSkills.includes(data[5]) && !spendAmmo(index, data, data[5] === AUTOFIRE_SKILL ? AUTOFIRE_AMMO : 1)) return;
   const smart = loadedAmmo(data)?.type === 'smart';
   rollCheck(`b${skill}`, `${name}: попадание`, smart ? () => 'Умные патроны: если мастер скажет, что вы промахнулись на 4 или меньше, нажмите «НЕ ПОПАЛ» — второй шанс' : undefined,
-    [[soloLevel('precision'), 'точная атака']], {attack:true, onMiss: smart ? () => smartSecondChance(name) : undefined});
+    [[soloLevel('precision'), 'точная атака'], ...modAttackExtras(data, false)], {attack:true, onMiss: smart ? () => smartSecondChance(name) : undefined});
 }
 // Умные патроны (нужен Тактический прицел): промах на 4 или меньше — повторная проверка 1d10 + 10
 // вместо СТАТ + навык, та же дистанция и СЛ; удачу добавить можно, цель может уклониться как обычно.
@@ -981,6 +988,78 @@ function applyWeaponAmmo(key, value){
   syncAmmoTable();
 }
 
+// --- Модификации оружия (стр. 342–344) ---
+// Колонка 11 — строка JSON модификаций (разбор, итоги, окно — в data.js, общие с листом Мастера).
+const modsOf = i => parseMods($(`[data-key="weapon${i}_11"]`)?.value ?? state.weapon?.[i]?.[11]);
+// Модификации только для оружия дальнего боя.
+const isMeleeType = type => weaponTypes[type] && !rangedWeaponSkills.includes(weaponTypes[type][1]);
+function weaponModButtons(index, data){
+  if(isMeleeType(data[8])) return '';
+  const t = modTotals(parseMods(data[11]));
+  return `${t.bayonet ? `<button type="button" class="weapon-btn" data-weapon-bayonet="${index}" title="Удар штыком: 1d10 + ЛВК + «Оружие ближнего боя»">ШТЫК</button><button type="button" class="weapon-btn" data-weapon-bayonet-damage="${index}" title="Урон штыка 1d6 (лёгкое холодное оружие: SP цели вдвое меньше)">1D6</button>` : ''}<button type="button" class="weapon-btn mod-btn${t.slots ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Модификации оружия: слоты, прицелы, магазины, свои модификации">МОД ${t.slots}/${WEAPON_MOD_SLOTS}</button>`;
+}
+const modAttackExtras = (data, autofire) => { const mods = parseMods(data[11]); return modAttackParts(mods, !autofire && mods.far); };
+// Магазин пересчитывается по модификациям; патроны в магазине не больше нового размера.
+function applyModMagazine(i){
+  const magKey = `weapon${i}_6`, curKey = `weapon${i}_2`;
+  const {size, mods} = modMagazine(modsOf(i), $(`[data-key="weapon${i}_8"]`)?.value, $(`[data-key="${magKey}"]`)?.value ?? '');
+  if(size !== '') setInput(magKey, size);
+  const max = Number($(`[data-key="${magKey}"]`)?.value) || 0, loaded = Number($(`[data-key="${curKey}"]`)?.value) || 0;
+  if(max && loaded > max) setInput(curKey, String(max));
+  setInput(`weapon${i}_11`, JSON.stringify(mods));
+}
+function setWeaponMods(i, mods, rerenderDialog = true){
+  setInput(`weapon${i}_11`, JSON.stringify(mods));
+  applyModMagazine(i);
+  save();
+  renderRows('weapon'); bindInputs(); refreshWeaponRows();
+  if(rerenderDialog) renderModDialog(i);
+}
+// Подствольный гранатомёт или дробовик — отдельная строка оружия со своим магазином и патронами.
+function addUnderbarrel(i, id){
+  const [type, magazine] = weaponModPresets[id][4].under;
+  const [, skill, damage, , rof] = weaponTypes[type];
+  const host = state.weapon?.[i]?.[0] || 'оружие';
+  const row = Array(rowTypes.weapon).fill('');
+  Object.assign(row, {0:`${weaponModPresets[id][0]} (${host})`, 1:damage, 2:String(magazine), 3:rof, 5:skill, 6:String(magazine), 8:type});
+  state.weapon.push(row);
+  renderRows('weapon'); bindInputs(); refreshWeaponRows(); save();
+  toast(`Добавлена строка «${row[0]}»: стреляйте из неё, держа оружие двумя руками`);
+}
+let modDialogIndex = null;
+function renderModDialog(i){
+  const dialog = $('#modDialog');
+  if(!dialog || !state.weapon?.[i]) return;
+  modDialogIndex = i;
+  const data = state.weapon[i];
+  dialog.innerHTML = modDialogHtml({name:data[0], type:data[8], mods:parseMods(data[11]), magazine:data[6], farMode:'toggle',
+    bayonetHint:'штык: кнопки «ШТЫК» и «1D6» в строке оружия'});
+}
+function openModDialog(i){
+  save();
+  renderModDialog(i);
+  const dialog = $('#modDialog');
+  if(dialog && !dialog.open) dialog.showModal ? dialog.showModal() : dialog.setAttribute('open', '');
+}
+function modDialogEvent(e){
+  const i = modDialogIndex;
+  if(i === null) return;
+  const result = modDialogAction(modsOf(i), e);
+  if(!result) return;
+  setWeaponMods(i, result.mods, result.rerender);
+  if(result.added && weaponModPresets[result.added][4].under) addUnderbarrel(i, result.added);
+  if(weaponModPresets[result.removed?.id]?.[4].under) toast(`Строка «${weaponModPresets[result.removed.id][0]}» осталась в таблице оружия — удалите её, если она больше не нужна`);
+}
+function bayonetAttack(index){
+  const data = weaponRow(index);
+  if(!data) return;
+  rollCheck(`b${skills.indexOf('Оружие ближнего боя')}`, `${data[0] || 'Оружие'}: штык`, () => 'Лёгкое холодное оружие: урон 1d6, SP цели вдвое меньше', [], {attack:true});
+}
+function bayonetDamage(index){
+  const data = weaponRow(index);
+  if(!data) return;
+  rollDicePool([{sides:6, count:1}], 0, `${data[0] || 'Оружие'}: урон штыка`, {judge: () => 'Лёгкое холодное оружие: SP цели вдвое меньше'});
+}
 function weaponReload(index){
   const data = weaponRow(index);
   if(!data) return;
@@ -1103,21 +1182,29 @@ function save(changedKey){
 }
 
 // Выбор типа оружия заполняет навык, урон, магазин (и патроны), ROF и множитель автоогня.
+// Название меняется вместе с выбранным типом из книги, если оно пустое или само из книги (первое поле пресета);
+// своё название («Militech Avenger») не трогаем.
+const isStandardName = (key, presets) => {
+  const current = String($(`[data-key="${key}"]`)?.value ?? '').trim();
+  return !current || Object.values(presets).some(([presetName])=>presetName === current);
+};
 function applyWeaponType(key, value){
   const match = /^weapon(\d+)_8$/.exec(key);
   const preset = match && weaponTypes[value];
   if(!preset) return;
   const i = match[1];
   const [name, skill, damage, magazine, rof, multiplier] = preset;
-  // Название меняется вместе с типом, если оно пустое или стандартное; своё («Militech Avenger») не трогаем.
-  const current = String($(`[data-key="weapon${i}_0"]`)?.value ?? '').trim();
-  if(!current || Object.values(weaponTypes).some(([typeName])=>typeName === current)) setInput(`weapon${i}_0`, name);
+  if(isStandardName(`weapon${i}_0`, weaponTypes)) setInput(`weapon${i}_0`, name);
   setInput(`weapon${i}_5`, skill);
   setInput(`weapon${i}_1`, damage);
   setInput(`weapon${i}_6`, magazine);
   setInput(`weapon${i}_2`, magazine);
   setInput(`weapon${i}_3`, rof);
   setInput(`weapon${i}_7`, multiplier || '');
+  // Магазин с модификациями считается от магазина нового типа.
+  const modsNow = modsOf(i);
+  if(modsNow.base !== ''){ modsNow.base = magazine; setInput(`weapon${i}_11`, JSON.stringify(modsNow)); }
+  applyModMagazine(i);
   if(!multiplier) $$(`[data-key="weapon${i}_9"]`).forEach(el=>{ el.checked = false; });
   // Патроны из снаряжения: заряженные вернуть в запас; если калибр подходит — зарядить заново из запаса.
   const data = state.weapon?.[i];
@@ -1222,6 +1309,9 @@ function bindInputs(){
       applyWeaponType(key, el.value);
       applyWeaponAmmo(key, el.value);
       applyProgramPreset(key, el.value);
+      // Включить или выключить программу — NET-действие (стр. 198). Автоотключение (REZ 0, разовая атака) действия не тратит.
+      const programToggle = /^rolePrograms(\d+)_8$/.exec(key);
+      if(programToggle) spendNetAction(`${el.checked ? 'включить' : 'выключить'} программу «${($(`[data-key="rolePrograms${programToggle[1]}_0"]`)?.value || 'Программа').split(' (')[0]}»`);
       applyVehiclePreset(key, el.value);
       applyHumanityLoss(key, el.value);
       // Одно и то же значение может быть в нескольких полях (человечность).
@@ -1317,7 +1407,8 @@ function printSheetHtml(blank){
     const loaded = loadedAmmo(data);
     const damage = loaded && loaded.type in ammoNoDamage ? (ammoNoDamage[loaded.type] ? `${ammoNoDamage[loaded.type]} мимо брони` : 'эффект')
       : loaded?.kind === 'shell' ? `${SHOTGUN_SHELL_DAMAGE} дробь` : text(data[1]);
-    return [text(data[0]), text(weaponTypes[data[8]]?.[0]), text(data[5]), attack, damage, ammo, text(data[3]), autofire, text(data[4])];
+    const mods = parseMods(data[11]).list.map(m=>modInfo(m).name);
+    return [text(data[0]), text(weaponTypes[data[8]]?.[0]), text(data[5]), attack, damage, ammo, text(data[3]), autofire, [text(data[4]), mods.length && `Модификации: ${esc(mods.join(', '))}`].filter(Boolean).join('<br>')];
   });
   const skillBlocks = Object.entries(skillCategories).map(([category, entries])=>{
     const rows = entries.flatMap(([name, stat])=>{
@@ -1409,7 +1500,7 @@ function renderRolePanel(){
       </tr>`).join('')}</tbody></table>
     </div>` : '';
   const net = role.interfaceAbilities ? `<div class="panel role-net">
-      <div class="section-title">СЕТЬ <span id="netActionsInfo"></span></div>
+      <div class="section-title">СЕТЬ <span class="net-tracker" id="netTracker"></span></div>
       <div class="armor-form">
         <label>Кибердека<input data-key="netDeck" value="${esc(state.netDeck || '')}" placeholder="Модель кибердеки"></label>
         <label>Слоты программ<input data-key="netSlots" type="number" min="0" value="${esc(state.netSlots ?? '')}"></label>
@@ -1729,17 +1820,45 @@ function roleAction(action, data){
 function programPresetSelect(key, value){
   return `<select data-key="${key}" aria-label="Программа из книги"><option value="">Своя</option>${Object.entries(programPresets).map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>`;
 }
-function programBoostSelect(key, value, amountKey, amount){
-  const abilities = (roles.netrunner.interfaceAbilities || []).map(([id,name])=>[id, `+ ${name.split(' (')[0]}`]);
-  const options = [['', '—'], ...abilities, ['speed', '+ Скорость в Сети'], ['brain', '− урон по мозгу']];
-  return `<select data-key="${key}" aria-label="Что усиливает программа">${options.map(([id,name])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select><input type="hidden" data-key="${amountKey}" value="${esc(amount)}">`;
+// Усиления программы: «цель:величина» через запятую в колонке 9 («cloak:2,speed:1»). В старых строках — одна цель
+// без величины, она в колонке 10 или в пресете (по умолчанию 2). Величина может быть отрицательной — штраф.
+const interfaceKeys = () => (roles.netrunner.interfaceAbilities || []).map(([id])=>id);
+const boostTargets = () => [['all', 'все функции Интерфейса'], ...(roles.netrunner.interfaceAbilities || []).map(([id,name])=>[id, name.split(' (')[0]]),
+  ['progatk', 'атаки программами'], ['speed', 'Скорость в Сети'], ['brain', 'урон по мозгу (снижение)']];
+const parseBoosts = data => String(data?.[9] || '').split(',').map(part=>part.trim()).filter(Boolean).map(part=>{
+  const [target, amount] = part.split(':');
+  return [target, amount !== undefined && amount !== '' ? Number(amount) || 0 : Number(data?.[10]) || (programPresets[data?.[6]]?.[7] ?? 2)];
+});
+const encodeBoosts = list => list.filter(([target])=>target).map(([target, amount])=>`${target}:${Number(amount) || 0}`).join(',');
+const withSign = value => `${value < 0 ? '−' : '+'}${Math.abs(value)}`;
+function programBoostEditor(i, data){
+  const k = j => `rolePrograms${i}_${j}`;
+  const rows = parseBoosts(data).map(([target, amount], b)=>`<span class="boost-row">
+      <select data-boost-target="${i}" data-b="${b}" aria-label="Что усиливает программа">${boostTargets().map(([id, name])=>`<option value="${id}"${id === target ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>
+      <input type="number" step="1" data-boost-amount="${i}" data-b="${b}" value="${amount}" aria-label="Величина усиления" title="Величина: плюс к проверке, Скорости или снижение урона; минус — штраф">
+      <button type="button" class="remove" data-boost-del="${i}" data-b="${b}" title="Убрать усиление">×</button>
+    </span>`).join('');
+  return `<div class="boost-list">${rows}<button type="button" class="add-row" data-boost-add="${i}">+ УСИЛЕНИЕ</button>
+    <input type="hidden" data-key="${k(9)}" value="${esc(data?.[9] || '')}"><input type="hidden" data-key="${k(10)}" value="${esc(data?.[10] || '')}"></div>`;
 }
+// Список усилений программы из полей карточки → колонка 9 (величины записываются явно, колонка 10 больше не нужна).
+function setProgramBoosts(i, list, rerender){
+  const data = state.rolePrograms?.[i];
+  if(!data) return;
+  data[9] = encodeBoosts(list); data[10] = '';
+  setInput(`rolePrograms${i}_9`, data[9]); setInput(`rolePrograms${i}_10`, '');
+  if(rerender){ renderRows('rolePrograms'); bindInputs(); }
+  save();
+}
+const boostListFromCard = i => $$(`[data-boost-target="${i}"]`).map(sel=>[sel.value, $(`[data-boost-amount="${i}"][data-b="${sel.dataset.b}"]`)?.value]);
 const programName = data => data?.[0] || programPresets[data?.[6]]?.[0] || 'Программа';
 const isProgramOn = data => data?.[8] === '1';
 const isDerezzed = data => !isBlank(data?.[4]) && Number(data[4]) > 0 && !isBlank(data?.[7]) && Number(data[7]) <= 0;
-// Бонус активных программ: target — ключ способности Интерфейса, 'speed' или 'brain'.
-const programBoosts = target => (state.rolePrograms || []).filter(data=>isProgramOn(data) && data[9] === target)
-  .map(data=>[Number(data[10]) || (programPresets[data[6]]?.[7] ?? 2), programName(data).split(' (')[0]]);
+// Бонус активных программ: target — ключ способности Интерфейса, 'progatk', 'speed' или 'brain';
+// усиление «все функции Интерфейса» действует на каждую функцию Интерфейса.
+const programBoosts = target => (state.rolePrograms || []).filter(isProgramOn).flatMap(data=>parseBoosts(data)
+  .filter(([t])=>t === target || (t === 'all' && interfaceKeys().includes(target)))
+  .map(([, value])=>[value, programName(data).split(' (')[0]]));
 const programBoostTotal = target => programBoosts(target).reduce((sum,[value])=>sum + value, 0);
 function programRow(index){
   if(!state.rolePrograms?.[index]) save();
@@ -1752,7 +1871,7 @@ function applyVehiclePreset(key, value){
   if(!preset) return;
   const i = match[1];
   const [name, hp, seats, move, kmh] = preset;
-  if(isBlank($(`[data-key="roleVehicles${i}_0"]`)?.value)) setInput(`roleVehicles${i}_0`, name);
+  if(isStandardName(`roleVehicles${i}_0`, vehicleTypes)) setInput(`roleVehicles${i}_0`, name);
   setInput(`roleVehicles${i}_4`, hp);
   setInput(`roleVehicles${i}_5`, hp);
   setInput(`roleVehicles${i}_6`, `${seats} мест, СКО ${move}, ${kmh} км/ч`);
@@ -1764,7 +1883,7 @@ function applyProgramPreset(key, value){
   if(!preset) return;
   const i = match[1];
   const [name, kind, attack, defense, rez, damage, boost, amount, effect, iceDamage = '', rollKind = ''] = preset;
-  if(isBlank($(`[data-key="rolePrograms${i}_0"]`)?.value)) setInput(`rolePrograms${i}_0`, name);
+  if(isStandardName(`rolePrograms${i}_0`, programPresets)) setInput(`rolePrograms${i}_0`, name);
   [[1,kind],[2,attack],[3,defense],[4,rez],[7,rez],[11,damage],[12,iceDamage],[13,rollKind],[9,boost],[10,amount],[5,effect]].forEach(([j,v])=>setInput(`rolePrograms${i}_${j}`, v));
 }
 // Снесённая программа (REZ 0) выключается; строки подсвечиваются по состоянию.
@@ -1799,15 +1918,46 @@ function refreshProgramRows(){
   if(summary){
     const active = (state.rolePrograms || []).filter(isProgramOn);
     summary.textContent = active.length ? `Включены: ${active.map(data=>programName(data).split(' (')[0]).join(', ')}` : 'Включённых программ нет';
-    const brain = programBoostTotal('brain'), speed = programBoostTotal('speed');
-    $('#netBoostExtra').textContent = [speed && `Скорость в Сети +${speed}`, brain && `урон по мозгу −${brain}`].filter(Boolean).join(' · ');
+    const brain = programBoostTotal('brain'), speed = programBoostTotal('speed'), attacks = programBoostTotal('progatk');
+    const abilities = (roles.netrunner.interfaceAbilities || []).map(([id, name])=>[programBoostTotal(id), name.split(' (')[0]]).filter(([value])=>value);
+    $('#netBoostExtra').textContent = [...abilities.map(([value, name])=>`${name} ${withSign(value)}`), attacks && `атаки программами ${withSign(attacks)}`,
+      speed && `Скорость в Сети ${withSign(speed)}`, brain && `урон по мозгу −${brain}`].filter(Boolean).join(' · ');
   }
+}
+// NET-действия на ход (стр. 197–198): по рангу Интерфейса (netActions) плюс сколько добавил или убрал мастер (netExtra).
+// Функции Интерфейса (кроме Сканера — это мясное действие), Разряд, включение и выключение программы галочкой
+// и атака невключённой программой тратят по одному сами; подключение, отключение и прочее — нажатием на квадратик.
+// Перемещение по Архитектуре и копирование файлов NET-действий не требуют. Перерасход не запрещён, а подсвечивается.
+const netActionsTotal = () => Math.max(0, netActions(rankOf('netrunner')) + (Number(state.netExtra) || 0));
+function refreshNetTracker(){
+  const box = $('#netTracker');
+  if(!box) return;
+  const base = netActions(rankOf('netrunner')), total = netActionsTotal(), used = Math.max(0, Number(state.netUsed) || 0), extra = Number(state.netExtra) || 0;
+  const pips = Array.from({length:Math.max(total, used)}, (_, k)=>`<button type="button" class="net-pip${k < used ? ' is-used' : ''}${k >= total ? ' is-over' : ''}" data-net-pip="${k}" aria-label="NET-действие ${k + 1}" title="${k < used ? 'Потрачено — нажмите, чтобы вернуть' : 'Отметить потраченным: подключение, отключение, другое'}"></button>`).join('');
+  box.title = `NET-действий за ход: ${base} по рангу Интерфейса${extra ? `, ${extra > 0 ? '+' : '−'}${Math.abs(extra)} от мастера` : ''}. Функции Интерфейса (кроме Сканера), Разряд, включение и выключение программ тратят их сами; подключение, отключение и прочее — нажмите на квадратик. Перемещение по Архитектуре — не NET-действие.`;
+  box.innerHTML = `<span class="net-label">NET</span>${pips}<b class="net-count${used > total ? ' is-over' : ''}">${used}/${total}</b>`
+    + `${extra ? `<small class="net-bonus">${extra > 0 ? '+' : '−'}${Math.abs(extra)} ГМ</small>` : ''}`
+    + `<button type="button" class="net-mini" data-net-extra="-1" title="Мастер убрал одно NET-действие">−</button><button type="button" class="net-mini" data-net-extra="1" title="Мастер добавил NET-действие сверх положенного">+</button>`
+    + `<button type="button" class="net-mini net-reset" data-net-reset title="Новый ход: все NET-действия снова доступны">↺</button>`;
+}
+function setNetUsed(value){
+  state.netUsed = Math.max(0, value);
+  refreshNetTracker();
+  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+}
+function spendNetAction(label){
+  const total = netActionsTotal(), used = (Number(state.netUsed) || 0) + 1;
+  setNetUsed(used);
+  if(used > total) toast(`NET-действие сверх положенного: ${used} из ${total} (${label}). Если мастер разрешил — добавьте его «+» в счётчике`);
 }
 function programAttack(index){
   const data = programRow(index);
   if(!data) return;
+  // Атака невключённой программой — это и есть её активация (NET-действие); включённая уже оплачена галочкой.
+  if(!isProgramOn(data)) spendNetAction(`атака: ${programName(data).split(' (')[0]}`);
   const attack = Number(data[2]) || 0;
-  rollDicePool([{sides:10,count:1}], roleRank() + attack, withNotes(`${programName(data)}: попадание`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`]), {luck:true});
+  const boosts = programBoosts('progatk');
+  rollDicePool([{sides:10,count:1}], roleRank() + attack + boosts.reduce((sum,[value])=>sum + value, 0), withNotes(`${programName(data)}: попадание`, [`Интерфейс ${roleRank()}`, `ATK ${attack}`, ...boosts.map(([value, name])=>value && `${name} ${withSign(value)}`)]), {luck:true});
   if(/^Против/i.test(data[1] || '') && isProgramOn(data)){
     data[8] = '';
     $$(`[data-key="rolePrograms${index}_8"]`).forEach(el=>{ el.checked = false; });
@@ -1865,8 +2015,7 @@ function refreshRolePanel(){
     info.classList.toggle('is-over', spent > budget);
     info.title = spent > budget ? 'Распределено больше очков, чем даёт ранг' : '';
   }
-  const net = $('#netActionsInfo');
-  if(net) net.textContent = `NET-ДЕЙСТВИЙ ЗА ХОД: ${netActions(rank)}`;
+  refreshNetTracker();
   refreshProgramRows();
   refreshVehicleCards();
   refreshRoleExtras();
@@ -1936,7 +2085,7 @@ function dropRole(id){
 }
 // Проверка способности роли: 1d10 + ранг (удачу можно добавить после броска).
 function rollRoleAbility(label, extras = []){
-  rollDicePool([{sides:10,count:1}], roleRank() + extras.reduce((sum,[value])=>sum + value, 0), withNotes(label, extras.map(([value,note])=>value && `${note} +${value}`)), {luck:true});
+  rollDicePool([{sides:10,count:1}], roleRank() + extras.reduce((sum,[value])=>sum + value, 0), withNotes(label, extras.map(([value,note])=>value && `${note} ${withSign(value)}`)), {luck:true});
 }
 function upgradeRole(){
   const cost = roleUpgradeCost();
@@ -2032,6 +2181,20 @@ $('#applyDamage').onclick=applyDamage;
 $('#repairArmor').onclick=repairArmor;
 $('#damageInput').onkeydown=e=>{ if(e.key==='Enter') applyDamage(); };
 document.addEventListener('change', e=>{ if(e.target.id === 'multiclassPick') refreshRolePanel(); });
+// Окно модификаций оружия: свои поля без data-key, данные идут в скрытую колонку 11 строки оружия.
+$('#modDialog')?.addEventListener('click', e=>{ if(e.target === e.currentTarget) e.currentTarget.close(); else modDialogEvent(e); });
+$('#modDialog')?.addEventListener('change', modDialogEvent);
+$('#modDialog')?.addEventListener('input', modDialogEvent);
+// Усиления программы: список строк «цель + величина» в карточке.
+document.addEventListener('input', e=>{
+  const i = e.target.dataset.boostTarget ?? e.target.dataset.boostAmount;
+  if(i !== undefined) setProgramBoosts(Number(i), boostListFromCard(i), false);
+});
+document.addEventListener('click', e=>{
+  const add = e.target.closest('[data-boost-add]'), del = e.target.closest('[data-boost-del]');
+  if(add){ const i = add.dataset.boostAdd; setProgramBoosts(Number(i), [...boostListFromCard(i), ['all', 2]], true); }
+  if(del){ const i = del.dataset.boostDel; setProgramBoosts(Number(i), boostListFromCard(i).filter((_, b)=>String(b) !== del.dataset.b), true); }
+});
 $('#creationMode').onchange=()=>{state.creationMode=$('#creationMode').checked;save();render();};
 
 document.addEventListener('click',e=>{
@@ -2059,10 +2222,15 @@ document.addEventListener('click',e=>{
     if(damage !== undefined) weaponDamage(Number(damage));
     if(reload !== undefined) weaponReload(Number(reload));
   }
+  const mods = e.target.closest('[data-weapon-mods]');
+  if(mods) openModDialog(Number(mods.dataset.weaponMods));
+  const bayonet = e.target.closest('[data-weapon-bayonet]'), bayonetHit = e.target.closest('[data-weapon-bayonet-damage]');
+  if(bayonet) bayonetAttack(Number(bayonet.dataset.weaponBayonet));
+  if(bayonetHit) bayonetDamage(Number(bayonetHit.dataset.weaponBayonetDamage));
   const skillRoll=e.target.closest('[data-roll-skill]');
   if(skillRoll) rollSkill(skillRoll.dataset.rollSkill);
   const interfaceRoll=e.target.closest('[data-interface]');
-  if(interfaceRoll){ const ability = currentRole()?.interfaceAbilities?.find(([key])=>key === interfaceRoll.dataset.interface); if(ability) rollRoleAbility(ability[0] === 'zap' ? 'Разряд: попадание' : `Интерфейс: ${ability[1]}`, programBoosts(ability[0])); }
+  if(interfaceRoll){ const ability = currentRole()?.interfaceAbilities?.find(([key])=>key === interfaceRoll.dataset.interface); if(ability && ability[0] !== 'scanner') spendNetAction(ability[1]); if(ability) rollRoleAbility(ability[0] === 'zap' ? 'Разряд: попадание' : `Интерфейс: ${ability[1]}`, programBoosts(ability[0])); }
   const program=e.target.closest('[data-program-attack],[data-program-damage],[data-program-rez]');
   if(program){
     const {programAttack:attack, programDamage:damage, programRez:rez} = program.dataset;
@@ -2073,6 +2241,11 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-brain-damage]')) applyBrainDamage();
   const roleButton=e.target.closest('[data-role-action]');
   if(roleButton) roleAction(roleButton.dataset.roleAction, {...roleButton.dataset, index:Number(roleButton.dataset.index)});
+  const netPip = e.target.closest('[data-net-pip]');
+  if(netPip){ const k = Number(netPip.dataset.netPip); setNetUsed((Number(state.netUsed) || 0) === k + 1 ? k : k + 1); }
+  if(e.target.closest('[data-net-reset]')) setNetUsed(0);
+  const netExtra = e.target.closest('[data-net-extra]');
+  if(netExtra){ state.netExtra = (Number(state.netExtra) || 0) + Number(netExtra.dataset.netExtra); refreshRolePanel(); if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now(); }
   if(e.target.closest('[data-zap-damage]')) rollDicePool([{sides:6,count:1}], 0, 'Разряд: урон', {crits:false});
   if(e.target.closest('[data-role-roll]')) rollRoleAbility(currentRole()?.roll || 'Способность роли');
   if(e.target.closest('[data-role-upgrade]')) upgradeRole();

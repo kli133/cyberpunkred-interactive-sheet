@@ -10,7 +10,7 @@ const playerColumns = [{j:0,label:'Игрок'},{j:1,label:'Персонаж'},{
 const NPC_WIDTH = 7;
 const npcFields = [{j:0,label:'Имя',placeholder:'Имя NPC'},{j:1,label:'Кто / фракция',placeholder:'фиксер, Тигриные когти...'},{j:2,label:'Отношение',placeholder:'союзник, должник, враг...'},{j:3,label:'Где найти',placeholder:'бар, район, номер...'}];
 // Оружие противника: 0 название, 1 атака (стат + навык), 2 урон, 3 ROF, 4 патроны, 5 магазин, 6 тип из книги, 7 база автоогня.
-const WEAPON_WIDTH = 8;
+const WEAPON_WIDTH = 10; // 8 — множитель очереди своего оружия (у оружия из книги берётся из типа), 9 — модификации (JSON, data.js)
 // Этаж архитектуры: 0 этаж, 1 ветка, 2 что там, 3 СЛ, 4 содержимое, 5 REZ, 6 REZ макс., 7 пройден.
 const FLOOR_WIDTH = 8;
 const floorKinds = ['Пароль','Файл','Узел управления','Чёрный ЛЁД','Демон','Другое','Пусто'];
@@ -223,7 +223,7 @@ const deathBase = e => e.deathPenalty + injuryMods(e).death;
 const allWeapons = {...weaponTypes, ...Object.fromEntries(Object.entries(exoticWeapons).map(([id, w])=>[id, w.slice(0, 6)]))};
 const weaponType = w => allWeapons[w[6]];
 const weaponProps = w => exoticWeapons[w[6]]?.[8] || {};
-const autofireMult = w => num(weaponType(w)?.[5]);
+const autofireMult = w => weaponType(w) ? num(weaponType(w)[5]) : num(w[8]);
 const isMelee = w => /Оружие ближнего боя|Рукопашный/.test(weaponType(w)?.[1] || '');
 const canShell = w => w[6] === 'shotgun' || w[6] === 'hurricane';
 const SHELL_DV = 13; // дробь и огнемёт: атака против СЛ 13 (стр. 174)
@@ -304,8 +304,9 @@ function weaponAttack(e, j){
   const props = weaponProps(w);
   if(!isMelee(w) && !spendAmmo(w, 1)) return;
   const dv = attackDv(e, w, false);
-  const base = num(w[1]) + (props.quality ? 1 : 0);
-  const attack = enemyCheck(e, base, `${name}, атака`, {note: props.quality ? 'высокое качество +1' : '', judge: entry => isMelee(w) ? 'ближний бой: цель защищается ЛВК + Уклонение + 1d10'
+  const mods = isMelee(w) ? [] : modParts(e, w, true);
+  const base = num(w[1]) + (props.quality ? 1 : 0) + mods.reduce((sum, [value])=>sum + value, 0);
+  const attack = enemyCheck(e, base, `${name}, атака`, {note: [props.quality && 'высокое качество +1', ...mods.map(([value, label])=>`${label} ${signed(value)}`)].filter(Boolean).join(', '), judge: entry => isMelee(w) ? 'ближний бой: цель защищается ЛВК + Уклонение + 1d10'
     : dv === null ? `DV: выберите дистанцию; ${dodgeHint}` : Number.isNaN(dv) ? 'ВНЕ ДАЛЬНОСТИ'
     : `${entry.total > dv ? 'ПОПАЛ' : 'ПРОМАХ'} (DV ${dv}); ${dodgeHint}`}, isMelee(w) ? 'melee' : 'ranged');
   if(dv !== null && !Number.isNaN(dv) && attack.total > dv) weaponDamage(e, j, `попадание ${attack.total} > DV ${dv}`);
@@ -324,7 +325,8 @@ function weaponDamage(e, j, note = ''){
 function weaponShell(e, j){
   const w = e.weapons[j];
   if(!spendAmmo(w, 1)) return;
-  const attack = enemyCheck(e, w[1], `${w[0] || 'дробовик'}, дробь`, {judge: entry => `${entry.total > SHELL_DV ? 'ПОПАЛ' : 'ПРОМАХ'} (СЛ ${SHELL_DV}); цели с РЕА 8+ могут уклониться`}, 'ranged');
+  const mods = modParts(e, w, false);
+  const attack = enemyCheck(e, num(w[1]) + mods.reduce((sum, [value])=>sum + value, 0), `${w[0] || 'дробовик'}, дробь`, {note: mods.map(([value, label])=>`${label} ${signed(value)}`).join(', '), judge: entry => `${entry.total > SHELL_DV ? 'ПОПАЛ' : 'ПРОМАХ'} (СЛ ${SHELL_DV}); цели с РЕА 8+ могут уклониться`}, 'ranged');
   if(attack.total > SHELL_DV) roll(parseDice(SHOTGUN_SHELL_DAMAGE), 0, `${enemyName(e)}: дробь, урон`, {note:'всем, кого видит в 6 м перед собой; один бросок на всех'});
 }
 // Очередь (стр. 173): 10 патронов (Helix — 20), 1d10 + РЕА + Автоогонь против DV автоогня;
@@ -334,9 +336,10 @@ function weaponAutofire(e, j){
   const mult = autofireMult(w);
   if(!mult){ toast('У этого оружия нет автоогня'); return; }
   if(!spendAmmo(w, weaponProps(w).autofireCost || AUTOFIRE_AMMO_COST)) return;
-  const base = isBlank(w[7]) ? w[1] : w[7];
+  const mods = modParts(e, w, false);
+  const base = num(isBlank(w[7]) ? w[1] : w[7]) + mods.reduce((sum, [value])=>sum + value, 0);
   const dv = attackDv(e, w, true);
-  const attack = enemyCheck(e, base, `${w[0] || 'оружие'}, очередь`, {note: isBlank(w[7]) ? 'база автоогня не задана — взята атака' : '',
+  const attack = enemyCheck(e, base, `${w[0] || 'оружие'}, очередь`, {note: [isBlank(w[7]) && 'база автоогня не задана — взята атака', ...mods.map(([value, label])=>`${label} ${signed(value)}`)].filter(Boolean).join(', '),
     judge: entry => dv === null ? `DV автоогня: выберите дистанцию; урон 2d6 × превышение (макс. ×${mult})` : Number.isNaN(dv) ? 'ВНЕ ДАЛЬНОСТИ АВТООГНЯ'
       : entry.total > dv ? `ПОПАЛ (DV ${dv})` : `ПРОМАХ (DV ${dv})`}, 'ranged');
   if(dv === null || Number.isNaN(dv) || attack.total <= dv) return;
@@ -350,6 +353,59 @@ function weaponSuppress(e, j){
   if(!spendAmmo(w, AUTOFIRE_AMMO_COST)) return;
   enemyCheck(e, isBlank(w[7]) ? w[1] : w[7], `${w[0] || 'оружие'}, подавляющий огонь`, {judge: entry => `цели в 25 м без укрытия: ВОЛЯ + Концентрация + 1d10 против ${entry.total}, иначе тратят перемещение на укрытие`}, 'ranged');
 }
+
+// --- Модификации оружия противника (стр. 342–344; разбор, итоги и окно — в data.js, общие с листом игрока) ---
+// Колонка 9 — JSON модификаций. Снайперский прицел и свои «51 м+» считаются по дистанции, выбранной в карточке.
+const FAR_BAND = 4; // rangeBands[4] — 51–100 м
+const modButton = (i, j, w) => isMelee(w) ? '' : `<button type="button" class="weapon-btn mod-btn${modTotals(parseMods(w[9])).slots ? ' has-mods' : ''}" data-act="mods" data-i="${i}" data-j="${j}" title="Модификации оружия">МОД ${modTotals(parseMods(w[9])).slots}/${WEAPON_MOD_SLOTS}</button>`;
+const modParts = (e, w, single) => modAttackParts(parseMods(w[9]), single && !isBlank(e.range) && num(e.range) >= FAR_BAND);
+// Магазин с модификациями; патроны в магазине не больше нового размера.
+function applyEnemyModMagazine(w){
+  const {size, mods} = modMagazine(parseMods(w[9]), w[6], w[5]);
+  if(size !== ''){ w[5] = size; if(!isBlank(w[4]) && num(w[4]) > num(size)) w[4] = size; }
+  w[9] = JSON.stringify(mods);
+}
+// Подствольник и штык — отдельные строки оружия: у них свои атака, урон и магазин. Атаку мастер вписывает сам.
+function addModWeapon(e, w, id){
+  const p = weaponModPresets[id][4];
+  const host = w[0] || 'оружие';
+  if(p.under){
+    const [type, magazine] = p.under, [, , damage, , rof] = weaponTypes[type];
+    e.weapons.push([`${weaponModPresets[id][0]} (${host})`, '', damage, rof, String(magazine), String(magazine), type, '', '', '']);
+  }
+  if(p.bayonet) e.weapons.push([`Штык (${host})`, '', weaponTypes.lightMelee[2], weaponTypes.lightMelee[4], '', '', 'lightMelee', '', '', '']);
+  if(p.under || p.bayonet) toast(`Добавлена строка «${e.weapons.at(-1)[0]}» — впишите ей атаку (стат + навык)`);
+}
+let modTarget = null; // [индекс противника, индекс оружия]
+function renderEnemyModDialog(){
+  const dialog = $('#modDialog');
+  const e = modTarget && state.enemies[modTarget[0]], w = e?.weapons[modTarget[1]];
+  if(!dialog || !w) return;
+  dialog.innerHTML = modDialogHtml({name:`${w[0] || 'Оружие'} — ${enemyName(e)}`, type:w[6], mods:parseMods(w[9]), magazine:w[5], farMode:'auto',
+    bayonetHint:'штык — отдельной строкой оружия'});
+}
+const openEnemyMods = (e, i, j) => {
+  modTarget = [i, j];
+  renderEnemyModDialog();
+  const dialog = $('#modDialog');
+  if(dialog && !dialog.open) dialog.showModal ? dialog.showModal() : dialog.setAttribute('open', '');
+};
+function enemyModEvent(ev){
+  const e = modTarget && state.enemies[modTarget[0]], w = e?.weapons[modTarget[1]];
+  if(!w) return;
+  const result = modDialogAction(parseMods(w[9]), ev);
+  if(!result) return;
+  w[9] = JSON.stringify(result.mods);
+  applyEnemyModMagazine(w);
+  if(result.added) addModWeapon(e, w, result.added);
+  const removed = weaponModPresets[result.removed?.id]?.[4];
+  if(removed?.under || removed?.bayonet) toast('Строка подствольника или штыка осталась в оружии противника — удалите её, если она больше не нужна');
+  renderEnemies(); renderTurn(); save();
+  if(result.rerender) renderEnemyModDialog();
+}
+$('#modDialog')?.addEventListener('click', ev=>{ if(ev.target === ev.currentTarget) ev.currentTarget.close(); else enemyModEvent(ev); });
+$('#modDialog')?.addEventListener('change', enemyModEvent);
+$('#modDialog')?.addEventListener('input', enemyModEvent);
 
 // --- Урон ---
 // Зоны попадания: тело, голова, и прицельные выстрелы −8 (стр. 170) в ногу и в предмет в руке — урон идёт в тело.
@@ -521,12 +577,12 @@ const headTools = (i, e) => `<span class="enemy-tools">
 function enemyCard(e, i){
   const c = condition(e);
   const weapons = e.weapons.map((w,j)=>`<tr>
-      <td>${input(i, `weapons.${j}.0`, w[0], 'placeholder="Оружие"')}<select data-e="${i}" data-f="weapons.${j}.6" class="weapon-type" aria-label="Тип оружия: по нему берётся DV">${weaponTypeOptions(w[6])}</select></td>
+      <td>${input(i, `weapons.${j}.0`, w[0], 'placeholder="Оружие"')}<select data-e="${i}" data-f="weapons.${j}.6" class="weapon-type" aria-label="Тип оружия: по нему берётся DV">${weaponTypeOptions(w[6])}</select>${weaponType(w) ? '' : `<select data-e="${i}" data-f="weapons.${j}.8" class="weapon-type" aria-label="Очередь своего оружия" title="Стреляет ли своё оружие очередями: максимальный множитель урона очереди (пистолет-пулемёт ×3, штурмовая винтовка ×4)">${options([['', 'без очереди'], ['2', 'очередь ×2'], ['3', 'очередь ×3'], ['4', 'очередь ×4']], w[8])}</select>`}</td>
       <td>${input(i, `weapons.${j}.1`, w[1], 'type="number" placeholder="база" title="Стат + навык оружия"')}${autofireMult(w) ? input(i, `weapons.${j}.7`, w[7], 'type="number" placeholder="авто" title="База автоогня: РЕА + Автоматический огонь"') : ''}</td>
       <td>${input(i, `weapons.${j}.2`, w[2], 'placeholder="3d6"')}</td>
       <td>${input(i, `weapons.${j}.3`, w[3], 'type="number"')}</td>
       <td>${input(i, `weapons.${j}.4`, w[4], 'type="number" placeholder="—"')}<span class="slash">/</span>${input(i, `weapons.${j}.5`, w[5], 'type="number" placeholder="—"')}</td>
-      <td class="row-btns">${weaponButtons(i, j, w)}<button type="button" class="weapon-btn" data-act="reload" data-i="${i}" data-j="${j}" title="Перезарядить">↻</button><button type="button" class="remove" data-act="delWeapon" data-i="${i}" data-j="${j}" title="Удалить">×</button></td>
+      <td class="row-btns">${weaponButtons(i, j, w)}<button type="button" class="weapon-btn" data-act="reload" data-i="${i}" data-j="${j}" title="Перезарядить">↻</button>${modButton(i, j, w)}<button type="button" class="remove" data-act="delWeapon" data-i="${i}" data-j="${j}" title="Удалить">×</button></td>
     </tr>`).join('');
   const skills = e.skills.map((s,j)=>`<div class="enemy-skill">${input(i, `skills.${j}.0`, s[0], 'placeholder="Навык"')}${input(i, `skills.${j}.1`, s[1], 'type="number" placeholder="база" title="Стат + навык"')}<button type="button" class="weapon-btn" data-act="skill" data-i="${i}" data-j="${j}">1D10</button><button type="button" class="remove" data-act="delSkill" data-i="${i}" data-j="${j}">×</button></div>`).join('');
   return `<article class="enemy-card is-${c.key}${e.collapsed ? ' is-collapsed' : ''}" data-i="${i}">
@@ -1118,7 +1174,7 @@ function printEnemies(){
       <div class="dp-stats">${stats.map((n,s)=>`<span><small>${n}</small>${esc(e.stats[s] || '—')}</span>`).join('')}</div>
       <p><b>Хиты</b> ${maxHp(e)} · <b>ранение</b> &lt; ${woundThreshold(e)} · <b>SP</b> голова ${num(e.headSpMax || e.headSp)} / тело ${num(e.bodySpMax || e.bodySp)} · <b>СКО</b> ${moveMeters(e)} м</p>
       <div class="dp-boxes">${'<i></i>'.repeat(Math.min(maxHp(e), 80))}</div>
-      ${e.weapons.length ? `<table><tr><th>Оружие</th><th>Атака</th><th>Урон</th><th>ROF</th><th>Маг.</th></tr>${e.weapons.map(w=>`<tr><td>${esc(w[0])}</td><td>${esc(w[1])}${autofireMult(w) ? ` / авто ${esc(w[7] || '—')} ×${autofireMult(w)}` : ''}</td><td>${esc(w[2])}</td><td>${esc(w[3])}</td><td>${esc(w[5])}</td></tr>`).join('')}</table>` : ''}
+      ${e.weapons.length ? `<table><tr><th>Оружие</th><th>Атака</th><th>Урон</th><th>ROF</th><th>Маг.</th></tr>${e.weapons.map(w=>`<tr><td>${esc(w[0])}${parseMods(w[9]).list.length ? `<br><small>${esc(parseMods(w[9]).list.map(m=>modInfo(m).name).join(', '))}</small>` : ''}</td><td>${esc(w[1])}${autofireMult(w) ? ` / авто ${esc(w[7] || '—')} ×${autofireMult(w)}` : ''}</td><td>${esc(w[2])}</td><td>${esc(w[3])}</td><td>${esc(w[5])}</td></tr>`).join('')}</table>` : ''}
       ${e.skills.length ? `<p><b>Навыки:</b> ${e.skills.map(s=>`${esc(s[0])} ${esc(s[1])}`).join(', ')}</p>` : ''}
       ${e.gear.trim() ? `<p><b>Снаряжение:</b> ${esc(e.gear)}</p>` : ''}
       ${e.notes.trim() ? `<p><b>Заметки:</b> ${esc(e.notes)}</p>` : ''}
@@ -1223,9 +1279,20 @@ document.addEventListener('change', ev=>{
       const [, j] = el.dataset.f.split('.');
       const w = state.enemies[Number(el.dataset.e)].weapons[Number(j)];
       const preset = weaponType(w);
-      if(preset){ if(isBlank(w[2])) w[2] = preset[2]; if(isBlank(w[3])) w[3] = preset[4]; if(isBlank(w[5]) && preset[3]){ w[5] = preset[3]; w[4] = preset[3]; } }
+      // Урон, ROF и магазин следуют за типом, если они пустые или взяты из книги; свои значения не трогаем.
+      const standard = (value, k) => isBlank(value) || Object.values(allWeapons).some(p=>String(p[k]) === String(value).trim());
+      if(preset){
+        if(standard(w[2], 2)) w[2] = preset[2];
+        if(standard(w[3], 4)) w[3] = preset[4];
+        if(preset[3] && standard(w[5], 3)){ if(isBlank(w[4]) || w[4] === w[5]) w[4] = preset[3]; w[5] = preset[3]; }
+      }
+      // Магазин с модификациями считается от магазина нового типа.
+      const mods = parseMods(w[9]);
+      if(mods.base !== '' && preset?.[3]){ mods.base = preset[3]; w[9] = JSON.stringify(mods); }
+      applyEnemyModMagazine(w);
       renderEnemies(); renderTurn();
     }
+    if(/^weapons\.\d+\.8$/.test(el.dataset.f)){ renderEnemies(); renderTurn(); }
     if(el.dataset.f === 'selected') updateSummary();
     else if(!el.dataset.f.startsWith('weapons')) renderInit();
   }
@@ -1277,7 +1344,7 @@ document.addEventListener('change', ev=>{
   if(el.dataset.act === 'presetWeapon' && el.value){
     const e = state.enemies[Number(el.dataset.i)];
     const [name, , damage, mag, rof] = allWeapons[el.value];
-    e.weapons.push([name, '', damage, rof, mag, mag, el.value, '']);
+    e.weapons.push([name, '', damage, rof, mag, mag, el.value, '', '', '']);
     renderEnemies(); renderTurn(); save();
   }
 });
@@ -1601,3 +1668,5 @@ $('#groupKind').innerHTML = options(damageKinds, '');
 renderAll();
 renderNames(generateNames());
 try { const tab = localStorage.getItem(`${DM_KEY}:tab`); if(tab && $(`#${tab}`)) activateTab(tab); } catch {}
+// Окно модификаций — кнопка «МОД» в строке оружия противника.
+enemyActions.mods = openEnemyMods;
