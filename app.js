@@ -857,7 +857,7 @@ function renderCombatActions(){
   const box = $('#combatActions');
   if(!box) return;
   const grapple = grapplePenalty();
-  const indexed = combatActions.map((action, k)=>[action, k]);
+  const indexed = sheetCombatActions.map((action, k)=>[action, k]);
   const rows = indexed.filter(([[, , rolls]])=>rolls.length).map(([[name, , rolls, extra], k])=>{
     const toggle = extra === 'grapple' ? `<label class="combat-toggle" title="В захвате оба получают −2 ко всем действиям"><input type="checkbox" data-combat-grapple${grapple ? ' checked' : ''}> в захвате</label>` : '';
     return `<div class="combat-action${combatShown === k ? ' is-open' : ''}">
@@ -865,7 +865,7 @@ function renderCombatActions(){
       <span class="combat-rolls">${rolls.map(roll=>combatChip(name, roll, rolls.length > 1)).join('')}</span></div>`;
   }).join('');
   const refs = indexed.filter(([[, , rolls]])=>!rolls.length);
-  const shown = combatActions[combatShown];
+  const shown = sheetCombatActions[combatShown];
   box.innerHTML = `<div class="combat-rows">${rows}</div>
     <div class="combat-refs"><span class="combat-refs-title">ДРУГИЕ ДЕЙСТВИЯ</span>${refs.map(([[name], k])=>`<button type="button" class="combat-tag${k === combatShown ? ' active' : ''}" data-combat-info="${k}" aria-pressed="${k === combatShown}">${esc(name)}</button>`).join('')}</div>
     ${shown ? `<p class="combat-ref-text"><b>${esc(shown[0])}.</b> ${esc(shown[1])}</p>` : ''}`;
@@ -1084,12 +1084,11 @@ function applyWeaponAmmo(key, value){
 const modsOf = i => parseMods($(`[data-key="weapon${i}_11"]`)?.value ?? state.weapon?.[i]?.[11]);
 // Модификации только для оружия дальнего боя.
 const isMeleeType = type => weaponTypes[type] && !rangedWeaponSkills.includes(weaponTypes[type][1]);
-const qualityMark = mods => mods.quality === 'excellent' ? ' ★' : mods.quality === 'poor' ? ' ▼' : '';
 function weaponModButtons(index, data){
   const mods = parseMods(data[11]);
-  if(isMeleeType(data[8])) return `<button type="button" class="weapon-btn mod-btn${mods.quality ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Качество оружия: отличное +1 к атакам, низкое заклинивает">КАЧ.${qualityMark(mods)}</button>`;
+  if(isMeleeType(data[8])) return `<button type="button" class="weapon-btn mod-btn${mods.quality ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Качество оружия: отличное +1 к атакам, низкое заклинивает">КАЧ.${qualityLabel(mods)}</button>`;
   const t = modTotals(mods);
-  return `${t.bayonet ? `<button type="button" class="weapon-btn" data-weapon-bayonet="${index}" title="Удар штыком: 1d10 + ЛВК + «Оружие ближнего боя»">ШТЫК</button><button type="button" class="weapon-btn" data-weapon-bayonet-damage="${index}" title="Урон штыка 1d6 (лёгкое холодное оружие: SP цели вдвое меньше)">1D6</button>` : ''}<button type="button" class="weapon-btn mod-btn${t.slots ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Модификации и качество оружия: слоты, прицелы, магазины, свои модификации">МОД ${t.slots}/${modSlotLimit(mods)}${qualityMark(mods)}</button>`;
+  return `${t.bayonet ? `<button type="button" class="weapon-btn" data-weapon-bayonet="${index}" title="Удар штыком: 1d10 + ЛВК + «Оружие ближнего боя»">ШТЫК</button><button type="button" class="weapon-btn" data-weapon-bayonet-damage="${index}" title="Урон штыка 1d6 (лёгкое холодное оружие: SP цели вдвое меньше)">1D6</button>` : ''}<button type="button" class="weapon-btn mod-btn${t.slots ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Модификации и качество оружия: слоты, прицелы, магазины, свои модификации">МОД ${t.slots}/${modSlotLimit(mods)}${qualityLabel(mods)}</button>`;
 }
 const modAttackExtras = (data, autofire) => { const mods = parseMods(data[11]); return modAttackParts(mods, !autofire && mods.far); };
 // Магазин пересчитывается по модификациям; патроны в магазине не больше нового размера.

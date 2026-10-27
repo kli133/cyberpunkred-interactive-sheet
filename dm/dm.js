@@ -360,11 +360,10 @@ function weaponSuppress(e, j){
 // --- Модификации оружия противника (стр. 342–344; разбор, итоги и окно — в data.js, общие с листом игрока) ---
 // Колонка 9 — JSON модификаций. Снайперский прицел и свои «51 м+» считаются по дистанции, выбранной в карточке.
 const FAR_BAND = 4; // rangeBands[4] — 51–100 м
-const qualityMark = mods => mods.quality === 'excellent' ? ' ★' : mods.quality === 'poor' ? ' ▼' : '';
 const modButton = (i, j, w) => {
   const mods = parseMods(w[9]);
-  if(isMelee(w)) return `<button type="button" class="weapon-btn mod-btn${mods.quality ? ' has-mods' : ''}" data-act="mods" data-i="${i}" data-j="${j}" title="Качество оружия: отличное +1 к атакам, низкое заклинивает">КАЧ.${qualityMark(mods)}</button>`;
-  return `<button type="button" class="weapon-btn mod-btn${modTotals(mods).slots || mods.quality ? ' has-mods' : ''}" data-act="mods" data-i="${i}" data-j="${j}" title="Модификации и качество оружия">МОД ${modTotals(mods).slots}/${modSlotLimit(mods)}${qualityMark(mods)}</button>`;
+  if(isMelee(w)) return `<button type="button" class="weapon-btn mod-btn${mods.quality ? ' has-mods' : ''}" data-act="mods" data-i="${i}" data-j="${j}" title="Качество оружия: отличное +1 к атакам, низкое заклинивает">КАЧ.${qualityLabel(mods)}</button>`;
+  return `<button type="button" class="weapon-btn mod-btn${modTotals(mods).slots || mods.quality ? ' has-mods' : ''}" data-act="mods" data-i="${i}" data-j="${j}" title="Модификации и качество оружия">МОД ${modTotals(mods).slots}/${modSlotLimit(mods)}${qualityLabel(mods)}</button>`;
 };
 // Бонусы модификаций и качества; у экзотики «высокого качества» +1 уже учтён в её свойствах — второй раз не добавляем.
 const modParts = (e, w, single) => modAttackParts(parseMods(w[9]), single && !isBlank(e.range) && num(e.range) >= FAR_BAND)
