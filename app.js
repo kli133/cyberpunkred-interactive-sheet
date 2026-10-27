@@ -1109,7 +1109,9 @@ function applyWeaponType(key, value){
   if(!preset) return;
   const i = match[1];
   const [name, skill, damage, magazine, rof, multiplier] = preset;
-  if(isBlank($(`[data-key="weapon${i}_0"]`)?.value)) setInput(`weapon${i}_0`, name);
+  // Название меняется вместе с типом, если оно пустое или стандартное; своё («Militech Avenger») не трогаем.
+  const current = String($(`[data-key="weapon${i}_0"]`)?.value ?? '').trim();
+  if(!current || Object.values(weaponTypes).some(([typeName])=>typeName === current)) setInput(`weapon${i}_0`, name);
   setInput(`weapon${i}_5`, skill);
   setInput(`weapon${i}_1`, damage);
   setInput(`weapon${i}_6`, magazine);
