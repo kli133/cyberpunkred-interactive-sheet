@@ -102,7 +102,8 @@ function spawnBook(i, count){
 }
 
 // --- Импланты и препараты на противнике ---
-const implantOptions = () => `<option value="">+ имплант / наркотик…</option>${Object.entries(cyberCatalog).map(([group, items])=>`<optgroup label="${esc(group)}">${items.map(it=>`<option value="cyber:${esc(it[0])}">${esc(it[0])}${it[5] ? ' ★' : ''}</option>`).join('')}</optgroup>`).join('')}<optgroup label="Уличные наркотики">${streetDrugs.map(d=>`<option value="drug:${esc(d[0])}">${esc(d[0])} ★</option>`).join('')}</optgroup>`;
+const implantHasFx = fx => fx && ['init','stat','statMin','sp','weapon','skill','ignoreWound','move'].some(k=>fx[k]);
+const implantOptions = () => `<option value="">+ имплант / наркотик…</option>${Object.entries(cyberCatalog).map(([group, items])=>`<optgroup label="${esc(group)}">${items.map(it=>`<option value="cyber:${esc(it[0])}">${esc(it[0])}${implantHasFx(it[5]) ? ' ★' : ''}</option>`).join('')}</optgroup>`).join('')}<optgroup label="Уличные наркотики">${streetDrugs.map(d=>`<option value="drug:${esc(d[0])}">${esc(d[0])} ★</option>`).join('')}</optgroup>`;
 // Разовые эффекты при установке: броня, оружие, навыки. Постоянные (СТАТы, инициатива, боль) считаются в stat() и checkPenalty().
 function installImplant(e, kind, name){
   const fx = (kind === 'drug' ? drugIndex[name] : cyberIndex[name])?.fx || {};
@@ -147,8 +148,9 @@ function refHtml(){
   const statRows = statInfo.map(([s, n, g, t])=>[`<b>${s}</b>`, n, g, t]);
   const skills = Object.entries(skillCategories).map(([cat, list])=>`<h3>${esc(cat)}</h3>` + table(['Навык', 'СТАТ', 'Что это', '10', '14', '18'],
     list.map(([name, st])=>{ const info = skillInfo[name] || ['', '', '', '']; return [`<b>${esc(name)}</b>`, `<span class="has-tip" data-tip="${esc(statTitle(st))}">${statAliases[st] || st}</span>`, esc(info[0]), esc(info[1]), esc(info[2]), esc(info[3])]; }), 'skill-ref-table')).join('');
+  const cyberFx = fx => fx && ['init','stat','statMin','sp','weapon','skill','ignoreWound','move'].some(k=>fx[k]);
   const cyber = Object.entries(cyberCatalog).map(([group, items])=>`<h3>${esc(group)}</h3>` + table(['Имплант', 'Установка', 'Что делает', 'Цена', 'Потеря Человечности', 'На враге'],
-    items.map(([n, inst, t, p, h, fx])=>[`<b>${esc(n)}</b>`, inst, esc(t), p, h, fx ? '★' : '']), 'cyber-ref-table')).join('');
+    items.map(([n, inst, t, p, h, fx])=>[`<b>${esc(n)}</b>`, inst, esc(t), p, h, cyberFx(fx) ? '★' : '']), 'cyber-ref-table')).join('');
   return [
     section('roles', 'РОЛИ И РАНГИ', 'стр. 143–165',
       `<div class="role-picker">${Object.entries(roles).map(([id, r])=>`<button type="button" class="add-row" data-ref-role="${id}">${esc(r.name)}</button>`).join('')}</div>

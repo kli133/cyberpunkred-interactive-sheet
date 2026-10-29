@@ -1161,14 +1161,91 @@ button {
   outline: 0;
 }
 
+.cyber-diagram {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 12px 8px;
+  background:
+    linear-gradient(180deg, #1a1a1a 0%, #111 100%);
+  border: 3px solid var(--red);
+  min-width: 0;
+}
+
 .body-silhouette {
-  width: 145px;
-  height: 300px;
-  fill: none;
-  stroke: #aaa;
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: min(120px, 100%);
+  height: auto;
+  max-height: 320px;
+  overflow: visible;
+}
+
+.body-part,
+.body-eye,
+.body-ear,
+.body-port {
+  fill: url(#meatTone);
+  stroke: #666;
+  stroke-width: 1.5;
+  transition: fill .25s ease, stroke .25s ease, filter .25s ease;
+}
+
+.body-eye,
+.body-ear {
+  fill: #4a4948;
+  stroke: #777;
+}
+
+.body-port {
+  fill: #333;
+  stroke: #555;
+  stroke-width: 1;
+}
+
+.body-part.is-cyber,
+.body-eye.is-cyber,
+.body-ear.is-cyber,
+.body-port.is-cyber {
+  fill: url(#cyberMetal);
+  stroke: #ff6b6b;
+  filter: drop-shadow(0 0 4px rgba(196, 24, 40, .55));
+}
+
+.body-part.is-armor {
+  stroke: #ffb4b4;
+  stroke-width: 2.2;
+}
+
+.body-part.is-fashion:not(.is-cyber) {
+  fill: #3a3538;
+  stroke: #c45c6a;
+}
+
+.cyber-diagram-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #bbb;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 150px;
+}
+
+.cyber-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #555;
+  flex: 0 0 auto;
+}
+
+.cyber-legend-dot.is-cyber {
+  background: var(--red);
+  box-shadow: 0 0 6px rgba(196, 24, 40, .8);
 }
 
 .cyber-layout {
@@ -1217,7 +1294,8 @@ button {
 
 .cyber-core .cyber-diagram {
   grid-area: body;
-  min-height: 430px;
+  min-height: 360px;
+  align-self: stretch;
 }
 
 .cyber-advanced {
@@ -1229,51 +1307,361 @@ button {
   min-width: 0;
 }
 
-.cyber-slot-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
+.cyber-panel {
   border: 3px solid var(--red);
-  table-layout: fixed;
+  background: #fff;
+  min-width: 0;
 }
 
-.cyber-slot-table th {
+.cyber-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
   background: var(--black);
   color: #fff;
-  text-align: left;
-  padding: 5px 7px;
+  padding: 7px 8px;
+}
+
+.cyber-head-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-right: auto;
+}
+
+.cyber-base-toggle {
+  border: 1px solid #fff;
+  background: transparent;
+  color: #fff;
+  font: 700 10px/1 var(--font, inherit);
+  padding: 6px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.cyber-base-toggle.is-on {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.cyber-base-hl,
+.cyber-piece-hl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: .3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.cyber-slot-table th:first-child {
-  width: 42%;
+.cyber-base-hl input,
+.cyber-piece-hl input {
+  width: 36px;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  font: 700 12px/1 var(--font, inherit);
+  padding: 2px 0;
+  outline: 0;
 }
 
-.cyber-slot-table td {
-  border: 1px solid var(--red);
-  padding: 0;
-  height: 29px;
-  vertical-align: top;
+.cyber-base-hl {
+  color: #fff;
 }
 
-.cyber-slot-table input {
+.cyber-head-meta {
+  font-size: 10px;
+  opacity: .8;
+  text-transform: uppercase;
+}
+
+.cyber-head-meta.is-over {
+  color: #ffb4b4;
+}
+
+.cyber-piece.is-over {
+  background: #fff1f1;
+  box-shadow: inset 3px 0 var(--red);
+}
+
+.cyber-pieces {
+  display: grid;
+  gap: 0;
+}
+
+.cyber-piece {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 8px;
+  border-top: 1px solid var(--red);
+  background: #fff;
+  color: var(--ink);
+}
+
+.cyber-piece.is-off {
+  opacity: .62;
+  background: #f7f7f7;
+}
+
+.cyber-piece-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 48px;
+}
+
+.cyber-install,
+.cyber-active {
   display: block;
   width: 100%;
-  height: 28px;
-  border: 0;
-  background: #fff;
-  padding: 4px 6px;
-  outline: 0;
-  color: var(--ink);
-  font-size: 12px;
+  border: 1px solid #888;
+  background: #eee;
+  color: #444;
+  font: 700 10px/1 var(--font, inherit);
+  padding: 6px 2px;
+  cursor: pointer;
 }
 
-.cyber-slot-table .grow-field, .data-table .grow-field, .life-fields .grow-field, .life-basics .grow-field, .session-panel .grow-field {
+.cyber-install.is-on {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.cyber-active.is-on {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+  color: #fff;
+}
+
+.cyber-piece-tools .remove {
+  border: 0;
+  background: transparent;
+  color: #888;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.cyber-piece-main {
+  min-width: 0;
+}
+
+.cyber-piece-name {
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.cyber-piece-name input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #ccc;
+  background: transparent;
+  font: 700 13px/1.3 var(--font, inherit);
+  padding: 2px 0;
+  outline: 0;
+}
+
+.cyber-piece-name small {
+  color: #777;
+  font-weight: 500;
+}
+
+.cyber-desc {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #444;
+  overflow-wrap: anywhere;
+}
+
+.cyber-weapon-link {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--red);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.cyber-weapon-link.is-warn {
+  color: #a66;
+}
+
+.cyber-piece .grow-field {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  border: 0;
+  border-bottom: 1px solid #ccc;
+  background: transparent;
+  padding: 2px 0;
+  outline: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  field-sizing: content;
+}
+
+.cyber-piece-hl {
+  color: #666;
+  padding-top: 2px;
+}
+
+.cyber-empty-note {
+  margin: 0;
+  padding: 10px 8px;
+  font-size: 12px;
+  color: #777;
+  border-top: 1px solid #eee;
+}
+
+.cyber-panel-add {
+  border-top: 1px solid var(--red);
+  padding: 6px;
+}
+
+.cyber-add {
+  display: grid;
+  gap: 6px;
+}
+
+.cyber-add-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cyber-add-open {
+  border: 1px solid var(--red);
+  background: #fff;
+  color: var(--red);
+  font: 700 11px/1 var(--font, inherit);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.cyber-add-open:hover {
+  background: #fff4f4;
+}
+
+.cyber-add-free {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.cyber-picker {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  max-height: min(320px, 50vh);
+  overflow: auto;
+}
+
+.cyber-picker[hidden] {
+  display: none !important;
+}
+
+.cyber-picker input[type=search] {
+  width: 100%;
+  border: 1px solid #ccc;
+  background: #fff;
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 13px;
+  outline: 0;
+}
+
+.cyber-picker-avail {
+  display: grid;
+  gap: 4px;
+}
+
+.cyber-pick {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #ccc;
+  background: #fff;
+  padding: 7px 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cyber-pick:hover {
+  border-color: var(--red);
+  background: #fff8f8;
+}
+
+.cyber-pick-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cyber-pick-meta {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.3;
+}
+
+.cyber-pick.is-custom {
+  border-style: dashed;
+  color: var(--red);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.cyber-pick.is-blocked {
+  cursor: default;
+  opacity: .7;
+  background: #f3f3f3;
+}
+
+.cyber-picker-blocked {
+  border-top: 1px solid #ddd;
+  padding-top: 4px;
+}
+
+.cyber-picker-blocked summary {
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #777;
+  padding: 4px 0;
+}
+
+.cyber-picker-blocked .cyber-pick {
+  margin-top: 4px;
+}
+
+.cyber-hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+.data-table .grow-field, .life-fields .grow-field, .life-basics .grow-field, .session-panel .grow-field {
   display: block;
   width: 100%;
   min-height: 28px;
@@ -1292,24 +1680,47 @@ button {
   field-sizing: content;
 }
 
-.cyber-slot-table input:focus, .cyber-slot-table .grow-field:focus {
-  background: #fff4f4;
-  box-shadow: inset 0 -2px var(--red);
+
+@media (max-width: 1100px) {
+  .cyber-piece {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "tools main" "tools hl";
+  }
+
+  .cyber-piece-tools { grid-area: tools; }
+  .cyber-piece-main { grid-area: main; }
+  .cyber-piece-hl {
+    grid-area: hl;
+    justify-self: start;
+  }
 }
 
-.cyber-core .cyber-slot-table tr {
-  height: 29px;
-}
+@media (max-width: 700px) {
+  .cyber-panel-head {
+    gap: 6px;
+  }
 
-.cyber-core .cyber-slot-table td {
-  height: 29px;
-}
+  .cyber-head-title {
+    flex: 1 1 100%;
+  }
 
-.cyber-core .cyber-note {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: #777;
-  margin-top: 16px;
+  .cyber-piece {
+    grid-template-columns: 1fr;
+    grid-template-areas: "tools" "main" "hl";
+  }
+
+  .cyber-piece-tools {
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .cyber-install,
+  .cyber-active {
+    width: auto;
+    min-width: 48px;
+    padding: 6px 8px;
+  }
 }
 
 #cyberware .cyber-layout {
@@ -1697,23 +2108,6 @@ input[type=range] {
   display: grid;
   grid-template-columns: 380px 1fr;
   gap: 18px;
-}
-
-.cyber-diagram {
-  min-height: 600px;
-  background: #fff;
-  border: 2px solid var(--line);
-  display: grid;
-  place-content: center;
-  text-align: center;
-}
-
-.body-silhouette {
-  font-size: 110px;
-  line-height: .9;
-  color: #a8a7a4;
-  font-family: Arial;
-  transform: scaleX(.7);
 }
 
 .cyber-note {
@@ -2681,16 +3075,6 @@ input.search-hit-field, textarea.search-hit-field {
 .human-meta.is-danger {
   color: var(--red);
   font-weight: 700;
-}
-
-.cyber-slot-table th:last-child {
-  width: 40px;
-  text-align: center;
-}
-
-.cyber-slot-table .hl-cell input {
-  text-align: center;
-  padding: 4px 2px;
 }
 
 .skill-actions {

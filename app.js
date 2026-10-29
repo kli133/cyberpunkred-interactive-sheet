@@ -17,8 +17,8 @@ const rowColumns = {
 const INDEX_KEY = 'cyberred-index';
 const LEGACY_KEY = 'cyberred-sheet';
 const SKILL_POOL = 86, STAT_POOL = 62, MAX_SKILL = 10;
-// Поля строк таблиц и киберслотов хранятся только в структурированном виде (state.gear, state.cyberSlots...).
-// Таблицы учёта ролей (программы, команда, контакты…) работают как остальные таблицы листа.
+// Поля строк таблиц хранятся только в структурированном виде (state.gear, state.weapon...).
+// Киберимпланты — в state.cyber (системы по книге). Таблицы ролей работают как остальные таблицы листа.
 Object.values(roles).forEach(({table})=>{
   if(!table) return;
   rowTypes[table.key] = table.columns.length;
@@ -54,10 +54,10 @@ const statPenalty = statIndex => penalizedStats.includes(statIndex) ? armorPenal
 const isChecked = key => state[key] === true || state[key] === 'true';
 // Ранения по правилам RED: тяжёлое — −2 ко всем действиям, смертельное (0 хитов) — −4 и −6 к СКО.
 const isMortallyWounded = () => isChecked('deathSave') || (!isBlank(state.currentHp) && numeric('currentHp') <= 0);
-const woundPenalty = () => isMortallyWounded() ? 4 : isChecked('seriousWound') ? 2 : 0;
+const woundPenalty = () => isMortallyWounded() ? 4 : (isChecked('seriousWound') && !cyberIgnoresWound()) ? 2 : 0;
 // ЭМП падает вместе с человечностью: ЭМП = ⌊человечность / 10⌋, но не выше базового значения.
 const currentEmp = () => isBlank(state.humanityCurrent) ? numeric('stat9') : Math.min(numeric('stat9'), Math.floor(numeric('humanityCurrent')/10));
-const statValue = i => i === 9 ? currentEmp() : numeric(`stat${i}`);
+const statValue = i => i === 9 ? currentEmp() : i === 8 ? cyberBody() : numeric(`stat${i}`);
 const skillTotal = i => numeric(`skill${i}`) + statValue(skillStatIndex(i)) - statPenalty(skillStatIndex(i)) - woundPenalty();
 // Навыки адресуются ссылкой: «b12» — навык из книги, «c3» — дополнительная специализация.
 const customSkill = ref => state.customSkills?.[Number(ref.slice(1))];
@@ -74,9 +74,14 @@ function roleSkillBonus(name){
   if(hasRole('nomad') && motoSkills.includes(name)) return [rankOf('nomad'), 'Мото'];
   return [0, ''];
 }
+function skillBonus(name){
+  const [role, roleNote] = roleSkillBonus(name);
+  const [cyber, cyberNote] = cyberSkillBonus(name);
+  return [role + cyber, [roleNote, cyberNote].filter(Boolean).join('; ')];
+}
 // В захвате (стр. 177) — −2 ко всем действиям, пока захват длится.
 const grapplePenalty = () => isChecked('grappled') ? 2 : 0;
-const refTotal = ref => { const s = skillStatIndex(refBase(ref)); return refLevel(ref) + statValue(s) - statPenalty(s) - woundPenalty() - grapplePenalty() + roleSkillBonus(skills[refBase(ref)])[0]; };
+const refTotal = ref => { const s = skillStatIndex(refBase(ref)); return refLevel(ref) + statValue(s) - statPenalty(s) - woundPenalty() - grapplePenalty() + skillBonus(skills[refBase(ref)])[0]; };
 const allRefs = () => [...skills.map((_,i)=>`b${i}`), ...(state.customSkills || []).map((_,j)=>`c${j}`)];
 const skillSpent = () => allRefs().reduce((sum,ref)=>sum + refLevel(ref)*refWeight(ref),0);
 // Повышение навыка за очки улучшения: 20 × новый уровень, для (x2) — вдвое дороже.
@@ -110,7 +115,7 @@ const soloLevel = key => hasRole('solo') ? numeric(rolePointsKey('solo', key)) :
 // NET-действий за ход по рангу Интерфейса.
 const netActions = rank => rank >= 10 ? 5 : rank >= 7 ? 4 : rank >= 4 ? 3 : 2;
 const roleUpgradeCost = () => (roleRank() + 1) * ROLE_RANK_IP;
-const maxHp = () => 10 + 5*Math.ceil((numeric('stat8') + numeric('stat5'))/2);
+const maxHp = () => 10 + 5*Math.ceil((statValue(8) + numeric('stat5'))/2);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
 const setVal = (el, value) => { if(el !== document.activeElement) el.value = value; };
 const setInput = (key, value) => $$(`[data-key="${key}"]`).forEach(el=>{ el.value = value; });
@@ -124,6 +129,453 @@ const formulaHtml = (key, value) => {
   });
   return html;
 };
+
+// --- Киберимпланты (каталог и системы — data.js) ---
+const cyberByName = Object.fromEntries(Object.values(cyberCatalog).flat().map(item=>[item[0], item]));
+const cyberItemMeta = name => cyberByName[name]?.[5] || {};
+const cyberPieceId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const blankCyberSys = () => ({foundation:null, options:[]});
+const blankCyber = () => Object.fromEntries(Object.keys(cyberSystems).map(key=>[key, blankCyberSys()]));
+function normalizePiece(raw){
+  const p = raw && typeof raw === 'object' ? raw : {};
+  return {
+    id:String(p.id || cyberPieceId()),
+    catalog:String(p.catalog || ''),
+    name:String(p.name || ''),
+    info:String(p.info || ''),
+    hl:String(p.hl ?? ''),
+    installed:p.installed !== false,
+    active:p.active === true,
+    slotCost:Math.max(1, Number(p.slotCost) || 1),
+    custom:p.custom === true || !p.catalog
+  };
+}
+function normalizeCyber(raw){
+  const base = blankCyber();
+  if(!raw || typeof raw !== 'object') return base;
+  Object.keys(cyberSystems).forEach(key=>{
+    const src = raw[key] || {};
+    base[key].foundation = src.foundation ? normalizePiece(src.foundation) : null;
+    base[key].options = (Array.isArray(src.options) ? src.options : []).map(normalizePiece);
+  });
+  return base;
+}
+function migrateLegacyCyber(s){
+  if(s.cyber && typeof s.cyber === 'object') return normalizeCyber(s.cyber);
+  const cyber = blankCyber();
+  const old = s.cyberSlots;
+  if(old && typeof old === 'object'){
+    Object.entries(old).forEach(([key, rows])=>{
+      const sys = cyberLegacyMap[key] || key;
+      if(!cyber[sys]) return;
+      (Array.isArray(rows) ? rows : []).forEach(row=>{
+        const cells = [0,1,2].map(j=>String(row?.[j] ?? ''));
+        if(cells.every(isBlank)) return;
+        const match = cyberByName[cells[0]];
+        const meta = match?.[5] || {};
+        const piece = normalizePiece({
+          catalog:match ? match[0] : '', name:cells[0], info:cells[1] || (match ? match[2] : ''),
+          hl:cells[2], installed:true, slotCost:meta.slots || 1, custom:!match
+        });
+        if(meta.kind === 'foundation' && !cyber[sys].foundation) cyber[sys].foundation = piece;
+        else cyber[sys].options.push(piece);
+      });
+    });
+  }
+  return cyber;
+}
+const cyberSys = key => (state.cyber ||= blankCyber())[key] || blankCyberSys();
+function allCyberPieces(){
+  return Object.keys(cyberSystems).flatMap(key=>{
+    const sys = cyberSys(key);
+    return [sys.foundation, ...sys.options].filter(Boolean).map(piece=>({key, piece, foundation:piece === sys.foundation}));
+  });
+}
+function pieceMeta(piece){
+  if(piece.catalog && cyberByName[piece.catalog]) return cyberItemMeta(piece.catalog);
+  return {kind:piece.custom ? 'body' : 'option', slots:piece.slotCost || 1};
+}
+function pieceActive(piece, key){
+  if(!piece?.installed) return false;
+  const conf = cyberSystems[key];
+  const foundation = cyberSys(key).foundation;
+  const meta = pieceMeta(piece);
+  // Модуль без включённой базы: на живой конечности действуют только meat-импланты.
+  if(conf?.foundation && piece !== foundation && !foundation?.installed){
+    if(!(conf.meat && meta.meat)) return false;
+  }
+  if(meta.activate && !piece.active) return false;
+  return true;
+}
+function installedFx(){
+  return allCyberPieces().filter(({key, piece})=>pieceActive(piece, key)).map(({piece})=>pieceMeta(piece));
+}
+function cyberIgnoresWound(){ return installedFx().some(fx=>fx.ignoreWound); }
+function cyberBody(){
+  let value = numeric('stat8');
+  installedFx().forEach(fx=>{
+    if(fx.stat?.[0] === 8) value = fx.stat[2] != null ? Math.min(fx.stat[2], value + fx.stat[1]) : value + fx.stat[1];
+  });
+  installedFx().forEach(fx=>{
+    if(fx.statMin?.[0] === 8) value = Math.min(fx.statMin[2], Math.max(value, fx.statMin[1]));
+  });
+  return value;
+}
+function cyberInitBonus(){
+  return installedFx().reduce((sum, fx)=>sum + (Number(fx.init) || 0), 0);
+}
+function cyberMoveBonus(){
+  return installedFx().reduce((sum, fx)=>sum + (Number(fx.move) || 0), 0);
+}
+function cyberSpFloor(){
+  return installedFx().reduce((max, fx)=>Math.max(max, Number(fx.sp) || 0), 0);
+}
+function cyberSkillBonus(name){
+  const plain = s => String(s || '').toLowerCase();
+  const installed = allCyberPieces().filter(({key, piece})=>pieceActive(piece, key));
+  let bonus = 0;
+  const notes = [];
+  installed.forEach(({piece})=>{
+    const fx = pieceMeta(piece);
+    if(fx.needPair && !installed.some(({piece:p})=>(p.catalog || p.name) === fx.needPair)) return;
+    if(fx.skill){
+      const [names, amount] = fx.skill;
+      if(String(names).split('|').some(n=>plain(name) === plain(n) || plain(name).startsWith(plain(n)))){
+        bonus += amount;
+        notes.push(piece.name || piece.catalog);
+      }
+    }
+    if(fx.skillStack){
+      const [skillName, amount, need] = fx.skillStack;
+      if(plain(name).startsWith(plain(skillName))){
+        const count = installed.filter(({piece:p})=>(p.catalog || p.name) === (piece.catalog || piece.name)).length;
+        if(count >= need){ bonus += amount; notes.push(piece.catalog || piece.name); }
+      }
+    }
+  });
+  return [bonus, notes.filter((n,i,a)=>a.indexOf(n)===i).join(', ')];
+}
+function parseHlText(text){
+  const raw = String(text || '').trim();
+  if(!raw || raw === '0') return {avg:0, formula:null, half:false};
+  const avg = Number((raw.match(/^(\d+)/) || [])[1]) || 0;
+  const dice = raw.match(/(\d+)\s*[dд]\s*(\d+)/i);
+  const half = /\/\s*2/.test(raw);
+  return {avg, formula:dice ? {count:Number(dice[1]), sides:Number(dice[2])} : null, half};
+}
+function rollHl(text){
+  const parsed = parseHlText(text);
+  if(!parsed.formula) return parsed.avg;
+  let total = Array.from({length:parsed.formula.count},()=>d(parsed.formula.sides)).reduce((a,b)=>a+b,0);
+  if(parsed.half) total = Math.ceil(total / 2);
+  return total;
+}
+function pieceLabel(piece){ return piece.name || piece.catalog || 'Свой имплант'; }
+function humanityLoss(){
+  return allCyberPieces().reduce((sum,{piece})=>sum + (piece.installed ? (Number(piece.hl) || 0) : 0), 0);
+}
+function adjustHumanity(delta){
+  if(!delta) return;
+  const current = isBlank(state.humanityCurrent) ? numeric('stat9') * 10 : numeric('humanityCurrent');
+  state.humanityCurrent = Math.max(0, current - delta);
+  setInput('humanityCurrent', state.humanityCurrent);
+}
+function ensurePieceHl(piece){
+  if(!isBlank(piece.hl) && /^\d+$/.test(String(piece.hl).trim())) return Number(piece.hl);
+  const source = piece.catalog && cyberByName[piece.catalog] ? cyberByName[piece.catalog][4] : piece.hl;
+  const rolled = rollHl(source || '0');
+  piece.hl = String(rolled);
+  return rolled;
+}
+function setPieceInstalled(piece, on, key){
+  const was = piece.installed !== false;
+  if(was === on) return;
+  if(on){
+    const hl = ensurePieceHl(piece);
+    piece.installed = true;
+    adjustHumanity(hl);
+    if(pieceMeta(piece).activate) piece.active = false;
+    toast(`${pieceLabel(piece)}: установлено${hl ? `, ПЧ ${hl}` : ''}`);
+  } else {
+    const refund = Number(piece.hl) || 0;
+    piece.installed = false;
+    piece.active = false;
+    adjustHumanity(-refund);
+    toast(`${pieceLabel(piece)}: снято${refund ? `, Человечность +${refund}` : ''}`);
+  }
+}
+function catalogOptions(group, kind){
+  return Object.values(cyberCatalog).flat().filter(item=>{
+    const meta = item[5] || {};
+    return meta.group === group && (!kind || meta.kind === kind);
+  });
+}
+function slotsUsed(key){
+  const sys = cyberSys(key);
+  return sys.options.reduce((sum, p)=>sum + (Number(p.slotCost) || pieceMeta(p).slots || 1), 0);
+}
+function slotsMax(key){
+  const conf = cyberSystems[key];
+  if(conf.bodySlots) return conf.bodySlots;
+  if(conf.foundation){
+    const f = cyberSys(key).foundation;
+    if(f?.installed) return Number(pieceMeta(f).slots) || conf.slots;
+    if(conf.meat) return 99; // в мясо — без лимита киберслотов
+    return 0;
+  }
+  return conf.slots || 0;
+}
+const uniqueLabels = {speedware:'ускоритель (Керезников / Сандевистан)', skin:'кожная броня (тканекожа / подкожная)'};
+function hasInstalledCatalog(name){
+  return allCyberPieces().some(({piece})=>piece.installed && (piece.catalog === name || piece.name === name));
+}
+function optionAlreadyHere(key, catalogName){
+  return cyberSys(key).options.some(p=>(p.catalog || p.name) === catalogName);
+}
+// Пусто — можно поставить; иначе короткая причина для списка.
+function canAddOption(key, catalogName){
+  const conf = cyberSystems[key];
+  const meta = catalogName ? cyberItemMeta(catalogName) : {slots:1, kind:'option'};
+  const baseOn = Boolean(cyberSys(key).foundation?.installed);
+  if(conf.foundation && !baseOn && !conf.meat) return `Сначала включите «${conf.foundation}»`;
+  if(conf.foundation && !baseOn && conf.meat && catalogName && !meta.meat)
+    return `Только в кибер${conf.group === 'leg' ? 'ногу' : 'руку'} (или импланты «в живую»)`;
+  if(catalogName && optionAlreadyHere(key, catalogName)) return 'Уже есть в этом слоте';
+  if(meta.need && !hasInstalledCatalog(meta.need)) return `Нужен установленный «${meta.need}»`;
+  if(meta.unique){
+    const rival = allCyberPieces().find(({piece})=>piece.installed && pieceMeta(piece).unique === meta.unique && (piece.catalog || piece.name) !== catalogName);
+    if(rival) return `Конфликт: уже стоит «${pieceLabel(rival.piece)}» (${uniqueLabels[meta.unique] || meta.unique})`;
+  }
+  const cost = meta.slots || 1;
+  const free = slotsMax(key) - slotsUsed(key);
+  if(slotsMax(key) < 99 && cost > free)
+    return free <= 0 ? 'Нет свободных слотов' : `Нужно ${cost} сл., свободно ${Math.max(0, free)}`;
+  return '';
+}
+function optionTags(meta, key){
+  const tags = [];
+  if(meta.slots) tags.push(`${meta.slots} сл.`);
+  if(meta.meat && cyberSystems[key]?.meat) tags.push('в живую');
+  if(meta.pair) tags.push('пара');
+  if(meta.need) tags.push(hasInstalledCatalog(meta.need) ? `✓ ${meta.need}` : meta.need);
+  if(meta.unique) tags.push(uniqueLabels[meta.unique]?.split(' (')[0] || meta.unique);
+  if(meta.weapon) tags.push('оружие');
+  if(meta.init) tags.push(`иниц. +${meta.init}`);
+  if(meta.stat || meta.statMin) tags.push('ТЕЛ');
+  if(meta.sp) tags.push(`SP ${meta.sp}`);
+  if(meta.ignoreWound) tags.push('без боли');
+  if(meta.skill || meta.skillStack) tags.push('навык');
+  return tags;
+}
+function makeFromCatalog(name){
+  const item = cyberByName[name];
+  if(!item) return normalizePiece({custom:true, name:'', installed:false});
+  const meta = item[5] || {};
+  return normalizePiece({
+    catalog:item[0], name:item[0], info:item[2],
+    hl:'', installed:false, slotCost:meta.slots || 1, custom:false
+  });
+}
+function pieceInfoText(piece){
+  if(piece.custom) return piece.info || '';
+  const item = piece.catalog && cyberByName[piece.catalog];
+  if(item) return item[2];
+  // Старые сохранения: убрать «установка: …» с карточки.
+  return String(piece.info || '').replace(/\s*·\s*установка:\s*[^·]+/i, '').replace(/\s*·\s*\d+eb\b/gi, '').trim();
+}
+function makeCustom(slotCost=1){
+  return normalizePiece({catalog:'', name:'', info:'', hl:'', installed:false, slotCost, custom:true});
+}
+function resolveWeaponType(type){
+  return weaponTypes[type] || cyberWeaponTypes[type] || null;
+}
+function defaultAmmoForWeapon(type){
+  const kinds = weaponAmmoKinds[type] || [];
+  if(!kinds.length) return null;
+  const kind = kinds[0];
+  const form = ammoKinds[kind]?.[2];
+  if(!form) return null;
+  const ammoType = ammoTypes.basic?.[2]?.includes(form) ? 'basic'
+    : Object.keys(ammoTypes).find(id=>ammoTypes[id][2].includes(form));
+  return ammoType ? {kind, type:ammoType} : null;
+}
+function ensureAmmoStock(kind, type){
+  if(!ammoKinds[kind] || !ammoTypes[type]) return;
+  if(!Array.isArray(state.ammo)) state.ammo = [];
+  if(!state.ammo.some(row=>row[1] === `${kind}:${type}`))
+    state.ammo.push([ammoKinds[kind][1], `${kind}:${type}`, '0']);
+}
+function syncCyberWeapons(quiet=false){
+  if(!Array.isArray(state.weapon)) state.weapon = [];
+  const marker = id => `__cyber:${id}`;
+  const keep = new Set();
+  const notes = [];
+  allCyberPieces().forEach(({key, piece})=>{
+    const fx = pieceMeta(piece);
+    if(!fx.weapon || !pieceActive(piece, key)) return;
+    keep.add(piece.id);
+    const [wname, type, mag] = fx.weapon;
+    const preset = resolveWeaponType(type);
+    const existing = state.weapon.findIndex(row => String(row?.[4] || '').includes(marker(piece.id)));
+    const isNew = existing < 0;
+    const row = isNew ? Array(rowTypes.weapon).fill('') : state.weapon[existing];
+    row[0] = wname;
+    row[4] = marker(piece.id);
+    if(preset){
+      row[8] = type;
+      row[5] = preset[1];
+      row[1] = preset[2];
+      const magazine = mag != null ? String(mag) : String(preset[3] ?? '');
+      row[6] = magazine;
+      row[3] = String(preset[4] ?? '');
+      row[7] = String(preset[5] ?? '');
+      if(isNew) row[2] = '0';
+      else if(isBlank(row[2])) row[2] = '0';
+    }
+    const ammo = defaultAmmoForWeapon(type);
+    if(ammo){
+      ensureAmmoStock(ammo.kind, ammo.type);
+      if(isNew || isBlank(row[10])) row[10] = `${ammo.kind}:${ammo.type}`;
+      if(isNew && Number(row[6]) > 0){
+        const taken = takeAmmo(ammo.kind, ammo.type, Number(row[6]) || 0);
+        row[2] = String(taken);
+        notes.push(taken
+          ? `${wname}: в снаряжении, магазин ${taken}/${row[6]}`
+          : `${wname}: в снаряжении — добавьте патроны (${ammoTypes[ammo.type][0]})`);
+      }
+    } else if(isNew) {
+      notes.push(`${wname}: добавлено в снаряжение`);
+    }
+    if(isNew) state.weapon.push(row);
+    else state.weapon[existing] = row;
+  });
+  // Снять кибероружие: патроны из магазина вернуть в запас.
+  state.weapon = state.weapon.filter(row=>{
+    const note = String(row?.[4] || '');
+    if(!note.includes('__cyber:')) return true;
+    const id = (note.match(/__cyber:([^\s]+)/) || [])[1];
+    if(keep.has(id)) return true;
+    const loaded = loadedAmmo(row);
+    const current = Math.max(0, Number(row[2]) || 0);
+    if(loaded && current) returnAmmo(loaded.kind, loaded.type, current);
+    return false;
+  });
+  if(!quiet && notes.length) toast(notes.join(' · '));
+}
+function cyberEffectSummary(){
+  const bits = [];
+  if(cyberBody() !== numeric('stat8')) bits.push(`ТЕЛ ${cyberBody()}`);
+  if(cyberInitBonus()) bits.push(`инициатива +${cyberInitBonus()}`);
+  if(cyberIgnoresWound()) bits.push('без штрафа тяжёлого ранения');
+  if(cyberSpFloor()) bits.push(`SP ≥ ${cyberSpFloor()}`);
+  if(cyberMoveBonus()) bits.push(`бег +${cyberMoveBonus()} м`);
+  const notes = installedFx().map(fx=>fx.note).filter(Boolean);
+  return [...bits, ...notes].filter((v,i,a)=>a.indexOf(v)===i);
+}
+function findCyberPiece(key, id){
+  const sys = cyberSys(key);
+  if(sys.foundation?.id === id) return {sys, piece:sys.foundation, foundation:true};
+  const index = sys.options.findIndex(p=>p.id === id);
+  return index >= 0 ? {sys, piece:sys.options[index], foundation:false, index} : null;
+}
+function commitCyber(rerender=true){
+  syncCyberWeapons();
+  if(rerender){
+    renderCyber();
+    renderRows('weapon');
+    renderRows('ammo');
+    bindInputs();
+  }
+  updateDerived();
+  if(persist()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now();
+}
+function addCyberPiece(key, value){
+  const sys = cyberSys(key);
+  if(value === '__custom'){
+    const block = canAddOption(key, '');
+    if(block && slotsMax(key) < 99 && slotsUsed(key) >= slotsMax(key)){ toast(block); return; }
+    const piece = makeCustom(1);
+    piece.installed = true;
+    sys.options.push(piece);
+    commitCyber();
+    return;
+  }
+  const block = canAddOption(key, value);
+  if(block){ toast(block); return; }
+  const piece = makeFromCatalog(value);
+  // Из каталога сразу ставим: ПЧ и эффекты (включая оружие в снаряжении).
+  sys.options.push(piece);
+  setPieceInstalled(piece, true, key);
+  commitCyber();
+}
+function handleCyberClick(e){
+  const btn = e.target.closest('[data-cyber-act]');
+  if(!btn || btn.matches('input, textarea, select')) return;
+  const key = btn.dataset.cyberKey, id = btn.dataset.cyberId, act = btn.dataset.cyberAct;
+  if(act === 'foundation'){ toggleFoundation(key); return; }
+  if(act === 'picker'){
+    const panel = $(`[data-cyber-picker="${key}"]`);
+    if(!panel) return;
+    const open = panel.hasAttribute('hidden');
+    $$('[data-cyber-picker]').forEach(el=>el.setAttribute('hidden', ''));
+    if(open){
+      panel.removeAttribute('hidden');
+      panel.querySelector('[data-cyber-filter]')?.focus();
+    }
+    return;
+  }
+  if(act === 'pick'){
+    addCyberPiece(key, btn.dataset.cyberName);
+    return;
+  }
+  if(act === 'pick-custom'){
+    addCyberPiece(key, '__custom');
+    return;
+  }
+  const found = id ? findCyberPiece(key, id) : null;
+  if(act === 'toggle' && found){
+    setPieceInstalled(found.piece, !found.piece.installed, key);
+    commitCyber();
+    return;
+  }
+  if(act === 'active' && found){
+    found.piece.active = !found.piece.active;
+    toast(`${pieceLabel(found.piece)}: ${found.piece.active ? 'активирован' : 'деактивирован'}`);
+    commitCyber();
+    return;
+  }
+  if(act === 'del' && found){
+    if(found.piece.installed) setPieceInstalled(found.piece, false, key);
+    if(found.foundation) found.sys.foundation = null;
+    else found.sys.options.splice(found.index, 1);
+    commitCyber();
+  }
+}
+function handleCyberChange(e){
+  const field = e.target.closest('[data-cyber-field]');
+  if(!field) return;
+  const found = findCyberPiece(field.dataset.cyberKey, field.dataset.cyberId);
+  if(!found) return;
+  const name = field.dataset.cyberField;
+  if(name === 'hl'){
+    let value = field.value.trim();
+    if(/[dд]/i.test(value)){
+      const total = rollHl(value);
+      const shown = parseFormula(value) ? `${parseFormula(value).count}d${parseFormula(value).sides}` : value;
+      value = String(total);
+      field.value = value;
+      toast(`Потеря человечности: ${shown} = ${total}`);
+    }
+    const prev = Number(found.piece.hl) || 0;
+    const next = Number(value) || 0;
+    found.piece.hl = next ? String(next) : '';
+    if(found.piece.installed) adjustHumanity(next - prev);
+    commitCyber(false);
+    return;
+  }
+  found.piece[name] = field.value;
+  if(persist()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now();
+}
 
 function migrate(data){
   const s = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
@@ -180,14 +632,10 @@ function migrate(data){
   s.customSkills = (Array.isArray(s.customSkills) ? s.customSkills : [])
     .filter(item=>variantSkills.includes(item?.base))
     .map(item=>({base:item.base, spec:String(item.spec ?? ''), level:Number(item.level) || 0}));
-  if(s.cyberSlots && typeof s.cyberSlots === 'object'){
-    Object.keys(s.cyberSlots).forEach(key=>{ s.cyberSlots[key] = (Array.isArray(s.cyberSlots[key]) ? s.cyberSlots[key] : []).map(row=>[0,1,2].map(j=>String(row?.[j] ?? ''))); });
-  }
-  // Сколько человечности уже списано за каждый слот — чтобы при правке списывать только разницу.
-  if(!s.cyberHlApplied || typeof s.cyberHlApplied !== 'object'){
-    s.cyberHlApplied = {};
-    Object.entries(s.cyberSlots || {}).forEach(([key,rows])=>rows.forEach((row,i)=>{ if(/^\d+$/.test(row[2])) s.cyberHlApplied[`${key}_${i}`] = Number(row[2]); }));
-  }
+  s.cyber = migrateLegacyCyber(s);
+  delete s.cyberSlots;
+  delete s.cyberware;
+  delete s.cyberHlApplied;
   return s;
 }
 
@@ -326,9 +774,9 @@ function refreshSkills(){
     const s = skillStatIndex(refBase(ref));
     const armor = statPenalty(s), wound = woundPenalty();
     const empNote = s === 9 && currentEmp() < numeric('stat9') && `ЭМП снижена человечностью до ${currentEmp()}`;
-    const [roleBonus, roleNote] = roleSkillBonus(skills[refBase(ref)]);
+    const [bonus, bonusNote] = skillBonus(skills[refBase(ref)]);
     cell.textContent = refTotal(ref);
-    cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`, empNote, roleBonus && `${roleNote} +${roleBonus}`].filter(Boolean).join(', ');
+    cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`, empNote, bonus && `${bonusNote} +${bonus}`].filter(Boolean).join(', ');
     cell.classList.toggle('is-penalized', armor + wound > 0 || Boolean(empNote));
   });
   $$('[data-upgrade]').forEach(button=>{
@@ -465,6 +913,8 @@ const isAutofireOn = data => autofireMultiplier(data) > 0 && data?.[9] === '1';
 function row(type,data=[],index){
   const cells = rowColumns[type].map(({j,note,short,select,toggle,placeholder,label})=>{
     const key = `${type}${index}_${j}`;
+    if(note && type === 'weapon' && /__cyber:/.test(data[j] || ''))
+      return `<td><span class="muted">кибероружие</span><input type="hidden" data-key="${key}" value="${esc(data[j])}"></td>`;
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
     if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
     if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;
@@ -644,14 +1094,186 @@ function autoGrow(el){
 }
 const autoGrowAll = () => $$('.grow-field').forEach(autoGrow);
 
-function renderCyber(){
-  const saved = state.cyberSlots || {};
-  if(!state.cyberSlots && Array.isArray(state.cyberware) && state.cyberware.length) saved.cranial = state.cyberware;
-  Object.entries(cyberSections).forEach(([key,[title,count]]) => {
-    const target = $(`[data-cyber-section="${key}"]`);
-    const rows = saved[key] || [];
-    target.innerHTML = `<table class="cyber-slot-table"><thead><tr><th>${title}</th><th>Информация</th><th title="Потеря человечности: число или формула (2d6)">ПЧ</th></tr></thead><tbody>${Array.from({length:count},(_,i)=>`<tr><td>${growField(`cyberSlot_${key}_${i}_name`,rows[i]?.[0]||'')}</td><td>${growField(`cyberSlot_${key}_${i}_info`,rows[i]?.[1]||'')}</td><td class="hl-cell">${field(`cyberSlot_${key}_${i}_hl`,rows[i]?.[2]||'')}</td></tr>`).join('')}</tbody></table>`;
+function foundationOffLabel(conf){
+  if(conf.meat) return 'Живая';
+  if(conf.group === 'optic') return 'Обычный';
+  if(conf.group === 'audio') return 'Обычный';
+  if(conf.group === 'neural') return 'Нет';
+  return 'Нет';
+}
+function cyberHead(key, conf, sys){
+  const used = slotsUsed(key);
+  const max = slotsMax(key);
+  const hasBase = Boolean(conf.foundation);
+  const baseOn = hasBase && sys.foundation?.installed;
+  const over = used > max && max < 99;
+  let baseCtrl = '';
+  if(hasBase){
+    const label = baseOn ? (sys.foundation.name || conf.foundation) : foundationOffLabel(conf);
+    const hl = baseOn
+      ? `<label class="cyber-base-hl" title="Потеря человечности базы">ПЧ <input data-cyber-field="hl" data-cyber-key="${key}" data-cyber-id="${esc(sys.foundation.id)}" value="${esc(sys.foundation.hl)}"></label>`
+      : '';
+    baseCtrl = `<button type="button" class="cyber-base-toggle${baseOn ? ' is-on' : ''}" data-cyber-act="foundation" data-cyber-key="${key}" title="${baseOn ? 'Снять базу (вернуть ПЧ)' : `Установить: ${conf.foundation}`}">${esc(label)}</button>${hl}`;
+  }
+  const slots = conf.bodySlots
+    ? (conf.bodySlots >= 99 ? '' : `<span class="cyber-head-meta${over ? ' is-over' : ''}">${used}/${conf.bodySlots} сл.</span>`)
+    : hasBase
+      ? `<span class="cyber-head-meta${over ? ' is-over' : ''}">${baseOn ? `${used}/${max} сл.` : (conf.meat ? 'модули в мясо' : 'нужна база')}</span>`
+      : '';
+  return `<div class="cyber-panel-head">
+    <strong class="cyber-head-title">${esc(conf.title)}</strong>
+    ${baseCtrl}${slots}
+  </div>`;
+}
+function cyberPieceCard(key, piece, kind){
+  const meta = pieceMeta(piece);
+  const on = piece.installed !== false;
+  const over = kind === 'option' && slotsUsed(key) > slotsMax(key);
+  const activate = meta.activate && on
+    ? `<button type="button" class="cyber-active${piece.active ? ' is-on' : ''}" data-cyber-act="active" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" title="Боевая активация (Сандевистан)">${piece.active ? 'АКТИВЕН' : 'ВЫКЛ'}</button>`
+    : '';
+  const nameCell = piece.custom
+    ? `<input data-cyber-field="name" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" value="${esc(piece.name)}" placeholder="Свой имплант">`
+    : `<strong title="${esc(piece.info)}">${esc(pieceLabel(piece))}</strong>${meta.slots ? ` <small>${meta.slots} сл.</small>` : ''}`;
+  const infoCell = piece.custom
+    ? `<textarea class="grow-field" data-cyber-field="info" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" rows="1" placeholder="Описание">${esc(piece.info)}</textarea>`
+    : `<span class="cyber-desc">${esc(pieceInfoText(piece) || meta.note || '')}</span>`;
+  const weaponNote = meta.weapon && on && pieceActive(piece, key)
+    ? `<span class="cyber-weapon-link">→ в снаряжении: ${esc(meta.weapon[0])}</span>`
+    : meta.weapon && on
+      ? `<span class="cyber-weapon-link is-warn">оружие не активно (проверьте базу)</span>`
+      : meta.weapon ? `<span class="cyber-weapon-link">после ВКЛ появится в снаряжении</span>` : '';
+  return `<article class="cyber-piece${on ? ' is-installed' : ' is-off'}${over ? ' is-over' : ''}">
+    <div class="cyber-piece-tools">
+      <button type="button" class="cyber-install${on ? ' is-on' : ''}" data-cyber-act="toggle" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" aria-pressed="${on}" title="${on ? 'Снять (вернуть ПЧ)' : 'Установить (списать ПЧ)'}">${on ? 'ВКЛ' : 'ВЫКЛ'}</button>
+      ${activate}
+      <button type="button" class="remove" data-cyber-act="del" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" title="Удалить">×</button>
+    </div>
+    <div class="cyber-piece-main">
+      <div class="cyber-piece-name">${nameCell}</div>
+      <div class="cyber-piece-info">${infoCell}${weaponNote}</div>
+    </div>
+    <label class="cyber-piece-hl" title="Потеря человечности">ПЧ <input data-cyber-field="hl" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" value="${esc(piece.hl)}" placeholder="0"></label>
+  </article>`;
+}
+function cyberCatalogLists(key){
+  const conf = cyberSystems[key];
+  const kind = conf.bodySlots ? 'body' : 'option';
+  const available = [], blocked = [];
+  catalogOptions(conf.group, kind).filter(item=>item[0] !== conf.foundation).forEach(item=>{
+    const reason = canAddOption(key, item[0]);
+    const entry = {item, reason, tags:optionTags(item[5] || {}, key)};
+    (reason ? blocked : available).push(entry);
   });
+  return {available, blocked};
+}
+function cyberAddSelect(key){
+  const free = slotsMax(key) - slotsUsed(key);
+  const {available, blocked} = cyberCatalogLists(key);
+  const freeLabel = slotsMax(key) >= 99
+    ? (cyberSys(key).foundation?.installed ? '' : 'живая · без лимита слотов')
+    : `${Math.max(0, free)}/${slotsMax(key)} сл.`;
+  const pickMeta = (item, tags, extra=[]) => [item[1] && item[1] !== '—' ? item[1] : '', ...tags, item[3], item[4] !== '0' ? `ПЧ ${item[4]}` : '', ...extra].filter(Boolean).join(' · ');
+  const availHtml = available.map(({item, tags})=>`<button type="button" class="cyber-pick" data-cyber-act="pick" data-cyber-key="${key}" data-cyber-name="${esc(item[0])}" title="${esc([item[1] !== '—' ? `Установка: ${item[1]}` : '', item[2]].filter(Boolean).join(' · '))}">
+      <span class="cyber-pick-name">${esc(item[0])}</span>
+      <span class="cyber-pick-meta">${esc(pickMeta(item, tags))}</span>
+    </button>`).join('') || '<p class="cyber-empty-note">Сейчас ничего не доступно</p>';
+  const blockHtml = blocked.map(({item, reason, tags})=>`<div class="cyber-pick is-blocked" title="${esc(reason)}">
+      <span class="cyber-pick-name">${esc(item[0])}</span>
+      <span class="cyber-pick-meta">${esc(pickMeta(item, tags, [reason]))}</span>
+    </div>`).join('');
+  return `<div class="cyber-add">
+    <div class="cyber-add-bar">
+      <button type="button" class="cyber-add-open" data-cyber-act="picker" data-cyber-key="${key}">+ модуль${available.length ? ` · ${available.length}` : ''}</button>
+      ${freeLabel ? `<span class="cyber-add-free">${esc(freeLabel)}</span>` : ''}
+    </div>
+    <div class="cyber-picker" data-cyber-picker="${key}" hidden>
+      <input type="search" data-cyber-filter="${key}" placeholder="Найти модуль…" aria-label="Поиск модуля">
+      <div class="cyber-picker-avail" data-cyber-pick-list="${key}">${availHtml}</div>
+      <button type="button" class="cyber-pick is-custom" data-cyber-act="pick-custom" data-cyber-key="${key}">+ свой имплант</button>
+      ${blocked.length ? `<details class="cyber-picker-blocked"><summary>Пока нельзя (${blocked.length})</summary>${blockHtml}</details>` : ''}
+    </div>
+  </div>`;
+}
+function toggleFoundation(key){
+  const conf = cyberSystems[key];
+  const sys = cyberSys(key);
+  if(!conf.foundation) return;
+  if(sys.foundation?.installed){
+    setPieceInstalled(sys.foundation, false, key);
+    commitCyber();
+    return;
+  }
+  if(!sys.foundation) sys.foundation = makeFromCatalog(conf.foundation);
+  setPieceInstalled(sys.foundation, true, key);
+  commitCyber();
+}
+function foundationOn(key){
+  return Boolean(cyberSys(key).foundation?.installed);
+}
+function renderCyberDiagram(){
+  const diagram = $('#cyberDiagram');
+  if(!diagram) return;
+  const setCyber = (names, on) => names.forEach(name=>{
+    diagram.querySelectorAll(`[data-body="${name}"]`).forEach(el=>el.classList.toggle('is-cyber', on));
+  });
+  setCyber(['rightArm', 'rightHand'], foundationOn('rightArm'));
+  setCyber(['leftArm', 'leftHand'], foundationOn('leftArm'));
+  setCyber(['rightLeg', 'rightFoot'], foundationOn('rightLeg'));
+  setCyber(['leftLeg', 'leftFoot'], foundationOn('leftLeg'));
+  setCyber(['rightEye'], foundationOn('rightEye'));
+  setCyber(['leftEye'], foundationOn('leftEye'));
+  setCyber(['audioL', 'audioR'], foundationOn('audio'));
+  setCyber(['neural', 'neuralPort'], foundationOn('neural'));
+  const skin = cyberSpFloor() > 0;
+  const fashion = (cyberSys('fashion').options || []).some(p=>p.installed);
+  const internal = (cyberSys('internal').options || []).some(p=>p.installed);
+  diagram.querySelectorAll('[data-body="torso"]').forEach(el=>{
+    el.classList.toggle('is-cyber', skin || internal);
+    el.classList.toggle('is-armor', skin);
+  });
+  diagram.querySelectorAll('[data-body="head"]').forEach(el=>{
+    el.classList.toggle('is-cyber', fashion || foundationOn('rightEye') || foundationOn('leftEye') || foundationOn('audio'));
+    el.classList.toggle('is-fashion', fashion);
+  });
+  const bits = [];
+  if(foundationOn('rightArm') || foundationOn('leftArm')) bits.push('руки');
+  if(foundationOn('rightLeg') || foundationOn('leftLeg')) bits.push('ноги');
+  if(foundationOn('rightEye') || foundationOn('leftEye')) bits.push('глаза');
+  if(foundationOn('audio')) bits.push('слух');
+  if(foundationOn('neural')) bits.push('нейро');
+  if(skin) bits.push(`SP ${cyberSpFloor()}`);
+  const legend = $('#cyberDiagramLegend');
+  if(legend) legend.innerHTML = bits.length
+    ? `<span class="cyber-legend-dot is-cyber"></span> Кибер: ${esc(bits.join(' · '))}`
+    : `<span class="cyber-legend-dot"></span> Органика`;
+}
+function renderCyber(){
+  state.cyber = normalizeCyber(state.cyber);
+  // Подтянуть кибероружие, если имплант уже стоял, а строка в снаряжении пропала.
+  const before = (state.weapon || []).length;
+  syncCyberWeapons(true);
+  if((state.weapon || []).length !== before){ renderRows('weapon'); renderRows('ammo'); bindInputs(); }
+  Object.entries(cyberSystems).forEach(([key, conf])=>{
+    const target = $(`[data-cyber-section="${key}"]`);
+    if(!target) return;
+    const sys = cyberSys(key);
+    const canOptions = !conf.foundation || sys.foundation?.installed || conf.meat;
+    const cards = sys.options.map(p=>cyberPieceCard(key, p, conf.bodySlots ? 'body' : 'option')).join('');
+    const empty = !sys.options.length
+      ? `<p class="cyber-empty-note">${canOptions ? 'Модулей пока нет' : 'Сначала включите базу в подписи сверху'}</p>`
+      : '';
+    target.innerHTML = `<section class="cyber-panel">
+      ${cyberHead(key, conf, sys)}
+      <div class="cyber-pieces">${cards}${empty}</div>
+      ${canOptions || conf.bodySlots ? `<div class="cyber-panel-add">${cyberAddSelect(key)}</div>` : ''}
+    </section>`;
+  });
+  renderCyberDiagram();
+  const summary = cyberEffectSummary();
+  const effects = $('#cyberEffects');
+  if(effects) effects.textContent = summary.length ? `Действует: ${summary.join(' · ')}` : 'Установленные импланты влияют на ТЕЛ, навыки, инициативу, броню и оружие.';
+  autoGrowAll();
 }
 
 // Поля из index.html не перерисовываются, поэтому при импорте/сбросе их значения выставляются явно.
@@ -669,46 +1291,47 @@ function updateResource(key, max){
   $$(`[data-key="${key}"]`).forEach(el=>{ el.max = max; setVal(el, state[key]); });
 }
 
-const humanityLoss = () => Object.values(state.cyberHlApplied || {}).reduce((sum,value)=>sum + (Number(value) || 0),0);
-
-// Потеря человечности от импланта: списывается разница с тем, что уже списано за этот слот.
-function applyHumanityLoss(key, value){
-  const match = /^cyberSlot_(\w+?)_(\d+)_hl$/.exec(key);
-  if(!match || !/^\d*$/.test(String(value).trim())) return;
-  const slot = `${match[1]}_${match[2]}`;
-  const applied = state.cyberHlApplied || (state.cyberHlApplied = {});
-  const next = Number(value) || 0;
-  const delta = next - (Number(applied[slot]) || 0);
-  if(!delta) return;
-  if(next) applied[slot] = next; else delete applied[slot];
-  const current = isBlank(state.humanityCurrent) ? numeric('stat9') * 10 : numeric('humanityCurrent');
-  state.humanityCurrent = Math.max(0, current - delta);
-  setInput('humanityCurrent', state.humanityCurrent);
-}
-
 function updateDerived(){
-  const body=numeric('stat8'), emp=numeric('stat9');
-  // Cyberpunk RED: ХИТЫ = 10 + 5 × ⌈(ТЕЛ + ВОЛЯ) / 2⌉.
+  const body=statValue(8), baseBody=numeric('stat8'), emp=numeric('stat9');
+  // Cyberpunk RED: ХИТЫ = 10 + 5 × ⌈(ТЕЛ + ВОЛЯ) / 2⌉. ТЕЛ с учётом мышц/экзоскелета.
   const hp=maxHp();
   updateResource('currentHp', hp);
   $('#hpMaximum').textContent=hp;
   $('#deathSaveValue').textContent=`< ${body}`;
   $('#woundValue').textContent=Math.ceil(hp/2);
-  // Перемещение за ход: СКО × 2 метров (стр. 168), с штрафом брони и смертельного ранения (СКО −6).
-  $('#speedValue').textContent=`${Math.max(0, numeric('stat7') - statPenalty(7) - (isMortallyWounded() ? 6 : 0)) * 2} м`;
-  updateResource('armorHeadCurrent', numeric('armorHead'));
-  updateResource('armorBodyCurrent', numeric('armorBody'));
+  // Перемещение за ход: СКО × 2 метров (стр. 168), с штрафом брони и смертельного ранения (СКО −6); + скейт-ноги.
+  const move = Math.max(0, numeric('stat7') - statPenalty(7) - (isMortallyWounded() ? 6 : 0)) * 2 + cyberMoveBonus();
+  $('#speedValue').textContent=`${move} м`;
+  const spFloor = cyberSpFloor();
+  ['Head','Body'].forEach(zone=>{
+    const key = `armor${zone}`;
+    const worn = numeric(key);
+    if(spFloor && worn < spFloor){
+      state[key] = spFloor;
+      setInput(key, spFloor);
+      if(numeric(`${key}Current`) < spFloor){ state[`${key}Current`] = spFloor; setInput(`${key}Current`, spFloor); }
+    }
+    updateResource(`${key}Current`, numeric(key));
+  });
   updateResource('luckCurrent', numeric('stat6'));
   updateResource('humanityCurrent', emp * 10);
   const psycho = emp > 0 && numeric('humanityCurrent') <= 0;
-  $('#humanityMeta').textContent = `ПОТЕРЯ ${humanityLoss()} · ЭМП ${currentEmp()}/${emp}${psycho ? ' · КИБЕРПСИХОЗ' : ''}`;
+  const bodyNote = body !== baseBody ? ` · ТЕЛ ${baseBody}→${body}` : '';
+  $('#humanityMeta').textContent = `ПОТЕРЯ ${humanityLoss()} · ЭМП ${currentEmp()}/${emp}${bodyNote}${spFloor ? ` · SP≥${spFloor}` : ''}${psycho ? ' · КИБЕРПСИХОЗ' : ''}`;
   $('#humanityMeta').classList.toggle('is-danger', psycho);
   // Штраф испытаний против смерти действует, пока персонаж смертельно ранен.
   if(!isMortallyWounded()) state.deathSavePenalty = 0;
   const deathPenalty = numeric('deathSavePenalty');
+  const serious = isChecked('seriousWound');
   $('#woundStatus').textContent = isMortallyWounded()
     ? `СМЕРТЕЛЬНОЕ РАНЕНИЕ: −4 КО ВСЕМ ДЕЙСТВИЯМ, −6 СКО${deathPenalty ? ` · ШТРАФ ИСПЫТАНИЙ +${deathPenalty}` : ''}`
-    : isChecked('seriousWound') ? 'ТЯЖЁЛОЕ РАНЕНИЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ' : '';
+    : serious && cyberIgnoresWound() ? 'ТЯЖЁЛОЕ РАНЕНИЕ: редактор боли — без штрафа −2'
+    : serious ? 'ТЯЖЁЛОЕ РАНЕНИЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ' : '';
+  const effects = $('#cyberEffects');
+  if(effects){
+    const summary = cyberEffectSummary();
+    effects.textContent = summary.length ? `Действует: ${summary.join(' · ')}` : 'Установленные импланты влияют на ТЕЛ, навыки, инициативу, броню и оружие.';
+  }
   refreshSkills();
 }
 
@@ -887,7 +1510,8 @@ function combatClick(e){
 function rollInitiative(){
   const armor = statPenalty(1);
   const reaction = soloLevel('initiative');
-  rollDicePool([{sides:10,count:1}], statValue(1) - armor + reaction, withNotes('Инициатива', [armor && `броня −${armor}`, reaction && `реакция +${reaction}`]), {crits:false, luck:true});
+  const cyber = cyberInitBonus();
+  rollDicePool([{sides:10,count:1}], statValue(1) - armor + reaction + cyber, withNotes('Инициатива', [armor && `броня −${armor}`, reaction && `реакция +${reaction}`, cyber && `кибер +${cyber}`]), {crits:false, luck:true});
 }
 
 function upgradeSkill(ref){
@@ -1193,7 +1817,7 @@ function toast(message, actionLabel, action){
 // Испытание против смерти: 1d10 + штраф должен быть меньше ТЕЛ, десятка — всегда провал.
 // Каждое испытание увеличивает штраф на 1, пока персонаж смертельно ранен.
 function rollDeathSave(){
-  const body = numeric('stat8'), penalty = numeric('deathSavePenalty');
+  const body = statValue(8), penalty = numeric('deathSavePenalty');
   rollDicePool([{sides:10,count:1}], penalty, 'Испытание против смерти', {crits:false,
     judge: entry => `${entry.die !== 10 && entry.total < body ? 'УСПЕХ' : 'ПРОВАЛ'} (нужно < ${body}${penalty ? `, штраф +${penalty}` : ''})`});
   state.deathSavePenalty = penalty + 1;
@@ -1266,11 +1890,6 @@ function save(changedKey){
     });
     state[type] = Array.from(rows, data=>data || Array(width).fill(''));
   });
-  state.cyberSlots = Object.keys(cyberSections).reduce((all,key)=>{
-    all[key] = Array.from({length: cyberSections[key][1]},(_,i)=>['name','info','hl'].map(part=>$(`[data-key="cyberSlot_${key}_${i}_${part}"]`)?.value || ''));
-    return all;
-  },{});
-  delete state.cyberware;
   refreshWeaponRows();
   refreshRolePanel();
   // Ничего не перерисовываем целиком, чтобы не сбивать фокус в поле, которое сейчас редактируется.
@@ -1423,7 +2042,6 @@ function bindInputs(){
       const programToggle = /^rolePrograms(\d+)_8$/.exec(key);
       if(programToggle) spendNetAction(`${el.checked ? 'включить' : 'выключить'} программу «${($(`[data-key="rolePrograms${programToggle[1]}_0"]`)?.value || 'Программа').split(' (')[0]}»`);
       applyVehiclePreset(key, el.value);
-      applyHumanityLoss(key, el.value);
       // Одно и то же значение может быть в нескольких полях (человечность).
       $$(`[data-key="${key}"]`).forEach(other=>{ if(other!==el && other.type!=='checkbox') other.value=el.value; });
       save(key);
@@ -1444,15 +2062,6 @@ function bindInputs(){
       if(clampedKey.test(key)) el.value = state[key];
       const ref = keyToRef(key);
       if(ref && ref[0] === 'c') el.value = refLevel(ref);
-      // Потерю человечности можно ввести формулой (2d6) — она сразу бросается.
-      const formula = /_hl$/.test(key) && parseFormula(el.value);
-      if(formula){
-        const rolled = Array.from({length:formula.count},()=>d(formula.sides)).reduce((sum,value)=>sum+value,0);
-        el.value = rolled;
-        applyHumanityLoss(key, el.value);
-        save(key);
-        toast(`Потеря человечности: ${formula.count}d${formula.sides} = ${rolled}`);
-      }
     });
   });
 }
@@ -1495,7 +2104,7 @@ function printSheetHtml(blank){
   const derived = [
     ['Хиты', blank ? slash : `${numeric('currentHp')} / ${hp}`],
     ['Порог ранения', blank ? '&nbsp;' : Math.ceil(hp/2)],
-    ['Испытание смерти', blank ? '&lt;' : esc(`< ${numeric('stat8')}${numeric('deathSavePenalty') ? ` (+${numeric('deathSavePenalty')})` : ''}`)],
+    ['Испытание смерти', blank ? '&lt;' : esc(`< ${statValue(8)}${numeric('deathSavePenalty') ? ` (+${numeric('deathSavePenalty')})` : ''}`)],
     ['Перемещение', blank ? '&nbsp;' : `${speed * 2} м`],
     ['Человечность', blank ? slash : `${numeric('humanityCurrent')} / ${emp*10}`]
   ].map(([label,value])=>`<div class="p-stat p-derived"><span>${label}</span><strong>${value}</strong></div>`).join('');
@@ -1532,9 +2141,11 @@ function printSheetHtml(blank){
     }).join('');
     return `<div class="p-skill-group"><h3>${category}</h3><table class="p-table p-skills"><tbody>${rows}</tbody></table></div>`;
   }).join('');
-  const cyberRows = Object.entries(cyberSections).flatMap(([key,[title]])=>(state.cyberSlots?.[key] || [])
-    .filter(row=>row.some(cell=>!isBlank(cell)))
-    .map(row=>[esc(title), multiline(row[0]), multiline(row[1]), text(row[2])]));
+  const cyberRows = Object.entries(cyberSystems).flatMap(([key, conf])=>{
+    const sys = state.cyber?.[key] || blankCyberSys();
+    return [sys.foundation, ...sys.options].filter(Boolean).filter(p=>p.installed !== false || p.name || p.catalog)
+      .map(p=>[esc(conf.title), multiline(pieceLabel(p)) + (p.installed === false ? ' <small>(не установлен)</small>' : ''), multiline(p.info), text(p.hl)]);
+  });
   const lifeRows = [['Псевдоним', state.lifeAlias], ...lifeFields.map((name,i)=>[name, state[`life${i}`]])];
   const portrait = !blank && isSafeImage(state.portrait) ? `<img class="p-portrait" src="${state.portrait}" alt="">` : '';
   const cyberTitle = blank ? 'Киберимпланты' : `Киберимпланты <small>человечность ${numeric('humanityCurrent')} / ${emp*10}, потеря ${humanityLoss()}</small>`;
@@ -1844,7 +2455,7 @@ function roleAction(action, data){
     if(action === 'drugSelf'){
       if(isMortallyWounded()) text += '. Не действует: смертельное ранение';
       else {
-        const heal = numeric('stat8') + numeric('stat5'), before = numeric('currentHp');
+        const heal = statValue(8) + numeric('stat5'), before = numeric('currentHp');
         state.currentHp = Math.min(maxHp(), before + heal);
         syncWoundsWithHp(); fillStaticInputs(); updateDerived();
         text += `. ХИТЫ ${before} → ${state.currentHp}`;
@@ -2522,6 +3133,27 @@ $('#rollDice').onclick=()=>{
   rollDicePool(pool,Number($('#diceModifier').value)||0,'Свободный бросок',{luck:true});
 };
 $('#initiativeBtn').onclick=rollInitiative;
+$('#cyberware')?.addEventListener('click', handleCyberClick);
+$('#cyberware')?.addEventListener('change', handleCyberChange);
+$('#cyberware')?.addEventListener('input', e=>{
+  const filter = e.target.closest('[data-cyber-filter]');
+  if(filter){
+    const q = filter.value.trim().toLowerCase();
+    $$(`[data-cyber-picker="${filter.dataset.cyberFilter}"] .cyber-pick, [data-cyber-picker="${filter.dataset.cyberFilter}"] .cyber-pick.is-blocked`).forEach(el=>{
+      const text = el.textContent.toLowerCase();
+      el.hidden = Boolean(q) && !text.includes(q);
+    });
+    return;
+  }
+  const field = e.target.closest('[data-cyber-field]');
+  if(!field || field.dataset.cyberField === 'hl') return;
+  const found = findCyberPiece(field.dataset.cyberKey, field.dataset.cyberId);
+  if(!found) return;
+  found.piece[field.dataset.cyberField] = field.value;
+  if(field.classList.contains('grow-field')) autoGrow(field);
+  clearTimeout(handleCyberChange._t);
+  handleCyberChange._t = setTimeout(()=>{ if(persist()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now(); }, 300);
+});
 $('#combatActions')?.addEventListener('click', combatClick);
 $('#combatActions')?.addEventListener('change', e=>{
   if(!e.target.matches('[data-combat-grapple]')) return;
