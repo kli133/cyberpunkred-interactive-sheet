@@ -2835,13 +2835,25 @@ input.search-hit-field, textarea.search-hit-field {
   min-height: 185px;
 }
 
+.section-title:has(.clear-log) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .clear-log {
-  float: right;
+  float: none;
+  margin-left: auto;
+  flex: 0 0 auto;
   background: transparent;
   border: 0;
   color: var(--red);
   font-size: 10px;
   font-weight: 700;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  padding: 2px 0;
+  cursor: pointer;
 }
 
 .dashboard-log {

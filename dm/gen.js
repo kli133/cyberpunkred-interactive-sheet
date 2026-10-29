@@ -292,6 +292,7 @@ function renderGen(){
   $('#genList').innerHTML = genHtml();
   $('#encZoneNote').textContent = encounterZones.moderate[3];
   renderCalendar(); renderGigs(); renderReputation();
+  if(typeof setupPanels === 'function') setupPanels();
 }
 
 $('#genList').addEventListener('input', ev=>{

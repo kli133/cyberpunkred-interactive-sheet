@@ -179,6 +179,7 @@ function renderRef(){
   $('#refList').innerHTML = refHtml();
   $('#rolePlayers').innerHTML = playerRoleButtons();
   renderRole();
+  if(typeof setupPanels === 'function') setupPanels();
 }
 function filterRef(){
   const q = plain($('#refSearch').value);

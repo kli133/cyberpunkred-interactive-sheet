@@ -64,6 +64,7 @@ function netRefHtml(){
 function renderNetRef(){
   $('#netRef').innerHTML = netRefHtml();
   renderDifficultyGuide();
+  if(typeof setupPanels === 'function') setupPanels();
 }
 function renderDifficultyGuide(){
   const key = $('#netDifficulty').value || 'standard';

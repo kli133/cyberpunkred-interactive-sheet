@@ -100,7 +100,7 @@
         <div><span class="eyebrow">HOSTILES // 01</span><h1>ПРОТИВНИКИ</h1></div>
         <p id="enemiesSummary">НЕТ ЦЕЛЕЙ</p>
       </div>
-      <div class="dm-toolbar">
+      <div class="dm-toolbar" data-block="Панель действий">
         <button class="quick-roll" type="button" id="addEnemy">+ ПРОТИВНИК</button>
         <label>Из бестиария<select id="spawnTemplate"></select></label>
         <label class="narrow">Кол-во<input id="spawnCount" type="number" min="1" max="20" value="1"></label>
@@ -110,8 +110,8 @@
         <button class="add-row" type="button" id="allToInit" title="Добавить всех живых противников в инициативу и бросить 1d10 + РЕА">ВСЕ В ИНИЦИАТИВУ</button>
         <button class="add-row" type="button" id="clearDead" title="Убрать с поля всех мёртвых">УБРАТЬ ПАВШИХ</button>
       </div>
-      <div class="rules-note">Выберите в карточке дистанцию до цели: «АТАКА» сравнит бросок с DV по таблице книги и при попадании сразу бросит урон. Укрытие и особые условия — в поле DV вручную. Хиты: 10 + 5 × ⌈(ТЕЛ + ВОЛЯ) / 2⌉, если поле «макс.» пустое. Урон минус SP зоны; в голову ×2; холодное оружие — SP/2. Пробитая броня теряет 1 SP. Штрафы ранения, критических травм и захвата лист учитывает в бросках сам; смертельно раненый от каждой атаки получает новую травму. Состояния (огонь, удушье, ток, вакуум) срабатывают по кнопке «Следующий ход» на вкладке «Инициатива».</div>
-      <div class="group-hit">
+      <div class="rules-note" data-block="Подсказка боя">Выберите в карточке дистанцию до цели: «АТАКА» сравнит бросок с DV по таблице книги и при попадании сразу бросит урон. Укрытие и особые условия — в поле DV вручную. Хиты: 10 + 5 × ⌈(ТЕЛ + ВОЛЯ) / 2⌉, если поле «макс.» пустое. Урон минус SP зоны; в голову ×2; холодное оружие — SP/2. Пробитая броня теряет 1 SP. Штрафы ранения, критических травм и захвата лист учитывает в бросках сам; смертельно раненый от каждой атаки получает новую травму. Состояния (огонь, удушье, ток, вакуум) срабатывают по кнопке «Следующий ход» на вкладке «Инициатива».</div>
+      <div class="group-hit" data-block="Групповое попадание">
         <span class="group-title">ГРУППОВОЕ ПОПАДАНИЕ <small id="groupCount">НИКТО НЕ ОТМЕЧЕН</small></span>
         <input id="groupDamage" placeholder="урон или 6d6" aria-label="Урон: число или формула" title="Формула бросается один раз на всех — как граната или взрыв">
         <select id="groupZone" aria-label="Зона"><option value="Body">Тело</option><option value="Head">Голова ×2</option></select>
@@ -119,7 +119,7 @@
         <button class="quick-roll" type="button" id="groupHit">ПО ОТМЕЧЕННЫМ</button>
         <button class="add-row" type="button" id="selectAll">ОТМЕТИТЬ ВСЕХ / СНЯТЬ</button>
       </div>
-      <div id="enemyList" class="enemy-list"></div>
+      <div id="enemyList" class="enemy-list" data-block="Список противников"></div>
     </section>
 
     <section class="tab-panel" id="initiative">
@@ -127,14 +127,14 @@
         <div><span class="eyebrow">COMBAT // 02</span><h1>ИНИЦИАТИВА</h1></div>
         <p id="roundLabel">РАУНД 1</p>
       </div>
-      <div class="dm-toolbar">
+      <div class="dm-toolbar" data-block="Панель боя">
         <button class="quick-roll" type="button" id="nextTurn">СЛЕДУЮЩИЙ ХОД ▸</button>
         <button class="add-row" type="button" id="sortInit">СОРТИРОВАТЬ</button>
         <button class="add-row" type="button" id="rerollInit" title="Перебросить 1d10 + РЕА всем противникам">ПЕРЕБРОСИТЬ ПРОТИВНИКОВ</button>
         <span class="toolbar-spacer"></span>
         <button class="add-row" type="button" id="resetCombat">НОВЫЙ БОЙ</button>
       </div>
-      <div id="turnPanel"></div>
+      <div id="turnPanel" data-block="Сейчас ходит"></div>
       <div class="panel">
         <div class="section-title">ОЧЕРЁДНОСТЬ <span>БОЛЬШЕ — РАНЬШЕ</span></div>
         <div class="table-scroll">
@@ -186,8 +186,8 @@
         <div><span class="eyebrow">DATABASE // 04</span><h1>БЕСТИАРИЙ И СЦЕНЫ</h1></div>
         <p id="bestiarySummary">ШАБЛОНОВ НЕТ</p>
       </div>
-      <div class="rules-note">Соберите противника на вкладке «Противники» и нажмите ★ — он сохранится здесь как шаблон. Шаблон с тем же именем заменяется. Из шаблона можно выставить сразу несколько копий: они получат номера.</div>
-      <div id="templateList" class="template-list"></div>
+      <div class="rules-note" data-block="Подсказка бестиария">Соберите противника на вкладке «Противники» и нажмите ★ — он сохранится здесь как шаблон. Шаблон с тем же именем заменяется. Из шаблона можно выставить сразу несколько копий: они получат номера.</div>
+      <div id="templateList" class="template-list" data-block="Шаблоны противников"></div>
       <div class="panel gap-top">
         <div class="section-title">СЦЕНЫ <span>ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ</span></div>
         <p class="muted">Соберите противников на поле и сохраните их как сцену: потом она выставляется целиком, со свежими хитами, бронёй и магазинами.</p>
@@ -204,7 +204,7 @@
         <div><span class="eyebrow">NET ARCHITECTURE // 05</span><h1>СЕТЬ</h1></div>
         <p>АРХИТЕКТУРЫ</p>
       </div>
-      <div class="group-hit net-gen">
+      <div class="group-hit net-gen" data-block="Генератор архитектуры">
         <span class="group-title">ГЕНЕРАТОР АРХИТЕКТУРЫ <small>ПО ТАБЛИЦАМ КНИГИ, СТР. 210–211</small></span>
         <input id="netName" placeholder="Название (необязательно)" aria-label="Название архитектуры">
         <select id="netDifficulty" aria-label="Сложность"></select>
@@ -212,21 +212,23 @@
         <label title="1d10: 7 и больше — ответвление, бросок повторяется"><input type="checkbox" id="netBranch" checked> ветвления 1d10</label>
         <button class="quick-roll" type="button" id="generateNet">СГЕНЕРИРОВАТЬ</button>
       </div>
-      <div class="rules-note">Как в книге: этажей 3d6, этажи 1–2 — 1d6 по таблице лобби, остальные — 3d6 по таблице сложности; повторяющиеся ЛЁД и Пароли перебрасываются. 1d10 ≥ 7 — ответвление (не раньше второго этажа), самая длинная ветка ведёт к «дну» для Вируса. Несколько ЛЬДОВ на этаже — отдельные строки с одним номером. ⟳ перебрасывает этаж. Кнопка «КАРТИНКА» под таблицей рисует архитектуру для Owlbear.</div>
-      <div id="netDifficultyGuide" class="net-guide"></div>
-      <details class="panel net-details">
+      <div class="rules-note" data-block="Подсказка сети">Как в книге: этажей 3d6, этажи 1–2 — 1d6 по таблице лобби, остальные — 3d6 по таблице сложности; повторяющиеся ЛЁД и Пароли перебрасываются. 1d10 ≥ 7 — ответвление (не раньше второго этажа), самая длинная ветка ведёт к «дну» для Вируса. Несколько ЛЬДОВ на этаже — отдельные строки с одним номером. ⟳ перебрасывает этаж. Кнопка «КАРТИНКА» под таблицей рисует архитектуру для Owlbear.</div>
+      <div id="netDifficultyGuide" class="net-guide" data-block="Ориентир сложности"></div>
+      <details class="panel net-details" data-block="Таблицы генератора">
         <summary>ТАБЛИЦЫ ГЕНЕРАТОРА</summary>
         <p class="muted">Таблицы книги, их можно править. Одна строка — один вариант. В таблице из 16 строк бросается 3d6 (первая строка — результат 3, последняя — 18), в другой — равный шанс. Строки: «Пароль СЛ8», «Файл СЛ8», «Узел управления СЛ8», «ЛЁД: Адская гончая», «ЛЁД: Ворон x2», «ЛЁД: Ворон, Аспид», любой другой текст.</p>
         <div id="netGenTables" class="net-gen-tables"></div>
         <button class="add-row" type="button" id="netGenReset">ВЕРНУТЬ ТАБЛИЦЫ КНИГИ</button>
       </details>
-      <div class="dm-toolbar rules-toolbar">
+      <div class="dm-toolbar rules-toolbar" data-block="Поиск справочника Сети">
         <input id="netSearch" type="search" placeholder="Поиск по справочнику Сети: Адская гончая, Плащ, турель..." aria-label="Поиск по справочнику Сети">
         <label class="net-iface" title="Ранг Интерфейса вражеского нетраннера: для бросков программ из справочника">Интерфейс врага<input id="netEnemyIface" type="number" min="0" max="10" value="4"></label>
       </div>
       <div id="netRef" class="rules-list net-ref"></div>
-      <div id="netList" class="net-list"></div>
-      <button class="quick-roll gap-top" type="button" id="addNet">+ АРХИТЕКТУРА</button>
+      <div data-block="Архитектуры">
+        <div id="netList" class="net-list"></div>
+        <button class="quick-roll gap-top" type="button" id="addNet">+ АРХИТЕКТУРА</button>
+      </div>
     </section>
 
     <section class="tab-panel" id="generators">
@@ -255,7 +257,7 @@
         <div><span class="eyebrow">COMBAT RULES // 07</span><h1>БОЙ: ПРАВИЛА</h1></div>
         <p>КНИГА ПРАВИЛ 1.25e</p>
       </div>
-      <div class="dm-toolbar rules-toolbar">
+      <div class="dm-toolbar rules-toolbar" data-block="Поиск">
         <input id="rulesSearch" type="search" placeholder="Поиск: дробь, укрытие, вакуум, перелом..." aria-label="Поиск по правилам">
         <button class="add-row" type="button" id="rulesToggle">РАЗВЕРНУТЬ / СВЕРНУТЬ ВСЕ</button>
       </div>
@@ -267,7 +269,7 @@
         <div><span class="eyebrow">DATABASE // 08</span><h1>СПРАВОЧНИК</h1></div>
         <p>РОЛИ · НАВЫКИ · БЕСТИАРИЙ · ИМПЛАНТЫ</p>
       </div>
-      <div class="dm-toolbar rules-toolbar">
+      <div class="dm-toolbar rules-toolbar" data-block="Поиск">
         <input id="refSearch" type="search" placeholder="Поиск: Уклонение, Буст, Когти росомахи, Фиксер..." aria-label="Поиск по справочнику">
         <button class="add-row" type="button" id="refToggle">РАЗВЕРНУТЬ / СВЕРНУТЬ ВСЕ</button>
       </div>

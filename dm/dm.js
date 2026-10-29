@@ -1218,6 +1218,108 @@ function withUndo(text, mutate){
   save();
   toast(text, ()=>{ state = normalize(JSON.parse(snapshot)); renderAll(); save(); });
 }
+// Скрыть блоки вкладок. Prefs отдельно от сессии и экспорта.
+// Блоки: .panel с заголовком, .rules-section, элементы с data-block.
+const UI_KEY = `${DM_KEY}:ui`;
+const uiPrefs = (() => {
+  try {
+    const v = JSON.parse(localStorage.getItem(UI_KEY) || '{}');
+    return {collapsed:v.collapsed || {}, hidden:v.hidden || {}};
+  } catch { return {collapsed:{}, hidden:{}}; }
+})();
+const saveUiPrefs = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(uiPrefs)); } catch {} };
+const PANEL_SKIP = '.template-card, .net-panel, .turn-panel, .random-table, .enemy-card, .npc-card, .rules-section';
+const panelHead = el => el.querySelector(':scope > .section-title');
+const textTitle = node => [...(node?.childNodes || [])].filter(n=>n.nodeType === 3).map(n=>n.textContent).join(' ').replace(/\s+/g, ' ').trim();
+const panelTitle = el => textTitle(panelHead(el));
+const sectionTitle = el => textTitle(el.querySelector(':scope > summary')) || el.querySelector(':scope > summary')?.childNodes[0]?.textContent?.trim() || '';
+const blockTitle = el => el.dataset.block || (el.matches('.rules-section') ? sectionTitle(el) : panelTitle(el));
+const blockKey = (tab, el) => {
+  if(el.dataset.rules) return `${tab.id}:rules:${el.dataset.rules}`;
+  if(el.dataset.block) return `${tab.id}:block:${el.dataset.block}`;
+  return `${tab.id}:${panelTitle(el)}`;
+};
+const isUiHidden = el => el.classList.contains('ui-hidden');
+function tabBlocks(tab){
+  const marked = [...tab.querySelectorAll('[data-block]')].filter(el=>!el.parentElement.closest('[data-block]'));
+  const sections = [...tab.querySelectorAll('.rules-section')].filter(el=>!el.parentElement.closest('[data-block]'));
+  const panels = [...tab.querySelectorAll('.panel')].filter(el=>panelHead(el) && panelTitle(el) && !el.matches(PANEL_SKIP) && !el.parentElement.closest('.panel') && !el.matches('[data-block]') && !el.parentElement.closest('[data-block]'));
+  const seen = new Set();
+  return [...marked, ...sections, ...panels].filter(el=>{
+    const key = blockKey(tab, el);
+    if(!key || !blockTitle(el) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function setupPanels(){
+  $$('.tab-panel').forEach(tab=>{
+    const blocks = tabBlocks(tab);
+    blocks.forEach(el=>{
+      const key = blockKey(tab, el);
+      el.dataset.panelKey = key;
+      const head = panelHead(el);
+      if(head && !head.querySelector('.panel-collapse')) head.insertAdjacentHTML('afterbegin', '<button type="button" class="panel-collapse" data-panel-collapse title="Свернуть или развернуть блок"></button>');
+      if(head){
+        const collapsed = !!uiPrefs.collapsed[key];
+        el.classList.toggle('is-collapsed', collapsed);
+        head.querySelector('.panel-collapse')?.setAttribute('aria-expanded', String(!collapsed));
+      }
+      el.classList.toggle('ui-hidden', !!uiPrefs.hidden[key]);
+    });
+    const heading = tab.querySelector(':scope > .page-heading');
+    if(heading && blocks.length && !heading.querySelector('.panel-gear')) heading.insertAdjacentHTML('beforeend', '<div class="panel-gear"><button type="button" class="panel-gear-btn" data-panel-gear title="Какие блоки показывать на вкладке" aria-haspopup="true" aria-expanded="false">⚙</button><div class="panel-gear-menu" hidden></div></div>');
+    const gear = heading?.querySelector('.panel-gear-btn');
+    if(gear){
+      const n = blocks.filter(isUiHidden).length;
+      gear.dataset.count = n ? String(n) : '';
+    }
+  });
+}
+function renderPanelMenu(tab){
+  const menu = tab.querySelector('.panel-gear-menu');
+  if(!menu) return;
+  const blocks = tabBlocks(tab);
+  menu.innerHTML = `<div class="panel-gear-title">БЛОКИ ВКЛАДКИ</div>${blocks.map(el=>`<label><input type="checkbox" data-panel-show="${esc(el.dataset.panelKey)}"${isUiHidden(el) ? '' : ' checked'}> ${esc(blockTitle(el))}</label>`).join('')}
+    <div class="panel-gear-actions"><button type="button" class="weapon-btn" data-panel-all="show">ПОКАЗАТЬ ВСЕ</button><button type="button" class="weapon-btn" data-panel-all="expand">РАЗВЕРНУТЬ ВСЕ</button></div>`;
+}
+function closePanelMenus(except){
+  $$('.panel-gear-menu').forEach(menu=>{ if(menu !== except){ menu.hidden = true; menu.previousElementSibling?.setAttribute('aria-expanded', 'false'); } });
+}
+function panelClick(e){
+  const gear = e.target.closest('[data-panel-gear]');
+  if(gear){
+    const tab = gear.closest('.tab-panel'), menu = gear.nextElementSibling;
+    closePanelMenus(menu);
+    if(menu.hidden){ renderPanelMenu(tab); menu.hidden = false; gear.setAttribute('aria-expanded', 'true'); }
+    else { menu.hidden = true; gear.setAttribute('aria-expanded', 'false'); }
+    return;
+  }
+  const all = e.target.closest('[data-panel-all]');
+  if(all){
+    const tab = all.closest('.tab-panel');
+    tabBlocks(tab).forEach(el=>{ delete uiPrefs[all.dataset.panelAll === 'show' ? 'hidden' : 'collapsed'][el.dataset.panelKey]; });
+    saveUiPrefs(); setupPanels(); renderPanelMenu(tab);
+    return;
+  }
+  if(!e.target.closest('.panel-gear')) closePanelMenus();
+  const head = e.target.closest('.section-title');
+  const panel = head?.parentElement;
+  if(!head || !panel?.dataset.panelKey || panelHead(panel) !== head) return;
+  if(!e.target.closest('[data-panel-collapse]') && e.target.closest('button, input, select, textarea, label, a')) return;
+  const key = panel.dataset.panelKey;
+  if(panel.classList.contains('is-collapsed')) delete uiPrefs.collapsed[key]; else uiPrefs.collapsed[key] = true;
+  saveUiPrefs(); setupPanels();
+}
+document.addEventListener('click', panelClick);
+document.addEventListener('change', e=>{
+  const key = e.target.dataset?.panelShow;
+  if(key === undefined) return;
+  if(e.target.checked) delete uiPrefs.hidden[key]; else uiPrefs.hidden[key] = true;
+  saveUiPrefs(); setupPanels();
+});
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape') closePanelMenus(); });
+
 function renderAll(){
   $$('[data-key]').forEach(el=>{ el.value = state[el.dataset.key] ?? ''; });
   renderEnemies();
@@ -1234,6 +1336,7 @@ function renderAll(){
   if(typeof renderEcon === 'function') renderEcon(); // вкладка экономики (econ.js)
   if(typeof renderGen === 'function') renderGen(); // генераторы (gen.js)
   if(typeof renderFun === 'function') renderFun(); // развлечения (fun.js)
+  setupPanels();
 }
 function activateTab(id){
   $$('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab === id));

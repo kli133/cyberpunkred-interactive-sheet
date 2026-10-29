@@ -149,6 +149,7 @@ function econHtml(){
 function renderEcon(){
   $('#econList').innerHTML = econHtml();
   renderMonth(); renderIp(); gigResult();
+  if(typeof setupPanels === 'function') setupPanels();
 }
 
 $('#econList').addEventListener('input', ev=>{

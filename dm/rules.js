@@ -199,6 +199,7 @@ function renderRules(){
   $('#rulesList').innerHTML = rulesHtml();
   renderChance();
   renderCovers();
+  if(typeof setupPanels === 'function') setupPanels();
 }
 // Поиск без перерисовки: подходящие разделы раскрываются, остальные прячутся.
 function filterRules(){

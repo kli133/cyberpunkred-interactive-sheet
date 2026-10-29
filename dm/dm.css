@@ -4,6 +4,16 @@
   --warn: #e4b62f;
 }
 
+/* Скрытие блоков через ⚙ на вкладке — отдельно от search .hidden */
+.ui-hidden {
+  display: none !important;
+}
+
+.panel-gear-menu {
+  max-height: min(70vh, 520px);
+  overflow: auto;
+}
+
 .link-btn {
   border: 1px solid #54565b;
   color: white;

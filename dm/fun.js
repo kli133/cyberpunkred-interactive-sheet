@@ -284,6 +284,7 @@ function renderFun(){
   $('#funList').innerHTML = funHtml();
   renderBank(); renderTarot(); bindFidgets();
   if(game?.kind === 'poker') renderPoker(); else if(game?.kind === 'bj') renderBj();
+  if(typeof setupPanels === 'function') setupPanels();
 }
 
 $('#funList').addEventListener('click', ev=>{
