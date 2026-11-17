@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CYBERPUNK RED // Интерактивный лист</title>
+  <title data-i18n="CYBERPUNK RED // Интерактивный лист">CYBERPUNK RED // Интерактивный лист</title>
   <link rel="stylesheet" href="shared/styles.css">
   <link rel="stylesheet" href="player/player.css">
 </head>
@@ -12,57 +12,62 @@
   <header class="topbar">
     <div class="brand"><span>CYBERPUNK</span><b>RED</b><small>// CHARACTER CONSOLE</small></div>
     <div class="top-actions">
-      <button class="roll-mode" id="advantageBtn" type="button" aria-pressed="false">ПРЕИМУЩЕСТВО</button>
-      <button class="roll-mode" id="disadvantageBtn" type="button" aria-pressed="false">ПОМЕХА</button>
-      <button class="ghost" id="printBtn" type="button" title="Печать листа текущего персонажа">Печать</button>
-      <button class="ghost" id="printBlankBtn" type="button" title="Пустой лист персонажа для заполнения от руки">Бланк</button>
-      <button class="ghost" id="resetBtn">Очистить</button>
-      <button class="primary" id="exportBtn">Экспорт JSON</button>
-      <label class="file-btn">Импорт JSON<input id="importInput" type="file" accept=".json"></label>
+      <span class="lang-switch" role="group" aria-label="Language">
+        <button type="button" class="ghost lang-btn" data-set-lang="ru" data-i18n-title="Русский" title="Русский">RU</button>
+        <button type="button" class="ghost lang-btn" data-set-lang="en" title="English">EN</button>
+      </span>
+
+      <button class="roll-mode" id="advantageBtn" type="button" aria-pressed="false" data-i18n="ПРЕИМУЩЕСТВО">ПРЕИМУЩЕСТВО</button>
+      <button class="roll-mode" id="disadvantageBtn" type="button" aria-pressed="false" data-i18n="ПОМЕХА">ПОМЕХА</button>
+      <button class="ghost" id="printBtn" type="button" data-i18n-title="Печать листа текущего персонажа" title="Печать листа текущего персонажа"><span data-i18n="Печать">Печать</span></button>
+      <button class="ghost" id="printBlankBtn" type="button" data-i18n-title="Пустой лист персонажа для заполнения от руки" title="Пустой лист персонажа для заполнения от руки"><span data-i18n="Бланк">Бланк</span></button>
+      <button class="ghost" id="resetBtn" data-i18n="Очистить">Очистить</button>
+      <button class="primary" id="exportBtn" data-i18n="Экспорт JSON">Экспорт JSON</button>
+      <label class="file-btn"><span data-i18n="Импорт JSON">Импорт JSON</span><input id="importInput" type="file" accept=".json"></label>
     </div>
   </header>
 
   <main class="app-shell">
-    <nav class="tabs" aria-label="Разделы листа">
-      <button class="tab active" data-tab="dashboard">00 // Панель</button>
-      <button class="tab" data-tab="character">01 // Персонаж</button>
-      <button class="tab" data-tab="skills">02 // Навыки</button>
-      <button class="tab" data-tab="equipment">03 // Снаряжение</button>
-      <button class="tab" data-tab="lifepath">04 // Жизненный путь</button>
-      <button class="tab" data-tab="cyberware">05 // Киберимпланты</button>
-      <button class="tab" data-tab="role" id="roleTab" hidden>06 // Роль</button>
+    <nav class="tabs" data-i18n-aria-label="Разделы листа" aria-label="Разделы листа">
+      <button class="tab active" data-tab="dashboard" data-i18n="00 // Панель">00 // Панель</button>
+      <button class="tab" data-tab="character" data-i18n="01 // Персонаж">01 // Персонаж</button>
+      <button class="tab" data-tab="skills" data-i18n="02 // Навыки">02 // Навыки</button>
+      <button class="tab" data-tab="equipment" data-i18n="03 // Снаряжение">03 // Снаряжение</button>
+      <button class="tab" data-tab="lifepath" data-i18n="04 // Жизненный путь">04 // Жизненный путь</button>
+      <button class="tab" data-tab="cyberware" data-i18n="05 // Киберимпланты">05 // Киберимпланты</button>
+      <button class="tab" data-tab="role" id="roleTab" hidden data-i18n="06 // Роль">06 // Роль</button>
     </nav>
 
     <section class="status-strip">
       <span><i class="dot"></i> SYSTEM ONLINE</span>
-      <span id="saveStatus">АВТОСОХРАНЕНИЕ ВКЛ.</span>
+      <span id="saveStatus" data-i18n="АВТОСОХРАНЕНИЕ ВКЛ.">АВТОСОХРАНЕНИЕ ВКЛ.</span>
       <span class="sheet-switch">
-        <select id="sheetSelect" aria-label="Персонаж"></select>
-        <button type="button" id="newSheet" title="Новый персонаж">+ НОВЫЙ</button>
-        <button type="button" id="deleteSheet" title="Удалить персонажа">УДАЛИТЬ</button>
+        <select id="sheetSelect" data-i18n-aria-label="Персонаж" aria-label="Персонаж"></select>
+        <button type="button" id="newSheet" data-i18n-title="Новый персонаж" title="Новый персонаж" data-i18n="+ НОВЫЙ">+ НОВЫЙ</button>
+        <button type="button" id="deleteSheet" data-i18n-title="Удалить персонажа" title="Удалить персонажа" data-i18n="УДАЛИТЬ">УДАЛИТЬ</button>
       </span>
-      <button class="dice-toggle" id="initiativeBtn" type="button" title="1d10 + РЕА">ИНИЦИАТИВА</button>
-      <button class="dice-toggle" id="diceToggle">КУБИК // 1D10</button>
+      <button class="dice-toggle" id="initiativeBtn" type="button" data-i18n-title="1d10 + РЕА" title="1d10 + РЕА" data-i18n="ИНИЦИАТИВА">ИНИЦИАТИВА</button>
+      <button class="dice-toggle" id="diceToggle" data-i18n="КУБИК // 1D10">КУБИК // 1D10</button>
     </section>
-    <dialog class="mod-dialog" id="modDialog" aria-label="Модификации оружия"></dialog>
-    <dialog class="mod-dialog new-sheet-dialog" id="newSheetDialog" aria-label="Новый персонаж">
+    <dialog class="mod-dialog" id="modDialog" data-i18n-aria-label="Модификации оружия" aria-label="Модификации оружия"></dialog>
+    <dialog class="mod-dialog new-sheet-dialog" id="newSheetDialog" data-i18n-aria-label="Новый персонаж" aria-label="Новый персонаж">
       <form method="dialog" class="new-sheet-form">
-        <h2>Новый персонаж</h2>
-        <p class="muted">Пустой лист или готовый шаблон Streetrat из книги (роль 4, снаряжение и кибер).</p>
-        <button type="submit" value="blank" class="primary new-sheet-blank">Свой (пустой лист)</button>
+        <h2 data-i18n="Новый персонаж">Новый персонаж</h2>
+        <p class="muted" data-i18n="Пустой лист или готовый шаблон Streetrat из книги (роль 4, снаряжение и кибер).">Пустой лист или готовый шаблон Streetrat из книги (роль 4, снаряжение и кибер).</p>
+        <button type="submit" value="blank" class="primary new-sheet-blank" data-i18n="Свой (пустой лист)">Свой (пустой лист)</button>
         <div class="section-title gap-top">ШАБЛОН STREETRAT</div>
         <div class="new-sheet-roles" id="newSheetRoles"></div>
-        <button type="submit" value="cancel" class="ghost">Отмена</button>
+        <button type="submit" value="cancel" class="ghost" data-i18n="Отмена">Отмена</button>
       </form>
     </dialog>
-    <aside class="dice-drawer" id="diceDrawer" aria-label="Кубик Cyberpunk RED">
-      <div class="dice-head"><strong>КУБИК // NETRUNNER</strong><button id="diceClose">×</button></div>
+    <aside class="dice-drawer" id="diceDrawer" data-i18n-aria-label="Кубик Cyberpunk RED" aria-label="Кубик Cyberpunk RED">
+      <div class="dice-head"><strong data-i18n="КУБИК // NETRUNNER">КУБИК // NETRUNNER</strong><button id="diceClose">×</button></div>
       <div class="dice-controls">
         <div class="dice-pool" id="dicePool"></div>
-        <button type="button" class="add-die-button" id="addDie">+ ДОБАВИТЬ КУБИК</button>
-        <label>МОДИФИКАТОР<input id="diceModifier" type="number" value="0"></label>
-        <button type="button" class="add-die-button luck-restore" id="restoreLuck" title="Удача восстанавливается в начале каждой игровой сессии">НОВАЯ СЕССИЯ: ВОССТАНОВИТЬ УДАЧУ</button>
-        <button class="primary roll-button" id="rollDice">БРОСИТЬ</button>
+        <button type="button" class="add-die-button" id="addDie" data-i18n="+ ДОБАВИТЬ КУБИК">+ ДОБАВИТЬ КУБИК</button>
+        <label><span data-i18n="МОДИФИКАТОР">МОДИФИКАТОР</span><input id="diceModifier" type="number" value="0"></label>
+        <button type="button" class="add-die-button luck-restore" id="restoreLuck" data-i18n-title="Удача восстанавливается в начале каждой игровой сессии" title="Удача восстанавливается в начале каждой игровой сессии" data-i18n="НОВАЯ СЕССИЯ: ВОССТАНОВИТЬ УДАЧУ">НОВАЯ СЕССИЯ: ВОССТАНОВИТЬ УДАЧУ</button>
+        <button class="primary roll-button" id="rollDice" data-i18n="БРОСИТЬ">БРОСИТЬ</button>
       </div>
       <div class="dice-result" id="diceResult">—</div>
       <div class="dice-log" id="diceLog"></div>
@@ -70,22 +75,22 @@
 
     <section class="tab-panel active" id="dashboard">
       <div class="page-heading">
-        <div><span class="eyebrow">CONTROL DECK // 00</span><h1>ПАНЕЛЬ ИГРОКА</h1></div>
-        <p id="dashboardGreeting">СИСТЕМА ГОТОВА</p>
+        <div><span class="eyebrow">CONTROL DECK // 00</span><h1 data-i18n="ПАНЕЛЬ ИГРОКА">ПАНЕЛЬ ИГРОКА</h1></div>
+        <p id="dashboardGreeting" data-i18n="СИСТЕМА ГОТОВА">СИСТЕМА ГОТОВА</p>
       </div>
       <div class="dashboard-grid">
         <div class="panel session-panel">
-          <div class="section-title">СЕССИЯ</div>
-          <label>Название сессии<textarea class="grow-field" data-key="sessionTitle" rows="1" placeholder="Ночная смена в Хейвуде"></textarea></label>
-          <label>Текущая сцена<textarea data-key="scene" rows="3" placeholder="Где сейчас находится команда?"></textarea></label>
+          <div class="section-title"><span data-i18n="СЕССИЯ">СЕССИЯ</span></div>
+          <label><span data-i18n="Название сессии">Название сессии</span><textarea class="grow-field" data-key="sessionTitle" rows="1" data-i18n-placeholder="Ночная смена в Хейвуде" placeholder="Ночная смена в Хейвуде"></textarea></label>
+          <label><span data-i18n="Текущая сцена">Текущая сцена</span><textarea data-key="scene" rows="3" data-i18n-placeholder="Где сейчас находится команда?" placeholder="Где сейчас находится команда?"></textarea></label>
         </div>
         <div class="panel activity-panel">
-          <div class="section-title">ПОСЛЕДНИЕ БРОСКИ <button class="clear-log" id="clearLog">ОЧИСТИТЬ</button></div>
+          <div class="section-title"><span data-i18n="ПОСЛЕДНИЕ БРОСКИ">ПОСЛЕДНИЕ БРОСКИ</span> <button class="clear-log" id="clearLog" data-i18n="ОЧИСТИТЬ">ОЧИСТИТЬ</button></div>
           <div id="dashboardLog" class="dashboard-log">Пока нет бросков.</div>
         </div>
         <div class="panel session-notes">
-          <div class="section-title">ЗАМЕТКИ ИГРОКА</div>
-          <textarea data-key="sessionNotes" rows="5" placeholder="Улики, NPC, обещания, важные детали..."></textarea>
+          <div class="section-title"><span data-i18n="ЗАМЕТКИ ИГРОКА">ЗАМЕТКИ ИГРОКА</span></div>
+          <textarea data-key="sessionNotes" rows="5" data-i18n-placeholder="Улики, NPC, обещания, важные детали..." placeholder="Улики, NPC, обещания, важные детали..."></textarea>
         </div>
       </div>
     </section>
@@ -94,82 +99,82 @@
       <div class="identity-grid">
         <div class="portrait-card">
           <div class="portrait-placeholder" id="portraitPreview">NO<br>IMAGE</div>
-          <label class="portrait-upload">Загрузить портрет<input id="portraitInput" type="file" accept="image/*"></label>
-          <label>Имя персонажа<input data-key="name" placeholder="Введите имя"></label>
+          <label class="portrait-upload"><span data-i18n="Загрузить портрет">Загрузить портрет</span><input id="portraitInput" type="file" accept="image/*"></label>
+          <label><span data-i18n="Имя персонажа">Имя персонажа</span><input data-key="name" data-i18n-placeholder="Введите имя" placeholder="Введите имя"></label>
           <div class="role-pick">
-            <label>Роль<select data-key="roleId" id="roleSelect"></select></label>
-            <label title="Ранг способности роли: 1–10, при создании персонажа — 4">Ранг<input data-key="roleRank" type="number" min="1" max="10"></label>
+            <label><span data-i18n="Роль">Роль</span><select data-key="roleId" id="roleSelect"></select></label>
+            <label data-i18n-title="Ранг способности роли: 1–10, при создании персонажа — 4" title="Ранг способности роли: 1–10, при создании персонажа — 4"><span data-i18n="Ранг">Ранг</span><input data-key="roleRank" type="number" min="1" max="10"></label>
           </div>
           <p class="role-extra-info" id="roleExtraInfo" hidden></p>
-          <label>Особая способность<textarea data-key="ability" rows="2"></textarea></label>
+          <label><span data-i18n="Особая способность">Особая способность</span><textarea data-key="ability" rows="2"></textarea></label>
           <div class="character-resources">
-            <label>Репутация<input data-key="reputation" type="number" value="0"></label>
-            <label>Евродоллары<input data-key="eddies" type="number" value="0"></label>
-            <label title="Очки улучшения: в режиме игры тратятся на повышение навыков">Очки улучшения (IP)<input data-key="ip" type="number" min="0" value="0"></label>
+            <label><span data-i18n="Репутация">Репутация</span><input data-key="reputation" type="number" value="0"></label>
+            <label><span data-i18n="Евродоллары">Евродоллары</span><input data-key="eddies" type="number" value="0"></label>
+            <label data-i18n-title="Очки улучшения: в режиме игры тратятся на повышение навыков" title="Очки улучшения: в режиме игры тратятся на повышение навыков"><span data-i18n="Очки улучшения (IP)">Очки улучшения (IP)</span><input data-key="ip" type="number" min="0" value="0"></label>
           </div>
         </div>
         <div class="stats-card">
-          <div class="section-title">ХАРАКТЕРИСТИКИ <span>STAT // CURRENT RESOURCE</span></div>
+          <div class="section-title"><span data-i18n="ХАРАКТЕРИСТИКИ">ХАРАКТЕРИСТИКИ</span> <span>STAT // CURRENT RESOURCE</span></div>
           <div class="stats-grid" id="statsGrid"></div>
           <div class="derived-grid">
-            <div class="metric"><span>Хиты</span><strong><input id="hpValue" data-key="currentHp" type="number" min="0" value="0" aria-label="Текущее здоровье"> / <output id="hpMaximum">0</output></strong></div>
-            <div class="metric" title="Испытание против смерти: 1d10 должен быть меньше ТЕЛ"><span>Испытание смерти</span><strong id="deathSaveValue">&lt; 0</strong></div>
-            <div class="metric"><span>Порог ранения</span><strong id="woundValue">0</strong></div>
-            <div class="metric" title="Перемещение за ход: СКО × 2 метров (на поле боя — СКО клеток). Штраф брони и смертельного ранения учтены"><span>Перемещение</span><strong id="speedValue">0 м</strong></div>
+            <div class="metric"><span data-i18n="Хиты">Хиты</span><strong><input id="hpValue" data-key="currentHp" type="number" min="0" value="0" data-i18n-aria-label="Текущее здоровье" aria-label="Текущее здоровье"> / <output id="hpMaximum">0</output></strong></div>
+            <div class="metric" data-i18n-title="Испытание против смерти: 1d10 должен быть меньше ТЕЛ" title="Испытание против смерти: 1d10 должен быть меньше ТЕЛ"><span data-i18n="Испытание смерти">Испытание смерти</span><strong id="deathSaveValue">&lt; 0</strong></div>
+            <div class="metric"><span data-i18n="Порог ранения">Порог ранения</span><strong id="woundValue">0</strong></div>
+            <div class="metric" data-i18n-title="Перемещение за ход: СКО × 2 метров (на поле боя — СКО клеток). Штраф брони и смертельного ранения учтены" title="Перемещение за ход: СКО × 2 метров (на поле боя — СКО клеток). Штраф брони и смертельного ранения учтены"><span data-i18n="Перемещение">Перемещение</span><strong id="speedValue" data-i18n="0 м">0 м</strong></div>
           </div>
         </div>
       </div>
 
       <div class="columns-3">
         <div class="panel">
-          <div class="section-title">БРОНЯ <span>SP // ТЕКУЩЕЕ / МАКС.</span></div>
+          <div class="section-title"><span data-i18n="БРОНЯ">БРОНЯ</span> <span data-i18n="SP // ТЕКУЩЕЕ / МАКС.">SP // ТЕКУЩЕЕ / МАКС.</span></div>
           <div class="armor-form">
-            <label>Броня головы<select data-key="armorHeadType" data-armor-zone="Head"></select></label>
-            <label>Броня тела<select data-key="armorBodyType" data-armor-zone="Body"></select></label>
+            <label><span data-i18n="Броня головы">Броня головы</span><select data-key="armorHeadType" data-armor-zone="Head"></select></label>
+            <label><span data-i18n="Броня тела">Броня тела</span><select data-key="armorBodyType" data-armor-zone="Body"></select></label>
           </div>
           <div class="armor-grid">
-            <label>Голова: SP<input data-key="armorHeadCurrent" type="number" min="0" aria-label="Текущее SP головы"></label>
-            <label>из<input data-key="armorHead" type="number" min="0" aria-label="Максимальное SP головы"></label>
-            <label>Тело: SP<input data-key="armorBodyCurrent" type="number" min="0" aria-label="Текущее SP тела"></label>
-            <label>из<input data-key="armorBody" type="number" min="0" aria-label="Максимальное SP тела"></label>
-            <label title="Вычитается из РЕА, ЛВК и СКО в навыках, бросках и скорости">Штраф РЕА/ЛВК/СКО<input data-key="armorPenalty" type="number" min="0"></label>
+            <label><span data-i18n="Голова: SP">Голова: SP</span><input data-key="armorHeadCurrent" type="number" min="0" data-i18n-aria-label="Текущее SP головы" aria-label="Текущее SP головы"></label>
+            <label><span data-i18n="из">из</span><input data-key="armorHead" type="number" min="0" data-i18n-aria-label="Максимальное SP головы" aria-label="Максимальное SP головы"></label>
+            <label><span data-i18n="Тело: SP">Тело: SP</span><input data-key="armorBodyCurrent" type="number" min="0" data-i18n-aria-label="Текущее SP тела" aria-label="Текущее SP тела"></label>
+            <label><span data-i18n="из">из</span><input data-key="armorBody" type="number" min="0" data-i18n-aria-label="Максимальное SP тела" aria-label="Максимальное SP тела"></label>
+            <label data-i18n-title="Вычитается из РЕА, ЛВК и СКО в навыках, бросках и скорости" title="Вычитается из РЕА, ЛВК и СКО в навыках, бросках и скорости"><span data-i18n="Штраф РЕА/ЛВК/СКО">Штраф РЕА/ЛВК/СКО</span><input data-key="armorPenalty" type="number" min="0"></label>
           </div>
-          <div class="armor-tech" title="Мастер модернизации Техника (стр. 148): +1 SP предмету, у которого есть SP">
-            <label><input type="checkbox" data-key="armorHeadTech"> Голова: модернизация Техника +1 SP</label>
-            <label><input type="checkbox" data-key="armorBodyTech"> Тело: модернизация Техника +1 SP</label>
+          <div class="armor-tech" data-i18n-title="Мастер модернизации Техника (стр. 148): +1 SP предмету, у которого есть SP" title="Мастер модернизации Техника (стр. 148): +1 SP предмету, у которого есть SP">
+            <label><input type="checkbox" data-key="armorHeadTech"> <span data-i18n="Голова: модернизация Техника +1 SP">Голова: модернизация Техника +1 SP</span></label>
+            <label><input type="checkbox" data-key="armorBodyTech"> <span data-i18n="Тело: модернизация Техника +1 SP">Тело: модернизация Техника +1 SP</span></label>
           </div>
           <div class="damage-box">
             <div class="armor-form">
-              <label>Урон<input id="damageInput" type="number" min="0" placeholder="0"></label>
-              <label>Куда<select id="damageZone"><option value="Body">Тело</option><option value="Head">Голова (×2)</option></select></label>
-              <label title="Патроны и особый урон: AP −2 SP; резина — без травм и абляции, минимум 1 ПЗ; экспансивные — «Инородное тело»">Вид<select id="damageKind">
-                <option value="">Обычный</option>
-                <option value="melee">Ближний (SP ÷ 2)</option>
-                <option value="ap">Бронебойные (SP −2)</option>
-                <option value="rubber">Резиновые</option>
-                <option value="expansive">Экспансивные</option>
-                <option value="ignore">Мимо брони</option>
+              <label><span data-i18n="Урон">Урон</span><input id="damageInput" type="number" min="0" placeholder="0"></label>
+              <label><span data-i18n="Куда">Куда</span><select id="damageZone"><option value="Body" data-i18n="Тело">Тело</option><option value="Head" data-i18n="Голова (×2)">Голова (×2)</option></select></label>
+              <label data-i18n-title="Патроны и особый урон: AP −2 SP; резина — без травм и абляции, минимум 1 ПЗ; экспансивные — «Инородное тело»" title="Патроны и особый урон: AP −2 SP; резина — без травм и абляции, минимум 1 ПЗ; экспансивные — «Инородное тело»"><span data-i18n="Вид">Вид</span><select id="damageKind">
+                <option value="" data-i18n="Обычный">Обычный</option>
+                <option value="melee" data-i18n="Ближний (SP ÷ 2)">Ближний (SP ÷ 2)</option>
+                <option value="ap" data-i18n="Бронебойные (SP −2)">Бронебойные (SP −2)</option>
+                <option value="rubber" data-i18n="Резиновые">Резиновые</option>
+                <option value="expansive" data-i18n="Экспансивные">Экспансивные</option>
+                <option value="ignore" data-i18n="Мимо брони">Мимо брони</option>
               </select></label>
             </div>
-            <label class="check-row" title="Две и больше шестёрок на кубиках урона: бросок 2d6 по таблице травм и +5 урона в хиты"><input id="damageCrit" type="checkbox"> Критическая травма (две шестёрки)</label>
+            <label class="check-row" data-i18n-title="Две и больше шестёрок на кубиках урона: бросок 2d6 по таблице травм и +5 урона в хиты" title="Две и больше шестёрок на кубиках урона: бросок 2d6 по таблице травм и +5 урона в хиты"><input id="damageCrit" type="checkbox"> <span data-i18n="Критическая травма (две шестёрки)">Критическая травма (две шестёрки)</span></label>
             <div class="damage-actions">
-              <button type="button" class="death-save-button" id="applyDamage">ПРИНЯТЬ УРОН</button>
-              <button type="button" class="death-save-button" id="repairArmor">ПОЧИНИТЬ БРОНЮ</button>
+              <button type="button" class="death-save-button" id="applyDamage" data-i18n="ПРИНЯТЬ УРОН">ПРИНЯТЬ УРОН</button>
+              <button type="button" class="death-save-button" id="repairArmor" data-i18n="ПОЧИНИТЬ БРОНЮ">ПОЧИНИТЬ БРОНЮ</button>
             </div>
             <div class="damage-result" id="damageResult"></div>
           </div>
           <div class="section-title gap-top">ЗДОРОВЬЕ</div>
-          <label class="check-row"><input data-key="seriousWound" type="checkbox"> Тяжёлое ранение</label>
+          <label class="check-row"><input data-key="seriousWound" type="checkbox"> <span data-i18n="Тяжёлое ранение">Тяжёлое ранение</span></label>
           <div class="death-save-row">
-            <label class="check-row"><input data-key="deathSave" type="checkbox"> Испытание против смерти</label>
-            <button type="button" class="death-save-button" id="deathSaveButton">БРОСОК 1D10</button>
+            <label class="check-row"><input data-key="deathSave" type="checkbox"> <span data-i18n="Испытание против смерти">Испытание против смерти</span></label>
+            <button type="button" class="death-save-button" id="deathSaveButton" data-i18n="БРОСОК 1D10">БРОСОК 1D10</button>
           </div>
           <div class="wound-status" id="woundStatus"></div>
         </div>
         <div class="panel injury-panel">
-          <div class="section-title">СОСТОЯНИЕ</div>
-          <label class="note-field">КРИТИЧЕСКИЕ ТРАВМЫ<textarea data-key="criticalInjuries" rows="5" placeholder="Запишите критические травмы..."></textarea></label>
-          <label class="note-field">ЗАВИСИМОСТИ<textarea data-key="addictions" rows="5" placeholder="Запишите зависимости..."></textarea></label>
+          <div class="section-title"><span data-i18n="СОСТОЯНИЕ">СОСТОЯНИЕ</span></div>
+          <label class="note-field"><span data-i18n="КРИТИЧЕСКИЕ ТРАВМЫ">КРИТИЧЕСКИЕ ТРАВМЫ</span><textarea data-key="criticalInjuries" rows="5" data-i18n-placeholder="Запишите критические травмы..." placeholder="Запишите критические травмы..."></textarea></label>
+          <label class="note-field"><span data-i18n="ЗАВИСИМОСТИ">ЗАВИСИМОСТИ</span><textarea data-key="addictions" rows="5" data-i18n-placeholder="Запишите зависимости..." placeholder="Запишите зависимости..."></textarea></label>
         </div>
       </div>
 
@@ -177,19 +182,19 @@
 
     <section class="tab-panel" id="skills">
       <div class="page-heading">
-        <div><span class="eyebrow">SKILL DATABASE // 02</span><h1>НАВЫКИ</h1></div>
+        <div><span class="eyebrow">SKILL DATABASE // 02</span><h1 data-i18n="НАВЫКИ">НАВЫКИ</h1></div>
         <div class="creation-controls">
-          <label><input id="creationMode" type="checkbox" checked> РЕЖИМ СОЗДАНИЯ</label>
-          <strong>ОСТАЛОСЬ ОЧКОВ: <span id="skillBudget">86</span></strong>
-          <strong class="is-hidden">ОЧКИ УЛУЧШЕНИЯ: <span id="ipInfo">0</span></strong>
+          <label><input id="creationMode" type="checkbox" checked> <span data-i18n="РЕЖИМ СОЗДАНИЯ">РЕЖИМ СОЗДАНИЯ</span></label>
+          <strong><span data-i18n="ОСТАЛОСЬ ОЧКОВ:">ОСТАЛОСЬ ОЧКОВ:</span> <span id="skillBudget">86</span></strong>
+          <strong class="is-hidden"><span data-i18n="ОЧКИ УЛУЧШЕНИЯ:">ОЧКИ УЛУЧШЕНИЯ:</span> <span id="ipInfo">0</span></strong>
         </div>
       </div>
-      <div class="rules-note">В режиме создания уровень навыка ограничен 6, общий пул — 86 очков, навыки с пометкой (x2) стоят 2 очка за уровень, базовые навыки (Б) — не ниже 2. Кнопка «+» добавляет ещё один язык, знание местности, боевое искусство, инструмент или науку. В режиме игры навыки повышаются за очки улучшения (IP).</div>
+      <div class="rules-note"><span data-i18n="В режиме создания уровень навыка ограничен 6, общий пул — 86 очков, навыки с пометкой (x2) стоят 2 очка за уровень, базовые навыки (Б) — не ниже 2. Кнопка «+» добавляет ещё один язык, знание местности, боевое искусство, инструмент или науку. В режиме игры навыки повышаются за очки улучшения (IP).">В режиме создания уровень навыка ограничен 6, общий пул — 86 очков, навыки с пометкой (x2) стоят 2 очка за уровень, базовые навыки (Б) — не ниже 2. Кнопка «+» добавляет ещё один язык, знание местности, боевое искусство, инструмент или науку. В режиме игры навыки повышаются за очки улучшения (IP).</span></div>
       <div class="skill-search panel">
-        <label for="skillSearch">ПОИСК НАВЫКА</label>
+        <label for="skillSearch" data-i18n="ПОИСК НАВЫКА">ПОИСК НАВЫКА</label>
         <div class="skill-search-row">
-          <input id="skillSearch" type="search" placeholder="Например: скрытность, техника, стрельба...">
-          <button type="button" id="skillFilterToggle" class="skill-filter-toggle" aria-expanded="false" aria-controls="skillFilters" title="Категории навыков">Все ▾</button>
+          <input id="skillSearch" type="search" data-i18n-placeholder="Например: скрытность, техника, стрельба..." placeholder="Например: скрытность, техника, стрельба...">
+          <button type="button" id="skillFilterToggle" class="skill-filter-toggle" aria-expanded="false" aria-controls="skillFilters" data-i18n-title="Категории навыков" title="Категории навыков" data-i18n="Все ▾">Все ▾</button>
         </div>
         <div id="skillFilters" class="skill-filters"></div>
       </div>
@@ -197,65 +202,65 @@
     </section>
 
     <section class="tab-panel" id="equipment">
-      <div class="page-heading"><div><span class="eyebrow">LOADOUT DATABASE // 03</span><h1>СНАРЯЖЕНИЕ</h1></div><p>Предметы, оружие и боекомплект персонажа.</p></div>
+      <div class="page-heading"><div><span class="eyebrow">LOADOUT DATABASE // 03</span><h1 data-i18n="СНАРЯЖЕНИЕ">СНАРЯЖЕНИЕ</h1></div><p data-i18n="Предметы, оружие и боекомплект персонажа.">Предметы, оружие и боекомплект персонажа.</p></div>
       <div class="equipment-grid">
         <div class="panel">
-          <div class="section-title">СНАРЯЖЕНИЕ</div>
+          <div class="section-title"><span data-i18n="СНАРЯЖЕНИЕ">СНАРЯЖЕНИЕ</span></div>
           <div class="table-scroll">
             <table class="data-table gear-table">
-              <thead><tr><th>Предмет</th><th>Кол-во</th><th>Заметка</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="Предмет">Предмет</th><th data-i18n="Кол-во">Кол-во</th><th data-i18n="Заметка">Заметка</th><th></th></tr></thead>
               <tbody id="gearRows"></tbody>
             </table>
           </div>
-          <button class="add-row" data-add="gear">+ ДОБАВИТЬ ПРЕДМЕТ</button>
+          <button class="add-row" data-add="gear" data-i18n="+ ДОБАВИТЬ ПРЕДМЕТ">+ ДОБАВИТЬ ПРЕДМЕТ</button>
         </div>
         <div class="panel">
-          <div class="section-title">БОЕПРИПАСЫ <span>CALIBER // TYPE // COUNT</span></div>
+          <div class="section-title"><span data-i18n="БОЕПРИПАСЫ">БОЕПРИПАСЫ</span> <span>CALIBER // TYPE // COUNT</span></div>
           <div class="table-scroll">
             <table class="data-table ammo-table">
-              <thead><tr><th>Калибр</th><th>Тип</th><th>Кол-во</th><th>Свойство и цена</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="Калибр">Калибр</th><th data-i18n="Тип">Тип</th><th data-i18n="Кол-во">Кол-во</th><th data-i18n="Свойство и цена">Свойство и цена</th><th></th></tr></thead>
               <tbody id="ammoRows"></tbody>
             </table>
           </div>
-          <button class="add-row" data-add="ammo">+ ДОБАВИТЬ БОЕПРИПАСЫ</button>
+          <button class="add-row" data-add="ammo" data-i18n="+ ДОБАВИТЬ БОЕПРИПАСЫ">+ ДОБАВИТЬ БОЕПРИПАСЫ</button>
         </div>
         <div class="panel">
-          <div class="section-title">ОРУЖИЕ <span>TYPE // SKILL // DMG // AMMO // ROF // AUTO</span></div>
+          <div class="section-title"><span data-i18n="ОРУЖИЕ">ОРУЖИЕ</span> <span>TYPE // SKILL // DMG // AMMO // ROF // AUTO</span></div>
           <div class="table-scroll">
             <table class="data-table weapon-table">
-              <thead><tr><th>Оружие</th><th>Тип</th><th>Навык</th><th>Урон</th><th title="Патроны сейчас; пусто — не считать">Патр.</th><th title="Размер магазина">Маг.</th><th>ROF</th><th title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам">Авто</th><th title="Какими патронами заряжено; перезарядка берёт их из «Боеприпасов»">Боеприпасы</th><th>Заметки</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="Оружие">Оружие</th><th data-i18n="Тип">Тип</th><th data-i18n="Навык">Навык</th><th data-i18n="Урон">Урон</th><th data-i18n-title="Патроны сейчас; пусто — не считать" title="Патроны сейчас; пусто — не считать">Патр.</th><th data-i18n-title="Размер магазина" title="Размер магазина">Маг.</th><th>ROF</th><th data-i18n-title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам" title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам">Авто</th><th data-i18n-title="Какими патронами заряжено; перезарядка берёт их из «Боеприпасов»" title="Какими патронами заряжено; перезарядка берёт их из «Боеприпасов»">Боеприпасы</th><th data-i18n="Заметки">Заметки</th><th></th></tr></thead>
               <tbody id="weaponRows"></tbody>
             </table>
           </div>
-          <button class="add-row" data-add="weapon">+ ДОБАВИТЬ ОРУЖИЕ</button>
+          <button class="add-row" data-add="weapon" data-i18n="+ ДОБАВИТЬ ОРУЖИЕ">+ ДОБАВИТЬ ОРУЖИЕ</button>
         </div>
         <div class="panel combat-panel">
-          <div class="section-title">БОЕВЫЕ ДЕЙСТВИЯ <span id="combatGrappleNote" hidden>В ЗАХВАТЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ</span></div>
-          <p class="combat-hint">Число на кнопке — что прибавляется к 1d10, нажмите, чтобы бросить. Нажмите на название — правило из книги. Атака, автоогонь, подавляющий огонь и перезарядка — в таблице оружия выше.</p>
+          <div class="section-title"><span data-i18n="БОЕВЫЕ ДЕЙСТВИЯ">БОЕВЫЕ ДЕЙСТВИЯ</span> <span id="combatGrappleNote" hidden data-i18n="В ЗАХВАТЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ">В ЗАХВАТЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ</span></div>
+          <p class="combat-hint" data-i18n="Число на кнопке — что прибавляется к 1d10, нажмите, чтобы бросить. Нажмите на название — правило из книги. Атака, автоогонь, подавляющий огонь и перезарядка — в таблице оружия выше.">Число на кнопке — что прибавляется к 1d10, нажмите, чтобы бросить. Нажмите на название — правило из книги. Атака, автоогонь, подавляющий огонь и перезарядка — в таблице оружия выше.</p>
           <div class="combat-actions" id="combatActions"></div>
         </div>
       </div>
     </section>
 
     <section class="tab-panel" id="lifepath">
-      <div class="page-heading"><div><span class="eyebrow">PERSONAL FILE // 04</span><h1>ЖИЗНЕННЫЙ ПУТЬ</h1></div><p>История, которая делает персонажа живым.</p></div>
+      <div class="page-heading"><div><span class="eyebrow">PERSONAL FILE // 04</span><h1 data-i18n="ЖИЗНЕННЫЙ ПУТЬ">ЖИЗНЕННЫЙ ПУТЬ</h1></div><p data-i18n="История, которая делает персонажа живым.">История, которая делает персонажа живым.</p></div>
       <div class="panel life-basics" id="lifeBasics"></div>
       <div class="life-grid">
         <div class="panel life-fields" id="lifeFields"></div>
         <div class="panel">
-          <div class="section-title">СВЯЗИ <span>RELATIONSHIPS</span></div>
-          <div class="table-scroll"><table class="data-table"><thead><tr><th>Персонаж</th><th>Кто это?</th><th>Что ему нужно?</th><th></th></tr></thead><tbody id="relationshipRows"></tbody></table></div>
-          <button class="add-row" data-add="relationship">+ ДОБАВИТЬ СВЯЗЬ</button>
+          <div class="section-title"><span data-i18n="СВЯЗИ">СВЯЗИ</span> <span>RELATIONSHIPS</span></div>
+          <div class="table-scroll"><table class="data-table"><thead><tr><th data-i18n="Персонаж">Персонаж</th><th data-i18n="Кто это?">Кто это?</th><th data-i18n="Что ему нужно?">Что ему нужно?</th><th></th></tr></thead><tbody id="relationshipRows"></tbody></table></div>
+          <button class="add-row" data-add="relationship" data-i18n="+ ДОБАВИТЬ СВЯЗЬ">+ ДОБАВИТЬ СВЯЗЬ</button>
         </div>
       </div>
       <div class="panel story-panel">
-        <div class="section-title">РОЛЕВОЙ ЖИЗНЕННЫЙ ПУТЬ</div>
-        <textarea data-key="roleplay" rows="10" placeholder="Запишите важные события, цели и поворотные моменты..."></textarea>
+        <div class="section-title"><span data-i18n="РОЛЕВОЙ ЖИЗНЕННЫЙ ПУТЬ">РОЛЕВОЙ ЖИЗНЕННЫЙ ПУТЬ</span></div>
+        <textarea data-key="roleplay" rows="10" data-i18n-placeholder="Запишите важные события, цели и поворотные моменты..." placeholder="Запишите важные события, цели и поворотные моменты..."></textarea>
       </div>
     </section>
 
     <section class="tab-panel" id="cyberware">
-      <div class="page-heading"><div><span class="eyebrow">BODY MODIFICATION // 05</span><h1>КИБЕРИМПЛАНТЫ</h1></div><div class="human-status">HUMANITY <input id="humanityValue" data-key="humanityCurrent" type="number" min="0" value="0" aria-label="Человечность"><span class="human-meta" id="humanityMeta" title="Сумма потери человечности (ПЧ) от имплантов и текущая ЭМП"></span></div></div>
+      <div class="page-heading"><div><span class="eyebrow">BODY MODIFICATION // 05</span><h1 data-i18n="КИБЕРИМПЛАНТЫ">КИБЕРИМПЛАНТЫ</h1></div><div class="human-status">HUMANITY <input id="humanityValue" data-key="humanityCurrent" type="number" min="0" value="0" data-i18n-aria-label="Человечность" aria-label="Человечность"><span class="human-meta" id="humanityMeta" data-i18n-title="Сумма потери человечности (ПЧ) от имплантов и текущая ЭМП" title="Сумма потери человечности (ПЧ) от имплантов и текущая ЭМП"></span></div></div>
       <div class="cyber-layout">
         <div class="cyber-core">
           <div class="cyber-table-slot slot-cranial" data-cyber-section="audio"></div>
@@ -264,7 +269,7 @@
           <div class="cyber-table-slot slot-right-arm" data-cyber-section="rightArm"></div>
           <div class="cyber-table-slot slot-left-arm" data-cyber-section="leftArm"></div>
           <div class="cyber-diagram" id="cyberDiagram">
-            <svg class="body-silhouette" viewBox="0 0 160 400" aria-label="Схема тела" role="img">
+            <svg class="body-silhouette" viewBox="0 0 160 400" data-i18n-aria-label="Схема тела" aria-label="Схема тела" role="img">
               <defs>
                 <linearGradient id="cyberMetal" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stop-color="#ff5a5a"/>
@@ -324,7 +329,8 @@
   </main>
   <div class="toast" id="toast" role="status" hidden></div>
   <div class="print-sheet" id="printSheet" aria-hidden="true"></div>
-  <footer>НЕКОММЕРЧЕСКИЙ ЛИСТ ПЕРСОНАЖА // ДАННЫЕ ХРАНЯТСЯ ТОЛЬКО В ВАШЕМ БРАУЗЕРЕ</footer>
+  <footer data-i18n="НЕКОММЕРЧЕСКИЙ ЛИСТ ПЕРСОНАЖА // ДАННЫЕ ХРАНЯТСЯ ТОЛЬКО В ВАШЕМ БРАУЗЕРЕ">НЕКОММЕРЧЕСКИЙ ЛИСТ ПЕРСОНАЖА // ДАННЫЕ ХРАНЯТСЯ ТОЛЬКО В ВАШЕМ БРАУЗЕРЕ</footer>
+  <script src="shared/i18n.js"></script>
   <script src="shared/data.js"></script>
   <script src="shared/dom.js"></script>
   <script src="shared/injuries.js"></script>

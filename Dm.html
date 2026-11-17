@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CYBERPUNK RED // Лист Мастера</title>
+  <title data-i18n="CYBERPUNK RED // Лист Мастера">CYBERPUNK RED // Лист Мастера</title>
   <link rel="stylesheet" href="shared/styles.css">
   <link rel="stylesheet" href="dm/dm.css">
 </head>
@@ -12,42 +12,47 @@
   <header class="topbar">
     <div class="brand"><span>CYBERPUNK</span><b>RED</b><small>// GAME MASTER CONSOLE</small></div>
     <div class="top-actions">
-      <button class="ghost" id="printBtn" type="button" title="Печать карточек противников: отмеченных галочкой или всех">Печать</button>
-      <a class="ghost link-btn" href="Player.html" title="Открыть лист персонажа">Лист игрока</a>
-      <button class="ghost" id="resetBtn" type="button">Очистить</button>
-      <button class="primary" id="exportBtn" type="button">Экспорт JSON</button>
-      <label class="file-btn">Импорт JSON<input id="importInput" type="file" accept=".json"></label>
+      <span class="lang-switch" role="group" aria-label="Language">
+        <button type="button" class="ghost lang-btn" data-set-lang="ru" data-i18n-title="Русский" title="Русский">RU</button>
+        <button type="button" class="ghost lang-btn" data-set-lang="en" title="English">EN</button>
+      </span>
+
+      <button class="ghost" id="printBtn" type="button" data-i18n-title="Печать карточек противников: отмеченных галочкой или всех" title="Печать карточек противников: отмеченных галочкой или всех"><span data-i18n="Печать">Печать</span></button>
+      <a class="ghost link-btn" href="Player.html" data-i18n-title="Открыть лист персонажа" title="Открыть лист персонажа"><span data-i18n="Лист игрока">Лист игрока</span></a>
+      <button class="ghost" id="resetBtn" type="button" data-i18n="Очистить">Очистить</button>
+      <button class="primary" id="exportBtn" type="button" data-i18n="Экспорт JSON">Экспорт JSON</button>
+      <label class="file-btn"><span data-i18n="Импорт JSON">Импорт JSON</span><input id="importInput" type="file" accept=".json"></label>
     </div>
   </header>
 
   <main class="app-shell">
-    <nav class="tabs" aria-label="Разделы листа мастера">
-      <button class="tab active" data-tab="session" type="button">00 // Сессия</button>
-      <button class="tab" data-tab="enemies" type="button">01 // Противники</button>
-      <button class="tab" data-tab="initiative" type="button">02 // Инициатива</button>
-      <button class="tab" data-tab="world" type="button">03 // NPC и заметки</button>
-      <button class="tab" data-tab="bestiary" type="button">04 // Бестиарий и сцены</button>
-      <button class="tab" data-tab="net" type="button">05 // Сеть</button>
-      <button class="tab" data-tab="generators" type="button">06 // Генераторы</button>
-      <button class="tab" data-tab="rules" type="button">07 // Бой: правила</button>
-      <button class="tab" data-tab="ref" type="button">08 // Справочник</button>
-      <button class="tab" data-tab="econ" type="button">09 // Экономика</button>
-      <button class="tab" data-tab="fun" type="button">10 // Развлечения</button>
+    <nav class="tabs" data-i18n-aria-label="Разделы листа мастера" aria-label="Разделы листа мастера">
+      <button class="tab active" data-tab="session" type="button" data-i18n="00 // Сессия">00 // Сессия</button>
+      <button class="tab" data-tab="enemies" type="button" data-i18n="01 // Противники">01 // Противники</button>
+      <button class="tab" data-tab="initiative" type="button" data-i18n="02 // Инициатива">02 // Инициатива</button>
+      <button class="tab" data-tab="world" type="button" data-i18n="03 // NPC и заметки">03 // NPC и заметки</button>
+      <button class="tab" data-tab="bestiary" type="button" data-i18n="04 // Бестиарий и сцены">04 // Бестиарий и сцены</button>
+      <button class="tab" data-tab="net" type="button" data-i18n="05 // Сеть">05 // Сеть</button>
+      <button class="tab" data-tab="generators" type="button" data-i18n="06 // Генераторы">06 // Генераторы</button>
+      <button class="tab" data-tab="rules" type="button" data-i18n="07 // Бой: правила">07 // Бой: правила</button>
+      <button class="tab" data-tab="ref" type="button" data-i18n="08 // Справочник">08 // Справочник</button>
+      <button class="tab" data-tab="econ" type="button" data-i18n="09 // Экономика">09 // Экономика</button>
+      <button class="tab" data-tab="fun" type="button" data-i18n="10 // Развлечения">10 // Развлечения</button>
     </nav>
 
     <section class="status-strip">
       <span><i class="dot"></i> GM LINK ONLINE</span>
-      <span id="saveStatus">АВТОСОХРАНЕНИЕ ВКЛ.</span>
+      <span id="saveStatus" data-i18n="АВТОСОХРАНЕНИЕ ВКЛ.">АВТОСОХРАНЕНИЕ ВКЛ.</span>
       <span id="combatStatus"></span>
-      <span id="calendarStatus" title="Календарь — вкладка «Генераторы»"></span>
-      <button class="dice-toggle" id="diceToggle" type="button">КУБИК // 1D10</button>
+      <span id="calendarStatus" data-i18n-title="Календарь — вкладка «Генераторы»" title="Календарь — вкладка «Генераторы»"></span>
+      <button class="dice-toggle" id="diceToggle" type="button" data-i18n="КУБИК // 1D10">КУБИК // 1D10</button>
     </section>
-    <aside class="dice-drawer" id="diceDrawer" aria-label="Кубик мастера">
-      <div class="dice-head"><strong>КУБИК // GM</strong><button id="diceClose" type="button" aria-label="Закрыть">×</button></div>
+    <aside class="dice-drawer" id="diceDrawer" data-i18n-aria-label="Кубик мастера" aria-label="Кубик мастера">
+      <div class="dice-head"><strong data-i18n="КУБИК // GM">КУБИК // GM</strong><button id="diceClose" type="button" data-i18n-aria-label="Закрыть" aria-label="Закрыть">×</button></div>
       <div class="dice-controls">
-        <label>КУБИКИ<input id="diceFormula" value="1d10" placeholder="1d10, 2d6, 3d6+2"></label>
-        <label>МОДИФИКАТОР<input id="diceModifier" type="number" value="0"></label>
-        <button class="primary roll-button" id="rollDice" type="button">БРОСИТЬ</button>
+        <label><span data-i18n="КУБИКИ">КУБИКИ</span><input id="diceFormula" value="1d10" placeholder="1d10, 2d6, 3d6+2"></label>
+        <label><span data-i18n="МОДИФИКАТОР">МОДИФИКАТОР</span><input id="diceModifier" type="number" value="0"></label>
+        <button class="primary roll-button" id="rollDice" type="button" data-i18n="БРОСИТЬ">БРОСИТЬ</button>
       </div>
       <div class="dice-result" id="diceResult">—</div>
       <div class="dice-log" id="diceLog"></div>
@@ -55,163 +60,163 @@
 
     <section class="tab-panel active" id="session">
       <div class="page-heading">
-        <div><span class="eyebrow">GM DECK // 00</span><h1>ПАНЕЛЬ МАСТЕРА</h1></div>
-        <p id="sessionSummary">СИСТЕМА ГОТОВА</p>
+        <div><span class="eyebrow">GM DECK // 00</span><h1 data-i18n="ПАНЕЛЬ МАСТЕРА">ПАНЕЛЬ МАСТЕРА</h1></div>
+        <p id="sessionSummary" data-i18n="СИСТЕМА ГОТОВА">СИСТЕМА ГОТОВА</p>
       </div>
       <div class="dashboard-grid">
         <div class="panel session-panel">
-          <div class="section-title">СЕССИЯ</div>
-          <label>Название сессии<input data-key="sessionTitle" placeholder="Ночная смена в Хейвуде"></label>
-          <label>Текущая сцена<textarea data-key="scene" rows="3" placeholder="Где команда, что происходит, кто рядом?"></textarea></label>
-          <label>Цели и зацепки<textarea data-key="hooks" rows="3" placeholder="Что должно случиться, что игроки могут найти..."></textarea></label>
+          <div class="section-title"><span data-i18n="СЕССИЯ">СЕССИЯ</span></div>
+          <label><span data-i18n="Название сессии">Название сессии</span><input data-key="sessionTitle" data-i18n-placeholder="Ночная смена в Хейвуде" placeholder="Ночная смена в Хейвуде"></label>
+          <label><span data-i18n="Текущая сцена">Текущая сцена</span><textarea data-key="scene" rows="3" data-i18n-placeholder="Где команда, что происходит, кто рядом?" placeholder="Где команда, что происходит, кто рядом?"></textarea></label>
+          <label><span data-i18n="Цели и зацепки">Цели и зацепки</span><textarea data-key="hooks" rows="3" data-i18n-placeholder="Что должно случиться, что игроки могут найти..." placeholder="Что должно случиться, что игроки могут найти..."></textarea></label>
         </div>
         <div class="panel">
-          <div class="section-title">ПОЛЕ БОЯ <span>HP // SP</span></div>
+          <div class="section-title"><span data-i18n="ПОЛЕ БОЯ">ПОЛЕ БОЯ</span> <span>HP // SP</span></div>
           <div id="battleOverview" class="battle-overview"></div>
         </div>
         <div class="panel session-notes">
-          <div class="section-title">ИГРОКИ <span>ЧТО ЗНАЕТ МАСТЕР</span></div>
+          <div class="section-title"><span data-i18n="ИГРОКИ">ИГРОКИ</span> <span data-i18n="ЧТО ЗНАЕТ МАСТЕР">ЧТО ЗНАЕТ МАСТЕР</span></div>
           <div class="table-scroll">
             <table class="data-table players-table">
-              <thead><tr><th>Игрок</th><th>Персонаж</th><th>Роль</th><th>РЕА</th><th>Хиты</th><th>SP г/т</th><th>Заметки</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="Игрок">Игрок</th><th data-i18n="Персонаж">Персонаж</th><th data-i18n="Роль">Роль</th><th data-i18n="РЕА">РЕА</th><th data-i18n="Хиты">Хиты</th><th data-i18n="SP г/т">SP г/т</th><th data-i18n="Заметки">Заметки</th><th></th></tr></thead>
               <tbody id="playersBody"></tbody>
             </table>
           </div>
           <div class="enemy-row-add">
-            <button class="add-row" type="button" data-add="players">+ ИГРОК</button>
-            <button class="add-row" type="button" id="playersFromBrowser" title="Взять персонажей из листов игрока, открытых в этом же браузере">ИЗ ЛИСТОВ БРАУЗЕРА</button>
-            <label class="add-row file-label" title="Файлы «Экспорт JSON» из листа игрока; можно выбрать несколько">ИМПОРТ ЛИСТА JSON<input id="playerImport" type="file" accept=".json" multiple></label>
-            <button class="add-row" type="button" id="playersToInit">ИГРОКОВ В ИНИЦИАТИВУ</button>
+            <button class="add-row" type="button" data-add="players" data-i18n="+ ИГРОК">+ ИГРОК</button>
+            <button class="add-row" type="button" id="playersFromBrowser" data-i18n-title="Взять персонажей из листов игрока, открытых в этом же браузере" title="Взять персонажей из листов игрока, открытых в этом же браузере" data-i18n="ИЗ ЛИСТОВ БРАУЗЕРА">ИЗ ЛИСТОВ БРАУЗЕРА</button>
+            <label class="add-row file-label" data-i18n-title="Файлы «Экспорт JSON» из листа игрока; можно выбрать несколько" title="Файлы «Экспорт JSON» из листа игрока; можно выбрать несколько"><span data-i18n="ИМПОРТ ЛИСТА JSON">ИМПОРТ ЛИСТА JSON</span><input id="playerImport" type="file" accept=".json" multiple></label>
+            <button class="add-row" type="button" id="playersToInit" data-i18n="ИГРОКОВ В ИНИЦИАТИВУ">ИГРОКОВ В ИНИЦИАТИВУ</button>
           </div>
         </div>
         <div class="panel activity-panel">
-          <div class="section-title">ПОСЛЕДНИЕ БРОСКИ <button class="clear-log" id="clearLog" type="button">ОЧИСТИТЬ</button></div>
+          <div class="section-title"><span data-i18n="ПОСЛЕДНИЕ БРОСКИ">ПОСЛЕДНИЕ БРОСКИ</span> <button class="clear-log" id="clearLog" type="button" data-i18n="ОЧИСТИТЬ">ОЧИСТИТЬ</button></div>
           <div id="dashboardLog" class="dashboard-log">Пока нет бросков.</div>
         </div>
         <div class="panel">
-          <div class="section-title">ЗАМЕТКИ МАСТЕРА</div>
-          <textarea data-key="notes" rows="8" placeholder="Секреты, импровизация, что сказали игроки..."></textarea>
+          <div class="section-title"><span data-i18n="ЗАМЕТКИ МАСТЕРА">ЗАМЕТКИ МАСТЕРА</span></div>
+          <textarea data-key="notes" rows="8" data-i18n-placeholder="Секреты, импровизация, что сказали игроки..." placeholder="Секреты, импровизация, что сказали игроки..."></textarea>
         </div>
       </div>
     </section>
 
     <section class="tab-panel" id="enemies">
       <div class="page-heading">
-        <div><span class="eyebrow">HOSTILES // 01</span><h1>ПРОТИВНИКИ</h1></div>
-        <p id="enemiesSummary">НЕТ ЦЕЛЕЙ</p>
+        <div><span class="eyebrow">HOSTILES // 01</span><h1 data-i18n="ПРОТИВНИКИ">ПРОТИВНИКИ</h1></div>
+        <p id="enemiesSummary" data-i18n="НЕТ ЦЕЛЕЙ">НЕТ ЦЕЛЕЙ</p>
       </div>
       <div class="dm-toolbar" data-block="Панель действий">
-        <button class="quick-roll" type="button" id="addEnemy">+ ПРОТИВНИК</button>
-        <label>Из бестиария<select id="spawnTemplate"></select></label>
-        <label class="narrow">Кол-во<input id="spawnCount" type="number" min="1" max="20" value="1"></label>
-        <button class="add-row" type="button" id="spawnBtn">ДОБАВИТЬ</button>
+        <button class="quick-roll" type="button" id="addEnemy" data-i18n="+ ПРОТИВНИК">+ ПРОТИВНИК</button>
+        <label><span data-i18n="Из бестиария">Из бестиария</span><select id="spawnTemplate"></select></label>
+        <label class="narrow"><span data-i18n="Кол-во">Кол-во</span><input id="spawnCount" type="number" min="1" max="20" value="1"></label>
+        <button class="add-row" type="button" id="spawnBtn" data-i18n="ДОБАВИТЬ">ДОБАВИТЬ</button>
         <span class="toolbar-spacer"></span>
-        <button class="add-row" type="button" id="compactToggle" aria-pressed="false" title="Все противники одной строкой">КОМПАКТНО</button>
-        <button class="add-row" type="button" id="allToInit" title="Добавить всех живых противников в инициативу и бросить 1d10 + РЕА">ВСЕ В ИНИЦИАТИВУ</button>
-        <button class="add-row" type="button" id="clearDead" title="Убрать с поля всех мёртвых">УБРАТЬ ПАВШИХ</button>
+        <button class="add-row" type="button" id="compactToggle" aria-pressed="false" data-i18n-title="Все противники одной строкой" title="Все противники одной строкой" data-i18n="КОМПАКТНО">КОМПАКТНО</button>
+        <button class="add-row" type="button" id="allToInit" data-i18n-title="Добавить всех живых противников в инициативу и бросить 1d10 + РЕА" title="Добавить всех живых противников в инициативу и бросить 1d10 + РЕА" data-i18n="ВСЕ В ИНИЦИАТИВУ">ВСЕ В ИНИЦИАТИВУ</button>
+        <button class="add-row" type="button" id="clearDead" data-i18n-title="Убрать с поля всех мёртвых" title="Убрать с поля всех мёртвых" data-i18n="УБРАТЬ ПАВШИХ">УБРАТЬ ПАВШИХ</button>
       </div>
       <div class="rules-note" data-block="Подсказка боя">Выберите в карточке дистанцию до цели: «АТАКА» сравнит бросок с DV по таблице книги и при попадании сразу бросит урон. Укрытие и особые условия — в поле DV вручную. Хиты: 10 + 5 × ⌈(ТЕЛ + ВОЛЯ) / 2⌉, если поле «макс.» пустое. Урон минус SP зоны; в голову ×2; холодное оружие — SP/2. Пробитая броня теряет 1 SP. Штрафы ранения, критических травм и захвата лист учитывает в бросках сам; смертельно раненый от каждой атаки получает новую травму. Состояния (огонь, удушье, ток, вакуум) срабатывают по кнопке «Следующий ход» на вкладке «Инициатива».</div>
       <div class="group-hit" data-block="Групповое попадание">
-        <span class="group-title">ГРУППОВОЕ ПОПАДАНИЕ <small id="groupCount">НИКТО НЕ ОТМЕЧЕН</small></span>
-        <input id="groupDamage" placeholder="урон или 6d6" aria-label="Урон: число или формула" title="Формула бросается один раз на всех — как граната или взрыв">
-        <select id="groupZone" aria-label="Зона"><option value="Body">Тело</option><option value="Head">Голова ×2</option></select>
-        <select id="groupKind" aria-label="Вид урона" title="Ближний: SP/2. Мимо брони: яд, газ, огонь. Несмертельный: не ниже 1 ПЗ"></select>
-        <button class="quick-roll" type="button" id="groupHit">ПО ОТМЕЧЕННЫМ</button>
-        <button class="add-row" type="button" id="selectAll">ОТМЕТИТЬ ВСЕХ / СНЯТЬ</button>
+        <span class="group-title">ГРУППОВОЕ ПОПАДАНИЕ <small id="groupCount" data-i18n="НИКТО НЕ ОТМЕЧЕН">НИКТО НЕ ОТМЕЧЕН</small></span>
+        <input id="groupDamage" data-i18n-placeholder="урон или 6d6" placeholder="урон или 6d6" data-i18n-aria-label="Урон: число или формула" aria-label="Урон: число или формула" data-i18n-title="Формула бросается один раз на всех — как граната или взрыв" title="Формула бросается один раз на всех — как граната или взрыв">
+        <select id="groupZone" data-i18n-aria-label="Зона" aria-label="Зона"><option value="Body" data-i18n="Тело">Тело</option><option value="Head" data-i18n="Голова ×2">Голова ×2</option></select>
+        <select id="groupKind" data-i18n-aria-label="Вид урона" aria-label="Вид урона" data-i18n-title="Ближний: SP/2. Мимо брони: яд, газ, огонь. Несмертельный: не ниже 1 ПЗ" title="Ближний: SP/2. Мимо брони: яд, газ, огонь. Несмертельный: не ниже 1 ПЗ"></select>
+        <button class="quick-roll" type="button" id="groupHit" data-i18n="ПО ОТМЕЧЕННЫМ">ПО ОТМЕЧЕННЫМ</button>
+        <button class="add-row" type="button" id="selectAll" data-i18n="ОТМЕТИТЬ ВСЕХ / СНЯТЬ">ОТМЕТИТЬ ВСЕХ / СНЯТЬ</button>
       </div>
       <div id="enemyList" class="enemy-list" data-block="Список противников"></div>
     </section>
 
     <section class="tab-panel" id="initiative">
       <div class="page-heading">
-        <div><span class="eyebrow">COMBAT // 02</span><h1>ИНИЦИАТИВА</h1></div>
-        <p id="roundLabel">РАУНД 1</p>
+        <div><span class="eyebrow">COMBAT // 02</span><h1 data-i18n="ИНИЦИАТИВА">ИНИЦИАТИВА</h1></div>
+        <p id="roundLabel" data-i18n="РАУНД 1">РАУНД 1</p>
       </div>
       <div class="dm-toolbar" data-block="Панель боя">
-        <button class="quick-roll" type="button" id="nextTurn">СЛЕДУЮЩИЙ ХОД ▸</button>
-        <button class="add-row" type="button" id="sortInit">СОРТИРОВАТЬ</button>
-        <button class="add-row" type="button" id="rerollInit" title="Перебросить 1d10 + РЕА всем противникам">ПЕРЕБРОСИТЬ ПРОТИВНИКОВ</button>
+        <button class="quick-roll" type="button" id="nextTurn" data-i18n="СЛЕДУЮЩИЙ ХОД ▸">СЛЕДУЮЩИЙ ХОД ▸</button>
+        <button class="add-row" type="button" id="sortInit" data-i18n="СОРТИРОВАТЬ">СОРТИРОВАТЬ</button>
+        <button class="add-row" type="button" id="rerollInit" data-i18n-title="Перебросить 1d10 + РЕА всем противникам" title="Перебросить 1d10 + РЕА всем противникам" data-i18n="ПЕРЕБРОСИТЬ ПРОТИВНИКОВ">ПЕРЕБРОСИТЬ ПРОТИВНИКОВ</button>
         <span class="toolbar-spacer"></span>
-        <button class="add-row" type="button" id="resetCombat">НОВЫЙ БОЙ</button>
+        <button class="add-row" type="button" id="resetCombat" data-i18n="НОВЫЙ БОЙ">НОВЫЙ БОЙ</button>
       </div>
       <div id="turnPanel" data-block="Сейчас ходит"></div>
       <div class="panel">
-        <div class="section-title">ОЧЕРЁДНОСТЬ <span>БОЛЬШЕ — РАНЬШЕ</span></div>
+        <div class="section-title"><span data-i18n="ОЧЕРЁДНОСТЬ">ОЧЕРЁДНОСТЬ</span> <span data-i18n="БОЛЬШЕ — РАНЬШЕ">БОЛЬШЕ — РАНЬШЕ</span></div>
         <div class="table-scroll">
           <table class="data-table init-table">
-            <thead><tr><th></th><th>Участник</th><th>Иниц.</th><th>Хиты</th><th>Состояние</th><th>Эффекты</th><th>Заметка</th><th></th></tr></thead>
+            <thead><tr><th></th><th data-i18n="Участник">Участник</th><th data-i18n="Иниц.">Иниц.</th><th data-i18n="Хиты">Хиты</th><th data-i18n="Состояние">Состояние</th><th data-i18n="Эффекты">Эффекты</th><th data-i18n="Заметка">Заметка</th><th></th></tr></thead>
             <tbody id="initBody"></tbody>
           </table>
         </div>
         <div class="init-add">
-          <input id="initName" placeholder="Имя игрока или NPC">
-          <input id="initValue" type="number" placeholder="Иниц.">
-          <button class="add-row" type="button" id="initAdd">+ В ОЧЕРЕДЬ</button>
+          <input id="initName" data-i18n-placeholder="Имя игрока или NPC" placeholder="Имя игрока или NPC">
+          <input id="initValue" type="number" data-i18n-placeholder="Иниц." placeholder="Иниц.">
+          <button class="add-row" type="button" id="initAdd" data-i18n="+ В ОЧЕРЕДЬ">+ В ОЧЕРЕДЬ</button>
         </div>
       </div>
     </section>
 
     <section class="tab-panel" id="world">
       <div class="page-heading">
-        <div><span class="eyebrow">NIGHT CITY // 03</span><h1>NPC И ЗАМЕТКИ</h1></div>
-        <p>КТО ЕСТЬ КТО</p>
+        <div><span class="eyebrow">NIGHT CITY // 03</span><h1 data-i18n="NPC И ЗАМЕТКИ">NPC И ЗАМЕТКИ</h1></div>
+        <p data-i18n="КТО ЕСТЬ КТО">КТО ЕСТЬ КТО</p>
       </div>
       <div class="panel">
         <div class="section-title">NPC <span id="npcCount"></span></div>
         <div class="npc-toolbar">
-          <input id="npcSearch" type="search" placeholder="Поиск по имени, фракции, заметкам..." aria-label="Поиск NPC">
+          <input id="npcSearch" type="search" data-i18n-placeholder="Поиск по имени, фракции, заметкам..." placeholder="Поиск по имени, фракции, заметкам..." data-i18n-aria-label="Поиск NPC" aria-label="Поиск NPC">
           <button class="add-row" type="button" data-add="npcs">+ NPC</button>
-          <button class="add-row" type="button" id="npcCollapseAll" title="Свернуть или развернуть все карточки">СВЕРНУТЬ / РАЗВЕРНУТЬ ВСЕ</button>
+          <button class="add-row" type="button" id="npcCollapseAll" data-i18n-title="Свернуть или развернуть все карточки" title="Свернуть или развернуть все карточки" data-i18n="СВЕРНУТЬ / РАЗВЕРНУТЬ ВСЕ">СВЕРНУТЬ / РАЗВЕРНУТЬ ВСЕ</button>
         </div>
         <div id="npcList" class="npc-list"></div>
       </div>
       <div class="panel gap-top">
-        <div class="section-title">ПОДЧИНЁННЫЕ КОРПОРАТОВ <span id="execTeamCount"></span></div>
-        <p class="muted">Как на листе игрока (роль Корпорат, стр. 153–157): найм по таблице типа, лояльность и проверка 1d6. Можно подтянуть команду из листов персонажей в этом браузере.</p>
+        <div class="section-title"><span data-i18n="ПОДЧИНЁННЫЕ КОРПОРАТОВ">ПОДЧИНЁННЫЕ КОРПОРАТОВ</span> <span id="execTeamCount"></span></div>
+        <p class="muted" data-i18n="Как на листе игрока (роль Корпорат, стр. 153–157): найм по таблице типа, лояльность и проверка 1d6. Можно подтянуть команду из листов персонажей в этом браузере.">Как на листе игрока (роль Корпорат, стр. 153–157): найм по таблице типа, лояльность и проверка 1d6. Можно подтянуть команду из листов персонажей в этом браузере.</p>
         <div class="dm-toolbar exec-team-toolbar">
-          <label>Корпорат<input id="execOwner" list="execOwnerList" placeholder="Имя персонажа" aria-label="Чей подчинённый"></label>
+          <label><span data-i18n="Корпорат">Корпорат</span><input id="execOwner" list="execOwnerList" data-i18n-placeholder="Имя персонажа" placeholder="Имя персонажа" data-i18n-aria-label="Чей подчинённый" aria-label="Чей подчинённый"></label>
           <datalist id="execOwnerList"></datalist>
-          <label>Тип<select id="execHireType" aria-label="Тип подчинённого"></select></label>
-          <button class="quick-roll" type="button" id="execHire" title="СТАТы — 1d6 по таблице типа, лояльность — 1d6 + 1">НАНЯТЬ: БРОСИТЬ СТАТЫ</button>
-          <button class="add-row" type="button" id="execAdd">+ ВРУЧНУЮ</button>
-          <button class="add-row" type="button" id="execFromSheets" title="Взять roleTeam из листов Корпоратов в этом браузере">ИЗ ЛИСТОВ БРАУЗЕРА</button>
+          <label><span data-i18n="Тип">Тип</span><select id="execHireType" data-i18n-aria-label="Тип подчинённого" aria-label="Тип подчинённого"></select></label>
+          <button class="quick-roll" type="button" id="execHire" data-i18n-title="СТАТы — 1d6 по таблице типа, лояльность — 1d6 + 1" title="СТАТы — 1d6 по таблице типа, лояльность — 1d6 + 1" data-i18n="НАНЯТЬ: БРОСИТЬ СТАТЫ">НАНЯТЬ: БРОСИТЬ СТАТЫ</button>
+          <button class="add-row" type="button" id="execAdd" data-i18n="+ ВРУЧНУЮ">+ ВРУЧНУЮ</button>
+          <button class="add-row" type="button" id="execFromSheets" data-i18n-title="Взять roleTeam из листов Корпоратов в этом браузере" title="Взять roleTeam из листов Корпоратов в этом браузере" data-i18n="ИЗ ЛИСТОВ БРАУЗЕРА">ИЗ ЛИСТОВ БРАУЗЕРА</button>
         </div>
         <div class="dm-toolbar exec-team-toolbar">
-          <label>Подчинённый<select id="execMember" aria-label="Подчинённый для события лояльности"></select></label>
-          <label class="exec-event">Событие<select id="execEvent" aria-label="Событие лояльности"></select></label>
-          <button class="add-row" type="button" id="execLoyalty">ИЗМЕНИТЬ ЛОЯЛЬНОСТЬ</button>
+          <label><span data-i18n="Подчинённый">Подчинённый</span><select id="execMember" data-i18n-aria-label="Подчинённый для события лояльности" aria-label="Подчинённый для события лояльности"></select></label>
+          <label class="exec-event"><span data-i18n="Событие">Событие</span><select id="execEvent" data-i18n-aria-label="Событие лояльности" aria-label="Событие лояльности"></select></label>
+          <button class="add-row" type="button" id="execLoyalty" data-i18n="ИЗМЕНИТЬ ЛОЯЛЬНОСТЬ">ИЗМЕНИТЬ ЛОЯЛЬНОСТЬ</button>
         </div>
         <div id="execTeamList" class="team-cards"></div>
       </div>
       <div class="world-grid">
         <div class="panel">
-          <div class="section-title">ЛОКАЦИИ</div>
-          <textarea data-key="locations" rows="7" placeholder="Бар «Последний шанс», склад в Уотсоне..."></textarea>
+          <div class="section-title"><span data-i18n="ЛОКАЦИИ">ЛОКАЦИИ</span></div>
+          <textarea data-key="locations" rows="7" data-i18n-placeholder="Бар «Последний шанс», склад в Уотсоне..." placeholder="Бар «Последний шанс», склад в Уотсоне..."></textarea>
         </div>
         <div class="panel">
-          <div class="section-title">УЛИКИ И СЕКРЕТЫ</div>
-          <textarea data-key="clues" rows="7" placeholder="Что игроки ещё не знают"></textarea>
+          <div class="section-title"><span data-i18n="УЛИКИ И СЕКРЕТЫ">УЛИКИ И СЕКРЕТЫ</span></div>
+          <textarea data-key="clues" rows="7" data-i18n-placeholder="Что игроки ещё не знают" placeholder="Что игроки ещё не знают"></textarea>
         </div>
         <div class="panel">
-          <div class="section-title">ДОБЫЧА И НАГРАДЫ</div>
-          <textarea data-key="loot" rows="7" placeholder="Эдди, снаряжение, очки улучшения (IP)"></textarea>
+          <div class="section-title"><span data-i18n="ДОБЫЧА И НАГРАДЫ">ДОБЫЧА И НАГРАДЫ</span></div>
+          <textarea data-key="loot" rows="7" data-i18n-placeholder="Эдди, снаряжение, очки улучшения (IP)" placeholder="Эдди, снаряжение, очки улучшения (IP)"></textarea>
         </div>
       </div>
     </section>
 
     <section class="tab-panel" id="bestiary">
       <div class="page-heading">
-        <div><span class="eyebrow">DATABASE // 04</span><h1>БЕСТИАРИЙ И СЦЕНЫ</h1></div>
-        <p id="bestiarySummary">ШАБЛОНОВ НЕТ</p>
+        <div><span class="eyebrow">DATABASE // 04</span><h1 data-i18n="БЕСТИАРИЙ И СЦЕНЫ">БЕСТИАРИЙ И СЦЕНЫ</h1></div>
+        <p id="bestiarySummary" data-i18n="ШАБЛОНОВ НЕТ">ШАБЛОНОВ НЕТ</p>
       </div>
       <div class="rules-note" data-block="Подсказка бестиария">Соберите противника на вкладке «Противники» и нажмите ★ — он сохранится здесь как шаблон. Шаблон с тем же именем заменяется. Из шаблона можно выставить сразу несколько копий: они получат номера.</div>
       <div id="templateList" class="template-list" data-block="Шаблоны противников"></div>
       <div class="panel gap-top">
-        <div class="section-title">СЦЕНЫ <span>ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ</span></div>
-        <p class="muted">Соберите противников на поле и сохраните их как сцену: потом она выставляется целиком, со свежими хитами, бронёй и магазинами.</p>
+        <div class="section-title"><span data-i18n="СЦЕНЫ">СЦЕНЫ</span> <span data-i18n="ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ">ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ</span></div>
+        <p class="muted" data-i18n="Соберите противников на поле и сохраните их как сцену: потом она выставляется целиком, со свежими хитами, бронёй и магазинами.">Соберите противников на поле и сохраните их как сцену: потом она выставляется целиком, со свежими хитами, бронёй и магазинами.</p>
         <div class="init-add">
-          <input id="sceneName" placeholder="Засада на мосту">
-          <button class="add-row" type="button" id="saveScene">СОХРАНИТЬ ПОЛЕ КАК СЦЕНУ</button>
+          <input id="sceneName" data-i18n-placeholder="Засада на мосту" placeholder="Засада на мосту">
+          <button class="add-row" type="button" id="saveScene" data-i18n="СОХРАНИТЬ ПОЛЕ КАК СЦЕНУ">СОХРАНИТЬ ПОЛЕ КАК СЦЕНУ</button>
         </div>
         <div id="sceneList" class="scene-list"></div>
       </div>
@@ -219,101 +224,102 @@
 
     <section class="tab-panel" id="net">
       <div class="page-heading">
-        <div><span class="eyebrow">NET ARCHITECTURE // 05</span><h1>СЕТЬ</h1></div>
-        <p>АРХИТЕКТУРЫ</p>
+        <div><span class="eyebrow">NET ARCHITECTURE // 05</span><h1 data-i18n="СЕТЬ">СЕТЬ</h1></div>
+        <p data-i18n="АРХИТЕКТУРЫ">АРХИТЕКТУРЫ</p>
       </div>
       <div class="group-hit net-gen" data-block="Генератор архитектуры">
-        <span class="group-title">ГЕНЕРАТОР АРХИТЕКТУРЫ <small>ПО ТАБЛИЦАМ КНИГИ, СТР. 210–211</small></span>
-        <input id="netName" placeholder="Название (необязательно)" aria-label="Название архитектуры">
-        <select id="netDifficulty" aria-label="Сложность"></select>
-        <input id="netFloors" type="number" min="2" max="40" placeholder="этажей: 3d6" aria-label="Этажей" title="Пусто — 3d6">
-        <label title="1d10: 7 и больше — ответвление, бросок повторяется"><input type="checkbox" id="netBranch" checked> ветвления 1d10</label>
-        <button class="quick-roll" type="button" id="generateNet">СГЕНЕРИРОВАТЬ</button>
+        <span class="group-title">ГЕНЕРАТОР АРХИТЕКТУРЫ <small data-i18n="ПО ТАБЛИЦАМ КНИГИ, СТР. 210–211">ПО ТАБЛИЦАМ КНИГИ, СТР. 210–211</small></span>
+        <input id="netName" data-i18n-placeholder="Название (необязательно)" placeholder="Название (необязательно)" data-i18n-aria-label="Название архитектуры" aria-label="Название архитектуры">
+        <select id="netDifficulty" data-i18n-aria-label="Сложность" aria-label="Сложность"></select>
+        <input id="netFloors" type="number" min="2" max="40" data-i18n-placeholder="этажей: 3d6" placeholder="этажей: 3d6" data-i18n-aria-label="Этажей" aria-label="Этажей" data-i18n-title="Пусто — 3d6" title="Пусто — 3d6">
+        <label data-i18n-title="1d10: 7 и больше — ответвление, бросок повторяется" title="1d10: 7 и больше — ответвление, бросок повторяется"><input type="checkbox" id="netBranch" checked> <span data-i18n="ветвления 1d10">ветвления 1d10</span></label>
+        <button class="quick-roll" type="button" id="generateNet" data-i18n="СГЕНЕРИРОВАТЬ">СГЕНЕРИРОВАТЬ</button>
       </div>
       <div class="rules-note" data-block="Подсказка сети">Как в книге: этажей 3d6, этажи 1–2 — 1d6 по таблице лобби, остальные — 3d6 по таблице сложности; повторяющиеся ЛЁД и Пароли перебрасываются. 1d10 ≥ 7 — ответвление (не раньше второго этажа), самая длинная ветка ведёт к «дну» для Вируса. Несколько ЛЬДОВ на этаже — отдельные строки с одним номером. ⟳ перебрасывает этаж. Кнопка «КАРТИНКА» под таблицей рисует архитектуру для Owlbear.</div>
       <div id="netDifficultyGuide" class="net-guide" data-block="Ориентир сложности"></div>
       <details class="panel net-details" data-block="Таблицы генератора">
         <summary>ТАБЛИЦЫ ГЕНЕРАТОРА</summary>
-        <p class="muted">Таблицы книги, их можно править. Одна строка — один вариант. В таблице из 16 строк бросается 3d6 (первая строка — результат 3, последняя — 18), в другой — равный шанс. Строки: «Пароль СЛ8», «Файл СЛ8», «Узел управления СЛ8», «ЛЁД: Адская гончая», «ЛЁД: Ворон x2», «ЛЁД: Ворон, Аспид», любой другой текст.</p>
+        <p class="muted" data-i18n="Таблицы книги, их можно править. Одна строка — один вариант. В таблице из 16 строк бросается 3d6 (первая строка — результат 3, последняя — 18), в другой — равный шанс. Строки: «Пароль СЛ8», «Файл СЛ8», «Узел управления СЛ8», «ЛЁД: Адская гончая», «ЛЁД: Ворон x2», «ЛЁД: Ворон, Аспид», любой другой текст.">Таблицы книги, их можно править. Одна строка — один вариант. В таблице из 16 строк бросается 3d6 (первая строка — результат 3, последняя — 18), в другой — равный шанс. Строки: «Пароль СЛ8», «Файл СЛ8», «Узел управления СЛ8», «ЛЁД: Адская гончая», «ЛЁД: Ворон x2», «ЛЁД: Ворон, Аспид», любой другой текст.</p>
         <div id="netGenTables" class="net-gen-tables"></div>
-        <button class="add-row" type="button" id="netGenReset">ВЕРНУТЬ ТАБЛИЦЫ КНИГИ</button>
+        <button class="add-row" type="button" id="netGenReset" data-i18n="ВЕРНУТЬ ТАБЛИЦЫ КНИГИ">ВЕРНУТЬ ТАБЛИЦЫ КНИГИ</button>
       </details>
       <div class="dm-toolbar rules-toolbar" data-block="Поиск справочника Сети">
-        <input id="netSearch" type="search" placeholder="Поиск по справочнику Сети: Адская гончая, Плащ, турель..." aria-label="Поиск по справочнику Сети">
-        <label class="net-iface" title="Ранг Интерфейса вражеского нетраннера: для бросков программ из справочника">Интерфейс врага<input id="netEnemyIface" type="number" min="0" max="10" value="4"></label>
+        <input id="netSearch" type="search" data-i18n-placeholder="Поиск по справочнику Сети: Адская гончая, Плащ, турель..." placeholder="Поиск по справочнику Сети: Адская гончая, Плащ, турель..." data-i18n-aria-label="Поиск по справочнику Сети" aria-label="Поиск по справочнику Сети">
+        <label class="net-iface" data-i18n-title="Ранг Интерфейса вражеского нетраннера: для бросков программ из справочника" title="Ранг Интерфейса вражеского нетраннера: для бросков программ из справочника"><span data-i18n="Интерфейс врага">Интерфейс врага</span><input id="netEnemyIface" type="number" min="0" max="10" value="4"></label>
       </div>
       <div id="netRef" class="rules-list net-ref"></div>
       <div data-block="Архитектуры">
         <div id="netList" class="net-list"></div>
-        <button class="quick-roll gap-top" type="button" id="addNet">+ АРХИТЕКТУРА</button>
+        <button class="quick-roll gap-top" type="button" id="addNet" data-i18n="+ АРХИТЕКТУРА">+ АРХИТЕКТУРА</button>
       </div>
     </section>
 
     <section class="tab-panel" id="generators">
       <div class="page-heading">
-        <div><span class="eyebrow">RANDOM // 06</span><h1>ГЕНЕРАТОРЫ</h1></div>
-        <p>ИМПРОВИЗАЦИЯ</p>
+        <div><span class="eyebrow">RANDOM // 06</span><h1 data-i18n="ГЕНЕРАТОРЫ">ГЕНЕРАТОРЫ</h1></div>
+        <p data-i18n="ИМПРОВИЗАЦИЯ">ИМПРОВИЗАЦИЯ</p>
       </div>
       <div id="genList" class="rules-list"></div>
       <div class="world-grid generators-grid gap-top">
         <div class="panel">
-          <div class="section-title">ИМЕНА <span>СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ</span></div>
+          <div class="section-title"><span data-i18n="ИМЕНА">ИМЕНА</span> <span data-i18n="СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ">СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ</span></div>
           <div id="nameList" class="scene-list"></div>
-          <button class="quick-roll gap-top" type="button" id="genNames">ЕЩЁ ИМЕНА</button>
+          <button class="quick-roll gap-top" type="button" id="genNames" data-i18n="ЕЩЁ ИМЕНА">ЕЩЁ ИМЕНА</button>
         </div>
         <div class="panel generators-tables">
-          <div class="section-title">СВОИ ТАБЛИЦЫ <span>СЛУЧАЙНАЯ СТРОКА</span></div>
-          <p class="muted">Перенесите сюда таблицы из книги (Ночной рынок, случайные встречи) или придумайте свои: одна строка — один вариант. Результат попадает в журнал.</p>
+          <div class="section-title"><span data-i18n="СВОИ ТАБЛИЦЫ">СВОИ ТАБЛИЦЫ</span> <span data-i18n="СЛУЧАЙНАЯ СТРОКА">СЛУЧАЙНАЯ СТРОКА</span></div>
+          <p class="muted" data-i18n="Перенесите сюда таблицы из книги (Ночной рынок, случайные встречи) или придумайте свои: одна строка — один вариант. Результат попадает в журнал.">Перенесите сюда таблицы из книги (Ночной рынок, случайные встречи) или придумайте свои: одна строка — один вариант. Результат попадает в журнал.</p>
           <div id="tableList" class="template-list"></div>
-          <button class="add-row" type="button" id="addTable">+ ТАБЛИЦА</button>
+          <button class="add-row" type="button" id="addTable" data-i18n="+ ТАБЛИЦА">+ ТАБЛИЦА</button>
         </div>
       </div>
     </section>
 
     <section class="tab-panel" id="rules">
       <div class="page-heading">
-        <div><span class="eyebrow">COMBAT RULES // 07</span><h1>БОЙ: ПРАВИЛА</h1></div>
-        <p>КНИГА ПРАВИЛ 1.25e</p>
+        <div><span class="eyebrow">COMBAT RULES // 07</span><h1 data-i18n="БОЙ: ПРАВИЛА">БОЙ: ПРАВИЛА</h1></div>
+        <p data-i18n="КНИГА ПРАВИЛ 1.25e">КНИГА ПРАВИЛ 1.25e</p>
       </div>
       <div class="dm-toolbar rules-toolbar" data-block="Поиск">
-        <input id="rulesSearch" type="search" placeholder="Поиск: дробь, укрытие, вакуум, перелом..." aria-label="Поиск по правилам">
-        <button class="add-row" type="button" id="rulesToggle">РАЗВЕРНУТЬ / СВЕРНУТЬ ВСЕ</button>
+        <input id="rulesSearch" type="search" data-i18n-placeholder="Поиск: дробь, укрытие, вакуум, перелом..." placeholder="Поиск: дробь, укрытие, вакуум, перелом..." data-i18n-aria-label="Поиск по правилам" aria-label="Поиск по правилам">
+        <button class="add-row" type="button" id="rulesToggle" data-i18n="РАЗВЕРНУТЬ / СВЕРНУТЬ ВСЕ">РАЗВЕРНУТЬ / СВЕРНУТЬ ВСЕ</button>
       </div>
       <div id="rulesList" class="rules-list"></div>
     </section>
 
     <section class="tab-panel" id="ref">
       <div class="page-heading">
-        <div><span class="eyebrow">DATABASE // 08</span><h1>СПРАВОЧНИК</h1></div>
-        <p>РОЛИ · НАВЫКИ · БЕСТИАРИЙ · ИМПЛАНТЫ</p>
+        <div><span class="eyebrow">DATABASE // 08</span><h1 data-i18n="СПРАВОЧНИК">СПРАВОЧНИК</h1></div>
+        <p data-i18n="РОЛИ · НАВЫКИ · БЕСТИАРИЙ · ИМПЛАНТЫ">РОЛИ · НАВЫКИ · БЕСТИАРИЙ · ИМПЛАНТЫ</p>
       </div>
       <div class="dm-toolbar rules-toolbar" data-block="Поиск">
-        <input id="refSearch" type="search" placeholder="Поиск: Уклонение, Буст, Когти росомахи, Фиксер..." aria-label="Поиск по справочнику">
-        <button class="add-row" type="button" id="refToggle">РАЗВЕРНУТЬ / СВЕРНУТЬ ВСЕ</button>
+        <input id="refSearch" type="search" data-i18n-placeholder="Поиск: Уклонение, Буст, Когти росомахи, Фиксер..." placeholder="Поиск: Уклонение, Буст, Когти росомахи, Фиксер..." data-i18n-aria-label="Поиск по справочнику" aria-label="Поиск по справочнику">
+        <button class="add-row" type="button" id="refToggle" data-i18n="РАЗВЕРНУТЬ / СВЕРНУТЬ ВСЕ">РАЗВЕРНУТЬ / СВЕРНУТЬ ВСЕ</button>
       </div>
       <div id="refList" class="rules-list"></div>
     </section>
 
     <section class="tab-panel" id="econ">
       <div class="page-heading">
-        <div><span class="eyebrow">EURODOLLARS // 09</span><h1>ЭКОНОМИКА</h1></div>
-        <p>АРЕНДА · ДЕЛА · ХАЛТУРКИ · ОУ · ЦЕНЫ</p>
+        <div><span class="eyebrow">EURODOLLARS // 09</span><h1 data-i18n="ЭКОНОМИКА">ЭКОНОМИКА</h1></div>
+        <p data-i18n="АРЕНДА · ДЕЛА · ХАЛТУРКИ · ОУ · ЦЕНЫ">АРЕНДА · ДЕЛА · ХАЛТУРКИ · ОУ · ЦЕНЫ</p>
       </div>
       <div id="econList" class="rules-list"></div>
     </section>
 
     <section class="tab-panel" id="fun">
       <div class="page-heading">
-        <div><span class="eyebrow">AFTER HOURS // 10</span><h1>РАЗВЛЕЧЕНИЯ</h1></div>
-        <p>НАКАЗАНИЯ · ТАРО · КАРТЫ · ПОТЫКАТЬ</p>
+        <div><span class="eyebrow">AFTER HOURS // 10</span><h1 data-i18n="РАЗВЛЕЧЕНИЯ">РАЗВЛЕЧЕНИЯ</h1></div>
+        <p data-i18n="НАКАЗАНИЯ · ТАРО · КАРТЫ · ПОТЫКАТЬ">НАКАЗАНИЯ · ТАРО · КАРТЫ · ПОТЫКАТЬ</p>
       </div>
       <div id="funList" class="rules-list"></div>
     </section>
   </main>
 
-  <div class="toast" id="toast" hidden><span id="toastText"></span><button type="button" id="toastUndo" hidden>Вернуть</button></div>
+  <div class="toast" id="toast" hidden><span id="toastText"></span><button type="button" id="toastUndo" hidden data-i18n="Вернуть">Вернуть</button></div>
 
-  <dialog class="mod-dialog" id="modDialog" aria-label="Модификации оружия"></dialog>
+  <dialog class="mod-dialog" id="modDialog" data-i18n-aria-label="Модификации оружия" aria-label="Модификации оружия"></dialog>
+  <script src="shared/i18n.js"></script>
   <script src="shared/data.js"></script>
   <script src="shared/dom.js"></script>
   <script src="shared/injuries.js"></script>

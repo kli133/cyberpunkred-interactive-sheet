@@ -663,7 +663,10 @@ const parseMods = raw => {
 const modSlotLimit = mods => WEAPON_MOD_SLOTS + (mods.tech?.slot ? 1 : 0);
 const QUALITY_NAMES = {poor:'низкое', '':'стандартное', excellent:'отличное'};
 // Подпись качества на кнопке оружия: качество видно всегда, а не только после выбора.
-const qualityLabel = mods => ` · ${{poor:'НИЗК.', excellent:'ОТЛ.'}[mods.quality] || 'СТАНД.'}`;
+const qualityLabel = mods => {
+  const ru = {poor:'НИЗК.', excellent:'ОТЛ.'}[mods.quality] || 'СТАНД.';
+  return ` · ${typeof t === 'function' ? t(ru) : ru}`;
+};
 const modInfo = m => {
   const p = weaponModPresets[m.id];
   return p ? {name:p[0], price:p[1], slots:p[2], fits:p[3], text:p[5], ...p[4]}

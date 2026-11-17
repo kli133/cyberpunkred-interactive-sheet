@@ -1,5 +1,6 @@
 // Критические травмы (стр. 187–188): разбор строк и сумма mods из injuryRules (shared/data.js).
 const injuryZoneLabels = {Body:'тело', Head:'голова'};
+const injuryZoneLabel = zone => typeof term === 'function' ? term(injuryZoneLabels[zone] || zone) : (injuryZoneLabels[zone] || zone);
 const plainInjuryText = text => String(text || '').toLowerCase().replace(/ё/g, 'е').trim();
 
 function parseInjuryLine(line){
@@ -26,6 +27,7 @@ function aggregateInjuryMods(injuries){
 }
 
 function formatInjuryLine(zone, k, rolled){
+  // Keep Russian injury names in saved text so parsers stay stable; UI can translate via term() when shown.
   return `${criticalInjuries[zone][k]} (${injuryZoneLabels[zone]}${rolled ? `, 2d6 = ${rolled}` : ''})`;
 }
 

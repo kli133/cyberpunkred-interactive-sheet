@@ -491,7 +491,7 @@ function refreshNetTracker(){
 function setNetUsed(value){
   state.netUsed = Math.max(0, value);
   refreshNetTracker();
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 }
 function spendNetAction(label){
   const total = netActionsTotal(), used = (Number(state.netUsed) || 0) + 1;
@@ -556,7 +556,7 @@ function applyProgramRezDamage(index, amount){
     $$(`[data-key="rolePrograms${index}_8"]`).forEach(el=>{ el.checked = false; });
   }
   refreshProgramRows();
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   toast(`${programName(data)}: REZ ${before} → ${after}${after === 0 ? ' — снесена' : ''}`);
 }
 function programRestore(index){
@@ -565,7 +565,7 @@ function programRestore(index){
   data[7] = data[4];
   setInput(`rolePrograms${index}_7`, data[7]);
   refreshProgramRows();
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   toast(`${programName(data)}: REZ восстановлен (${data[4]})`);
 }
 // Урон по мозгу проходит мимо брони; включённые защитники вроде «Брони» уменьшают его.
@@ -584,7 +584,7 @@ function applyBrainDamage(){
   $('#netDamageResult').textContent = text;
   addHistory({kind:'damage', text});
   $('#brainDamage').value = '';
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 }
 
 function refreshRolePanel(){
@@ -662,12 +662,12 @@ function takeRole(id){
   // Держим select роли в синхроне со state — иначе следующий save() с пустым select сотрёт roleId.
   if(state.roleId) setInput('roleId', state.roleId);
   renderRolePanel(); bindInputs(); refreshSkills();
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   toast(`${roles[id].name}: ${roles[id].ability}, ранг 1 за ${ROLE_RANK_IP} IP`);
 }
 function dropRole(id){
   const before = [...(state.extraRoles || [])], rank = state[rankKey(id)], view = state.roleView;
-  const apply = () => { renderRolePanel(); bindInputs(); refreshSkills(); if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now(); };
+  const apply = () => { renderRolePanel(); bindInputs(); refreshSkills(); if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now(); };
   state.extraRoles = before.filter(rid=>rid !== id);
   if(state.roleView === id) state.roleView = state.roleId;
   apply();
@@ -686,7 +686,7 @@ function upgradeRole(){
   setInput('ip', state.ip);
   setInput(key, state[key]);
   refreshSkills(); refreshRolePanel();
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   toast(`${currentRole().ability}: ранг ${state[key]} за ${cost} IP`);
 }
 

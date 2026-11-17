@@ -356,7 +356,7 @@ function commitCyber(rerender=true){
     bindInputs();
   }
   updateDerived();
-  if(persist()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 }
 function addCyberPiece(key, value){
   const sys = cyberSys(key);
@@ -443,7 +443,7 @@ function handleCyberChange(e){
     return;
   }
   found.piece[name] = field.value;
-  if(persist()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 }
 
 

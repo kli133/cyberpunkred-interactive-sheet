@@ -4,7 +4,7 @@
 const roleOptions = value => options([['', 'роль…'], ...Object.entries(roles).map(([id, r])=>[id, r.name])], value);
 const housingById = id => housings.find(h=>h[0] === id);
 const lifestyleById = id => lifestyles.find(l=>l[0] === id);
-const money = n => `${Number(n).toLocaleString('ru-RU')}eb`;
+const money = n => `${Number(n).toLocaleString(typeof localeTag === 'function' ? localeTag() : 'ru-RU')}eb`;
 // Корпорат получает жильё и страховку от компании по рангу (стр. 154).
 const execPerk = (list, p) => p.roleId === 'exec' ? [...list].reverse().find(([from])=>num(p.rank) >= from)?.[1] || '' : '';
 function monthCost(p){

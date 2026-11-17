@@ -140,7 +140,7 @@ function resetSoloRound(silent){
   state.soloDeflectionUsed = false;
   refreshSoloRoundUi();
   if(!silent) toast('Новый раунд: Отражение и Слабое место снова доступны');
-  if(persist()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 }
 function armSoloWeakness(){
   const n = soloLevel('weakness');
@@ -243,7 +243,7 @@ function reallocateSoloPoints(){
   toast(inCombat
     ? 'Очки Боевого чутья сброшены — распределите заново (в бою это действие)'
     : 'Очки Боевого чутья сброшены — распределите заново (вне боя свободно)');
-  if(persist()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 }
 const maxHp = () => 10 + 5*Math.ceil((statValue(8) + numeric('stat5'))/2);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
@@ -354,7 +354,7 @@ function persistNow(){
     localStorage.setItem(INDEX_KEY, JSON.stringify(sheetIndex));
     return true;
   } catch {
-    $('#saveStatus').textContent = 'ОШИБКА СОХРАНЕНИЯ: НЕТ МЕСТА';
+    $('#saveStatus').textContent = t('ОШИБКА СОХРАНЕНИЯ: НЕТ МЕСТА');
     return false;
   }
 }
@@ -363,7 +363,7 @@ function persist(immediate){
   if(immediate === true) return persistNow();
   clearTimeout(persistTimer);
   persistTimer = setTimeout(()=>{
-    if(persistNow()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now();
+    if(persistNow()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   }, 300);
   return true;
 }
@@ -374,7 +374,7 @@ window.addEventListener('beforeunload', flushPersist);
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden') flushPersist(); });
 
 function renderSheetSelect(){
-  $('#sheetSelect').innerHTML = sheetIndex.sheets.map(sheet=>`<option value="${esc(sheet.id)}"${sheet.id === sheetIndex.current ? ' selected' : ''}>${esc((sheet.name || 'Без имени').toUpperCase())}</option>`).join('');
+  $('#sheetSelect').innerHTML = sheetIndex.sheets.map(sheet=>`<option value="${esc(sheet.id)}"${sheet.id === sheetIndex.current ? ' selected' : ''}>${esc((sheet.name || t('Без имени')).toUpperCase())}</option>`).join('');
 }
 function clearTransient(){
   $('#diceLog').innerHTML = '';
@@ -529,7 +529,7 @@ function handleNewSheetDialog(e){
 function deleteSheet(){
   const position = sheetIndex.sheets.findIndex(sheet=>sheet.id === sheetIndex.current);
   const removed = {id:sheetIndex.current, data:state};
-  if(!confirm(`Удалить персонажа «${state.name || 'Без имени'}»?`)) return;
+  if(!confirm(`${t('Удалить персонажа «')}${state.name || t('Без имени')}${t('»?')}`)) return;
   localStorage.removeItem(sheetKey(removed.id));
   sheetIndex.sheets.splice(position, 1);
   if(sheetIndex.sheets.length) openSheet(sheetIndex.sheets[Math.max(0, position - 1)].id);
@@ -571,17 +571,19 @@ function renderStats(){
   if(oldBudget) oldBudget.remove();
   const total = normalizeStats();
   $('#statsGrid').innerHTML = stats.map((name,i) => {
-    const statValue = `<input class="stat-value" data-key="stat${i}" type="number" min="${state.creationMode === false ? 0 : 2}" max="${state.creationMode === false ? 99 : 8}" step="1" value="${esc(state[`stat${i}`] || 0)}" aria-label="${name}">`;
+    const label = term(name);
+    const tip = termsIn(statTitle(name));
+    const statValue = `<input class="stat-value" data-key="stat${i}" type="number" min="${state.creationMode === false ? 0 : 2}" max="${state.creationMode === false ? 99 : 8}" step="1" value="${esc(state[`stat${i}`] || 0)}" aria-label="${esc(label)}">`;
     if(i === 6 || i === 9){
       const key = i === 6 ? 'luckCurrent' : 'humanityCurrent';
       const max = i === 6 ? numeric('stat6') : numeric('stat9') * 10;
-      const current = `<input class="resource-value" data-key="${key}" type="number" min="0" max="${max}" value="${esc(state[key] ?? max)}" aria-label="Текущее ${name}">`;
-      return `<div class="stat-row has-resource"><span class="has-tip" data-tip="${esc(statTitle(name))}">${name}</span><div class="resource-pair">${current}<span class="resource-separator">из</span>${statValue}</div></div>`;
+      const current = `<input class="resource-value" data-key="${key}" type="number" min="0" max="${max}" value="${esc(state[key] ?? max)}" aria-label="${esc(t('Текущее') + ' ' + label)}">`;
+      return `<div class="stat-row has-resource"><span class="has-tip" data-tip="${esc(tip)}">${esc(label)}</span><div class="resource-pair">${current}<span class="resource-separator">${t('из')}</span>${statValue}</div></div>`;
     }
-    return `<div class="stat-row"><span class="has-tip" data-tip="${esc(statTitle(name))}">${name}</span>${statValue}</div>`;
+    return `<div class="stat-row"><span class="has-tip" data-tip="${esc(tip)}">${esc(label)}</span>${statValue}</div>`;
   }).join('');
   if(state.creationMode !== false){
-    $('#statsGrid').insertAdjacentHTML('beforebegin', `<div class="point-budget">ПУЛ СОЗДАНИЯ: <strong>${total}</strong> / ${STAT_POOL} <small>Минимум 2, максимум 8.</small></div>`);
+    $('#statsGrid').insertAdjacentHTML('beforebegin', `<div class="point-budget">${t('ПУЛ СОЗДАНИЯ:')} <strong>${total}</strong> / ${STAT_POOL} <small>${t('Минимум 2, максимум 8.')}</small></div>`);
   }
 }
 
@@ -601,11 +603,11 @@ function refreshSkills(){
     const ref = cell.dataset.skillTotal;
     const s = skillStatIndex(refBase(ref));
     const armor = statPenalty(s), wound = woundPenalty();
-    const empNote = s === 9 && currentEmp() < numeric('stat9') && `ЭМП снижена человечностью до ${currentEmp()}`;
+    const empNote = s === 9 && currentEmp() < numeric('stat9') && `${t('ЭМП снижена человечностью до')} ${currentEmp()}`;
     const injury = injuryCheckPenalty(attackInjuryKind(skills[refBase(ref)]));
     const [bonus, bonusNote] = skillBonus(skills[refBase(ref)]);
     cell.textContent = refTotal(ref);
-    cell.title = [armor && `Штраф брони −${armor}`, wound && `Штраф ранения −${wound}`, injury.note, empNote, bonus && `${bonusNote} +${bonus}`].filter(Boolean).join(', ');
+    cell.title = [armor && `${t('Штраф брони')} −${armor}`, wound && `${t('Штраф ранения')} −${wound}`, termsIn(injury.note), empNote, bonus && `${termsIn(bonusNote)} +${bonus}`].filter(Boolean).join(', ');
     cell.classList.toggle('is-penalized', armor + wound + injury.total > 0 || Boolean(empNote));
   });
   $$('[data-upgrade]').forEach(button=>{
@@ -614,7 +616,7 @@ function refreshSkills(){
     button.hidden = creation || refLevel(ref) >= MAX_SKILL;
     button.textContent = `↑${cost}`;
     button.disabled = numeric('ip') < cost;
-    button.title = `Повысить до ${refLevel(ref) + 1} за ${cost} IP`;
+    button.title = `${t('Повысить до')} ${refLevel(ref) + 1} ${t('за')} ${cost} IP`;
   });
 }
 
@@ -623,18 +625,20 @@ function skillRowHtml(ref, maxLevel){
   const custom = ref[0] === 'c';
   const j = ref.slice(1);
   const name = skills[base];
-  const rollButton = `<button class="skill-roll" data-roll-skill="${ref}" title="Бросить 1d10 + стат + навык">1d10</button>`;
+  const shown = term(name);
+  const rollButton = `<button class="skill-roll" data-roll-skill="${ref}" title="${esc(t('Бросить 1d10 + стат + навык'))}">1d10</button>`;
   // Специализация — в контейнере с переносом, чтобы на узком экране поле и кнопка не наезжали на колонку «Стат».
-  const tip = esc(skillTitle(name));
+  const tip = esc(termsIn(skillTitle(name)));
   const title = custom
-    ? `<div class="skill-name"><span class="skill-variant has-tip" data-tip="${tip}">${esc(name)}:</span><input class="skill-spec" data-key="cskill${j}_spec" value="${esc(customSkill(ref).spec)}" placeholder="специализация" aria-label="Специализация">${rollButton}</div>`
-    : `<span class="has-tip" data-tip="${tip}">${esc(name)}</span>${basicSkills.includes(name) ? '<span class="basic-mark" title="Базовый навык: при создании не ниже 2">Б</span>' : ''}${rollButton}`;
+    ? `<div class="skill-name"><span class="skill-variant has-tip" data-tip="${tip}">${esc(shown)}:</span><input class="skill-spec" data-key="cskill${j}_spec" value="${esc(customSkill(ref).spec)}" placeholder="${esc(t('специализация'))}" aria-label="${esc(t('специализация'))}">${rollButton}</div>`
+    : `<span class="has-tip" data-tip="${tip}">${esc(shown)}</span>${basicSkills.includes(name) ? `<span class="basic-mark" title="${esc(t('Базовый навык: при создании не ниже 2'))}">Б</span>` : ''}${rollButton}`;
   const actions = [
     `<button type="button" class="skill-upgrade" data-upgrade="${ref}" hidden></button>`,
-    !custom && variantSkills.includes(name) ? `<button type="button" class="skill-add-variant" data-add-variant="${esc(name)}" title="Добавить специализацию">+</button>` : '',
-    custom ? `<button type="button" class="remove" data-remove-skill="${j}" title="Удалить специализацию">×</button>` : ''
+    !custom && variantSkills.includes(name) ? `<button type="button" class="skill-add-variant" data-add-variant="${esc(name)}" title="${esc(t('Добавить специализацию'))}">+</button>` : '',
+    custom ? `<button type="button" class="remove" data-remove-skill="${j}" title="${esc(t('Удалить специализацию'))}">×</button>` : ''
   ].join('');
-  return `<tr class="${custom ? 'is-variant' : ''}"><td>${title}</td><td><span class="has-tip" data-tip="${esc(statTitle(skillEntries[base][1]))}">${esc(skillEntries[base][1])}</span></td><td><input data-key="${custom ? `cskill${j}_level` : `skill${base}`}" type="number" min="${refMin(ref)}" max="${maxLevel}" value="${refLevel(ref)}" aria-label="Уровень навыка"></td><td class="skill-total" data-skill-total="${ref}">${refTotal(ref)}</td><td class="skill-actions">${actions}</td></tr>`;
+  const statAbbr = skillEntries[base][1];
+  return `<tr class="${custom ? 'is-variant' : ''}"><td>${title}</td><td><span class="has-tip" data-tip="${esc(termsIn(statTitle(statAbbr)))}">${esc(term(statAbbr))}</span></td><td><input data-key="${custom ? `cskill${j}_level` : `skill${base}`}" type="number" min="${refMin(ref)}" max="${maxLevel}" value="${refLevel(ref)}" aria-label="${esc(t('Уровень навыка'))}"></td><td class="skill-total" data-skill-total="${ref}">${refTotal(ref)}</td><td class="skill-actions">${actions}</td></tr>`;
 }
 
 function renderSkills(){
@@ -649,14 +653,14 @@ function renderSkills(){
   $('#skillsCategories').innerHTML = Object.entries(skillCategories).map(([category, entries]) => {
     if(activeCategory !== 'Все' && activeCategory !== category) return '';
     const rows = entries.flatMap(([name, stat]) => {
-      const baseVisible = matches(`${name} ${stat}`);
+      const baseVisible = matches(`${name} ${stat} ${term(name)} ${term(stat)}`);
       const variants = (state.customSkills || []).map((item,j)=>item.base === name ? `c${j}` : null).filter(Boolean)
         .filter(ref=>baseVisible || matches(`${refLabel(ref)} ${stat}`));
       return baseVisible || variants.length ? [skillRowHtml(`b${skills.indexOf(name)}`, maxLevel), ...variants.map(ref=>skillRowHtml(ref, maxLevel))] : [];
     });
     if(!rows.length) return '';
-    return `<article class="skill-category"><h2>${category}</h2><table class="skill-table"><thead><tr><th>Название</th><th>Стат</th><th>Урв</th><th>Сумм</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table></article>`;
-  }).join('') || '<div class="empty-search">НАВЫКИ НЕ НАЙДЕНЫ</div>';
+    return `<article class="skill-category"><h2>${esc(term(category))}</h2><table class="skill-table"><thead><tr><th>${t('Название')}</th><th>${t('Стат')}</th><th>${t('Урв')}</th><th>${t('Сумм')}</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table></article>`;
+  }).join('') || `<div class="empty-search">${t('НАВЫКИ НЕ НАЙДЕНЫ')}</div>`;
   renderSkillFilters();
   refreshSkills();
   highlightSearch($('#skillsCategories'), query);
@@ -707,34 +711,34 @@ function toggleSkillFilters(open){
 function renderSkillFilters(){
   const active = $('.skill-filter.active')?.dataset.category || 'Все';
   $('#skillFilters').innerHTML = ['Все', ...Object.keys(skillCategories)].map(category =>
-    `<button class="skill-filter ${category === active ? 'active' : ''}" data-category="${category}">${category}</button>`
+    `<button class="skill-filter ${category === active ? 'active' : ''}" data-category="${category}">${esc(term(category))}</button>`
   ).join('');
   // На узком экране категории свёрнуты в кнопку рядом с поиском, на ней — выбранная категория.
-  $('#skillFilterToggle').textContent = `${active} ▾`;
+  $('#skillFilterToggle').textContent = `${term(active)} ▾`;
 }
 
 function renderLife(){
-  $('#lifeBasics').innerHTML = `<div class="section-title">ПОВСЕДНЕВНАЯ ЖИЗНЬ <span>LIFESTYLE</span></div><div class="life-basics-fields">
-    <label>Образ жизни${growField('lifeStyle',state.lifeStyle||'', 'Например: Бродяга, Средний, Богатый')}</label>
-    <label>Арендная плата${growField('lifeRent',state.lifeRent||'', 'Ежемесячная плата')}</label>
-    <label>Жильё${growField('lifeHousing',state.lifeHousing||'', 'Тип и описание жилья')}</label>
-    <label>Образ и стиль${growField('lifeLook',state.lifeLook||'', 'Внешний вид и стиль')}</label>
+  $('#lifeBasics').innerHTML = `<div class="section-title">${t('ПОВСЕДНЕВНАЯ ЖИЗНЬ')} <span>LIFESTYLE</span></div><div class="life-basics-fields">
+    <label>${t('Образ жизни')}${growField('lifeStyle',state.lifeStyle||'', t('Например: Бродяга, Средний, Богатый'))}</label>
+    <label>${t('Арендная плата')}${growField('lifeRent',state.lifeRent||'', t('Ежемесячная плата'))}</label>
+    <label>${t('Жильё')}${growField('lifeHousing',state.lifeHousing||'', t('Тип и описание жилья'))}</label>
+    <label>${t('Образ и стиль')}${growField('lifeLook',state.lifeLook||'', t('Внешний вид и стиль'))}</label>
   </div>`;
-  const alias = `<label class="full">Псевдоним${field('lifeAlias',state.lifeAlias||'')}</label>`;
-  $('#lifeFields').innerHTML = alias + lifeFields.map((name,i)=>`<label class="${i===0?'full':''}">${name}${growField(`life${i}`,state[`life${i}`]||'')}</label>`).join('');
+  const alias = `<label class="full">${t('Псевдоним')}${field('lifeAlias',state.lifeAlias||'')}</label>`;
+  $('#lifeFields').innerHTML = alias + lifeFields.map((name,i)=>`<label class="${i===0?'full':''}">${esc(term(name))}${growField(`life${i}`,state[`life${i}`]||'')}</label>`).join('');
 }
 function weaponSkillSelect(key, value){
-  const options = list => list.map(name=>`<option value="${esc(name)}"${name === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
-  return `<select data-key="${key}" aria-label="Навык оружия"><option value="">—</option><optgroup label="Дальний бой">${options(rangedWeaponSkills)}</optgroup><optgroup label="Ближний бой">${options(meleeWeaponSkills)}</optgroup></select>`;
+  const options = list => list.map(name=>`<option value="${esc(name)}"${name === value ? ' selected' : ''}>${esc(term(name))}</option>`).join('');
+  return `<select data-key="${key}" aria-label="${esc(t('Навык оружия'))}"><option value="">—</option><optgroup label="${esc(t('Дальний бой'))}">${options(rangedWeaponSkills)}</optgroup><optgroup label="${esc(t('Ближний бой'))}">${options(meleeWeaponSkills)}</optgroup></select>`;
 }
 function weaponTypeSelect(key, value, multiplierKey, multiplier){
-  const options = Object.entries(weaponTypes).map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(name)}</option>`).join('');
+  const options = Object.entries(weaponTypes).map(([id,[name]])=>`<option value="${id}"${id === value ? ' selected' : ''}>${esc(term(name))}</option>`).join('');
   // У оружия из книги множитель очереди берётся из типа; у своего — выбирается рядом (ПП ×3, штурмовая винтовка ×4).
   const own = !weaponTypes[value];
   const multiplierField = own
-    ? `<select class="autofire-pick" data-key="${multiplierKey}" aria-label="Автоматический огонь своего оружия" title="Стреляет ли оружие очередями и максимальный множитель урона очереди (пистолет-пулемёт ×3, штурмовая винтовка ×4)">${[['', 'без очереди'], ['2', 'очередь ×2'], ['3', 'очередь ×3'], ['4', 'очередь ×4']].map(([v, label])=>`<option value="${v}"${String(multiplier || '') === v ? ' selected' : ''}>${label}</option>`).join('')}</select>`
+    ? `<select class="autofire-pick" data-key="${multiplierKey}" aria-label="${esc(t('Автоматический огонь своего оружия'))}" title="${esc(t('Автоматический огонь своего оружия'))}">${[['', 'без очереди'], ['2', 'очередь ×2'], ['3', 'очередь ×3'], ['4', 'очередь ×4']].map(([v, label])=>`<option value="${v}"${String(multiplier || '') === v ? ' selected' : ''}>${t(label)}</option>`).join('')}</select>`
     : `<input type="hidden" data-key="${multiplierKey}" value="${esc(multiplier)}">`;
-  return `<select data-key="${key}" aria-label="Тип оружия" title="Выбор типа заполняет навык, урон, магазин, ROF и автоогонь"><option value="">Своё</option>${options}</select>${multiplierField}`;
+  return `<select data-key="${key}" aria-label="${esc(t('Тип оружия'))}" title="${esc(t('Тип оружия'))}"><option value="">${t('Своё')}</option>${options}</select>${multiplierField}`;
 }
 // Автоогонь: множитель из типа книги или из «очередь ×…» у своего оружия (поле 7).
 const autofireMultiplier = data => Number(data?.[7]) || 0;
@@ -902,15 +906,17 @@ function refreshWeaponRows(){
     const loaded = loadedAmmo(data);
     const shell = !on && loaded?.kind === 'shell';
     if(attack){
-      attack.textContent = 'ПОПАДАНИЕ';
-      attack.title = on ? 'Бросок на попадание очередью: 10 патронов, 1d10 + РЕА + «Автоматический огонь»; результат назовите мастеру' : 'Бросок на попадание: 1d10 + стат + навык; результат назовите мастеру';
+      attack.textContent = t('ПОПАДАНИЕ');
+      attack.title = on
+        ? t('Бросок на попадание очередью: 10 патронов, 1d10 + РЕА + «Автоматический огонь»; результат назовите мастеру', 'Autofire attack roll: 10 rounds, 1d10 + REF + Autofire; tell the GM the result')
+        : t('Бросок на попадание: 1d10 + стат + навык; результат назовите мастеру', 'Attack roll: 1d10 + STAT + skill; tell the GM the result');
     }
     if(damage){
       const effect = !on && loaded && loaded.type in ammoNoDamage;
-      damage.textContent = on ? 'УРОН ОЧЕРЕДИ' : effect ? 'ЭФФЕКТ' : 'УРОН';
-      damage.title = on ? 'Урон очереди после попадания: 2d6 × множитель, который назовёт мастер'
-        : effect ? `${ammoTypes[loaded.type][0]}: урона оружия нет — ${ammoTypes[loaded.type][3]}`
-        : shell ? `Запасной бросок урона дробью ${SHOTGUN_SHELL_DAMAGE} (основной — «ПОПАДАНИЕ» против СЛ ${SHELL_DV})` : 'Бросок урона после попадания';
+      damage.textContent = on ? t('УРОН ОЧЕРЕДИ') : effect ? t('ЭФФЕКТ') : t('УРОН');
+      damage.title = on ? t('Урон очереди после попадания: 2d6 × множитель, который назовёт мастер', 'Autofire damage after a hit: 2d6 × the multiplier the GM names')
+        : effect ? `${term(ammoTypes[loaded.type][0])}: ${t('урона оружия нет —', 'no weapon damage —')} ${termsIn(ammoTypes[loaded.type][3])}`
+        : shell ? t(`Запасной бросок урона дробью ${SHOTGUN_SHELL_DAMAGE} (основной — «ПОПАДАНИЕ» против СЛ ${SHELL_DV})`, `Backup shell damage ${SHOTGUN_SHELL_DAMAGE} (primary is ATTACK vs DV ${SHELL_DV})`) : t('Бросок урона после попадания', 'Damage roll after a hit');
     }
     if(attack && shell && !on){
       attack.title = `Дробь: 1d10 + стат + навык против СЛ ${SHELL_DV}; при успехе — ${SHOTGUN_SHELL_DAMAGE} всем в 6 м перед вами`;
@@ -1013,7 +1019,7 @@ function upgradeSkill(ref){
   setRefLevel(ref, refLevel(ref) + 1);
   setInput('ip', state.ip);
   refreshSkills();
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   toast(`${refLabel(ref)}: уровень ${refLevel(ref)} за ${cost} IP`);
 }
 
@@ -1109,7 +1115,7 @@ function weaponSuppress(index){
   rollCheck(`b${skills.indexOf(AUTOFIRE_SKILL)}`, `${name}: подавляющий огонь`);
   syncAmmoTable();
   refreshWeaponRows();
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 }
 // Умные патроны (нужен Тактический прицел): промах на 4 или меньше — повторная проверка 1d10 + 10
 // вместо СТАТ + навык, та же дистанция и СЛ; удачу добавить можно, цель может уклониться как обычно.
@@ -1311,13 +1317,13 @@ function weaponReload(index){
     const result = loadFromStock(index, data);
     syncAmmoTable();
     refreshWeaponRows();
-    if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+    if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
     toast(result.taken ? `${name}: перезаряжено (${result.name}) — ${result.total} / ${result.magazine}, в запасе ${result.left}` : `${name}: нет патронов «${result.name}» в снаряжении`);
     return;
   }
   data[2] = data[6];
   setInput(`weapon${index}_2`, data[2]);
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   toast(`${name}: перезаряжено (${data[6]})`);
 }
 
@@ -1370,7 +1376,7 @@ function readDicePool(){
 
 function renderDashboardLog(){
   const history = Array.isArray(state.rollHistory) ? state.rollHistory : [];
-  $('#dashboardLog').innerHTML = history.length ? history.map(item => `<div><span>${esc(item.time)}</span> ${logLine(item)}</div>`).join('') : 'Пока нет бросков.';
+  $('#dashboardLog').innerHTML = history.length ? history.map(item => `<div><span>${esc(item.time)}</span> ${logLine(item)}</div>`).join('') : t('Пока нет бросков.');
 }
 
 function renderDashboard(){
@@ -1567,7 +1573,7 @@ function applyDamage(){
   addHistory({kind:'damage', text});
   $('#damageInput').value = '';
   $('#damageCrit').checked = false;
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 }
 
 function repairArmor(){
@@ -1795,9 +1801,9 @@ function loadPortrait(file){
 }
 
 $$('[data-armor-zone]').forEach(select=>{
-  select.innerHTML = '<option value="">Своя / нет</option>' + Object.entries(armorPresets).map(([id,[name,sp,penalty]])=>`<option value="${id}">${name} — SP ${sp}${penalty ? `, −${penalty}` : ''}</option>`).join('');
+  select.innerHTML = `<option value="">${t('Своя / нет')}</option>` + Object.entries(armorPresets).map(([id,[name,sp,penalty]])=>`<option value="${id}">${esc(term(name))} — SP ${sp}${penalty ? `, −${penalty}` : ''}</option>`).join('');
 });
-$('#roleSelect').innerHTML = '<option value="">— не выбрана —</option>' + Object.entries(roles).map(([id,item])=>`<option value="${id}">${esc(item.name)}</option>`).join('');
+$('#roleSelect').innerHTML = `<option value="">${t('— не выбрана —')}</option>` + Object.entries(roles).map(([id,item])=>`<option value="${id}">${esc(term(item.name))}</option>`).join('');
 $$('[data-key]').forEach(el=>{ el.dataset.static='true'; });
 $('#applyDamage').onclick=applyDamage;
 $('#repairArmor').onclick=repairArmor;
@@ -1870,7 +1876,7 @@ document.addEventListener('click',e=>{
   if(netPip){ const k = Number(netPip.dataset.netPip); setNetUsed((Number(state.netUsed) || 0) === k + 1 ? k : k + 1); }
   if(e.target.closest('[data-net-reset]')) setNetUsed(0);
   const netExtra = e.target.closest('[data-net-extra]');
-  if(netExtra){ state.netExtra = (Number(state.netExtra) || 0) + Number(netExtra.dataset.netExtra); refreshRolePanel(); if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now(); }
+  if(netExtra){ state.netExtra = (Number(state.netExtra) || 0) + Number(netExtra.dataset.netExtra); refreshRolePanel(); if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now(); }
   if(e.target.closest('[data-zap-damage]')) rollDicePool([{sides:6,count:1}], 0, 'Разряд: урон', {crits:false});
   if(e.target.closest('[data-net-speed]')) rollNetSpeed();
   if(e.target.closest('[data-role-roll]')) rollRoleAbility(currentRole()?.roll || 'Способность роли');
@@ -1977,14 +1983,14 @@ $('#cyberware')?.addEventListener('input', e=>{
   found.piece[field.dataset.cyberField] = field.value;
   if(field.classList.contains('grow-field')) autoGrow(field);
   clearTimeout(handleCyberChange._t);
-  handleCyberChange._t = setTimeout(()=>{ if(persist()) $('#saveStatus').textContent = 'СОХРАНЕНО ' + now(); }, 300);
+  handleCyberChange._t = setTimeout(()=>{ if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now(); }, 300);
 });
 $('#combatActions')?.addEventListener('click', combatClick);
 $('#combatActions')?.addEventListener('change', e=>{
   if(!e.target.matches('[data-combat-grapple]')) return;
   state.grappled = e.target.checked;
   refreshSkills(); renderCombatActions();
-  if(persist()) $('#saveStatus').textContent='СОХРАНЕНО '+now();
+  if(persist()) $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
 });
 // Удача восстанавливается до значения УДЧ в начале каждой игровой сессии (стр. 130).
 $('#restoreLuck').onclick=()=>{state.luckCurrent=numeric('stat6');setInput('luckCurrent',state.luckCurrent);persist();updateDerived();toast(`Удача восстановлена: ${state.luckCurrent}`);};
@@ -1994,7 +2000,7 @@ $('#deathSaveButton').onclick=rollDeathSave;
 $('#skillSearch').oninput=()=>{renderSkills();bindInputs();};
 $('#clearLog').onclick=()=>{state.rollHistory=[];persist();renderDashboardLog();$('#diceLog').innerHTML='';};
 $('#portraitInput').onchange=e=>{const file=e.target.files[0];if(file)loadPortrait(file);e.target.value='';};
-$('#resetBtn').onclick=()=>{if(confirm('Очистить лист текущего персонажа?')){state=migrate({});clearTransient();render();persist(true);$('#saveStatus').textContent='ЛИСТ ОЧИЩЕН';}};
+$('#resetBtn').onclick=()=>{if(confirm(t('Очистить лист текущего персонажа?'))){state=migrate({});clearTransient();render();persist(true);$('#saveStatus').textContent = t('ЛИСТ ОЧИЩЕН');}};
 $('#sheetSelect').onchange=e=>switchSheet(e.target.value);
 $('#newSheet').onclick=openNewSheetDialog;
 $('#newSheetDialog')?.addEventListener('submit', handleNewSheetDialog);
@@ -2016,7 +2022,7 @@ $('#importInput').onchange=e=>{
     // Импорт добавляет нового персонажа, а не перезаписывает текущего.
     createSheet(data);
     save();
-    toast(`Импортирован персонаж «${state.name || 'Без имени'}»`);
+    toast(`${t('Импортирован персонаж «')}${state.name || t('Без имени')}${t('»')}`);
   };
   reader.readAsText(file);
   e.target.value='';

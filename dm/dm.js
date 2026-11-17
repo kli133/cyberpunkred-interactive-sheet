@@ -119,9 +119,9 @@ function persist(){
   saveTimer = null;
   try {
     localStorage.setItem(DM_KEY, JSON.stringify(state));
-    $('#saveStatus').textContent = 'СОХРАНЕНО '+now();
+    $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   } catch {
-    $('#saveStatus').textContent = 'НЕ СОХРАНЕНО: ПЕРЕПОЛНЕНО ХРАНИЛИЩЕ';
+    $('#saveStatus').textContent = t('НЕ СОХРАНЕНО: ПЕРЕПОЛНЕНО ХРАНИЛИЩЕ');
   }
 }
 const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(persist, 300); };
@@ -260,7 +260,7 @@ function addLog(entry){
 }
 function renderLog(){
   const html = state.log.map(item=>`<div><small>${esc(item.time)}</small> ${logLine(item)}</div>`).join('');
-  $('#dashboardLog').innerHTML = html || 'Пока нет бросков.';
+  $('#dashboardLog').innerHTML = html || t('Пока нет бросков.');
   $('#diceLog').innerHTML = html;
 }
 

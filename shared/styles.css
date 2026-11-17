@@ -92,6 +92,32 @@ button {
 .top-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.lang-switch {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid #54565b;
+}
+
+.lang-switch .lang-btn {
+  border: 0;
+  border-radius: 0;
+  min-width: 2.5rem;
+  padding: 9px 10px;
+  letter-spacing: 1px;
+}
+
+.lang-switch .lang-btn + .lang-btn {
+  border-left: 1px solid #54565b;
+}
+
+.lang-switch .lang-btn.is-active {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
 }
 
 .top-actions button, .file-btn {
