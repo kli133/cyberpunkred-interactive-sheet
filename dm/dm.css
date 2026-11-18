@@ -1323,7 +1323,7 @@
   white-space: nowrap;
 }
 
-.net-panel .section-title span {
+.net-panel .section-title .section-meta {
   margin-right: 12px;
 }
 

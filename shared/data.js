@@ -708,59 +708,65 @@ const modEsc = text => String(text ?? '').replace(/[&<>"]/g, ch=>({'&':'&amp;', 
 // Содержимое окна модификаций. farMode: 'toggle' — отметка «цель на 51 м и дальше», 'auto' — по дистанции в карточке.
 // melee — холодное оружие: модификаций нет, только качество и «сделать скрываемым».
 function modDialogHtml({name, type, mods, magazine, farMode, bayonetHint, melee = false}){
-  const t = modTotals(mods), infos = mods.list.map(modInfo), limit = modSlotLimit(mods), exotic = isExoticType(type);
+  const L = s => (typeof t === 'function' ? t(s) : s);
+  const totals = modTotals(mods), infos = mods.list.map(modInfo), limit = modSlotLimit(mods), exotic = isExoticType(type);
   const owned = new Set(mods.list.map(m=>m.id).filter(Boolean));
   const hasMag = mods.list.some(m=>weaponModPresets[m.id]?.[4].mag);
+  const slotWord = n => L(n === 1 ? 'слот' : 'слота');
   const list = mods.list.map((m, k)=>{
     const info = infos[k];
-    if(!info.custom) return `<li class="mod-item"><div><b>${modEsc(info.name)}</b> <small>${info.slots} ${info.slots === 1 ? 'слот' : 'слота'} · ${modEsc(info.price)}</small>${modFits(m.id, type, mods) ? '' : ' <small class="is-over">не подходит этому оружию</small>'}<p>${modEsc(info.text)}</p></div><button type="button" class="remove" data-mod-del="${k}" title="Снять модификацию">×</button></li>`;
-    const field = (label, key, value, attrs = '') => `<label>${label}<input data-mod-field="${key}" data-mod="${k}" value="${modEsc(value)}" ${attrs}></label>`;
+    if(!info.custom) return `<li class="mod-item"><div><b>${modEsc(L(info.name))}</b> <small>${info.slots} ${slotWord(info.slots)} · ${modEsc(L(info.price))}</small>${modFits(m.id, type, mods) ? '' : ` <small class="is-over">${L('не подходит этому оружию')}</small>`}<p>${modEsc(L(info.text))}</p></div><button type="button" class="remove" data-mod-del="${k}" title="${modEsc(L('Снять модификацию'))}">×</button></li>`;
+    const field = (label, key, value, attrs = '') => `<label>${L(label)}<input data-mod-field="${key}" data-mod="${k}" value="${modEsc(value)}" ${attrs}></label>`;
     return `<li class="mod-item is-custom"><div class="mod-custom">
-        ${field('Название', 'name', m.name, 'placeholder="Глушитель, лазерный целеуказатель…"')}
+        ${field('Название', 'name', m.name, `placeholder="${modEsc(L('Глушитель, лазерный целеуказатель…'))}"`)}
         ${field('Слоты', 'slots', m.slots, 'type="number" min="0" max="3"')}
-        ${field('К атакам', 'atk', m.atk, 'type="number" step="1" title="Бонус ко всем атакам этим оружием (минус — штраф)"')}
-        ${field('51 м+', 'far', m.far, 'type="number" step="1" title="Бонус к одиночным и прицельным выстрелам по цели в 51 м и дальше"')}
-        ${field('Магазин +', 'mag', m.mag, 'type="number" step="1" title="Сколько патронов добавляет к магазину"')}
-        <label class="mod-check"><input type="checkbox" data-mod-field="conceal" data-mod="${k}"${m.conceal === true ? ' checked' : ''}> нельзя спрятать</label>
-        ${field('Что делает', 'note', m.note, 'class="mod-note" placeholder="Описание и эффекты, которые лист не считает сам"')}
-      </div><button type="button" class="remove" data-mod-del="${k}" title="Снять модификацию">×</button></li>`;
-  }).join('') || '<li class="mod-empty">Модификаций нет.</li>';
+        ${field('К атакам', 'atk', m.atk, `type="number" step="1" title="${modEsc(L('Бонус ко всем атакам этим оружием (минус — штраф)'))}"`)}
+        ${field('51 м+', 'far', m.far, `type="number" step="1" title="${modEsc(L('Бонус к одиночным и прицельным выстрелам по цели в 51 м и дальше'))}"`)}
+        ${field('Магазин +', 'mag', m.mag, `type="number" step="1" title="${modEsc(L('Сколько патронов добавляет к магазину'))}"`)}
+        <label class="mod-check"><input type="checkbox" data-mod-field="conceal" data-mod="${k}"${m.conceal === true ? ' checked' : ''}> ${L('нельзя спрятать')}</label>
+        ${field('Что делает', 'note', m.note, `class="mod-note" placeholder="${modEsc(L('Описание и эффекты, которые лист не считает сам'))}"`)}
+      </div><button type="button" class="remove" data-mod-del="${k}" title="${modEsc(L('Снять модификацию'))}">×</button></li>`;
+  }).join('') || `<li class="mod-empty">${L('Модификаций нет.')}</li>`;
   const options = Object.entries(weaponModPresets).map(([id, [title, price, slots]])=>{
-    const why = owned.has(id) ? 'уже стоит' : !modFits(id, type, mods) ? 'не подходит этому оружию' : weaponModPresets[id][4].mag && hasMag ? 'магазин уже стоит' : '';
-    return `<option value="${id}"${why ? ' disabled' : ''}>${modEsc(title)} — ${slots} сл., ${modEsc(price)}${why ? ` (${why})` : ''}</option>`;
+    const why = owned.has(id) ? L('уже стоит') : !modFits(id, type, mods) ? L('не подходит этому оружию') : weaponModPresets[id][4].mag && hasMag ? L('магазин уже стоит') : '';
+    return `<option value="${id}"${why ? ' disabled' : ''}>${modEsc(L(title))} — ${slots} ${L('сл.')}, ${modEsc(L(price))}${why ? ` (${why})` : ''}</option>`;
   }).join('');
-  const farNote = farMode === 'auto' ? ' (по дистанции в карточке)' : mods.far ? '' : ' (цель ближе — не считается)';
-  const effects = [mods.quality === 'excellent' && 'отличное качество: +1 к атакам', mods.quality === 'poor' && 'низкое качество: при выпавшей 1 на атаке оружие заклинит',
-    ...infos.filter(m=>m.atk).map(m=>`${m.name}: ${modSign(m.atk)} к атакам`),
-    ...infos.filter(m=>m.far).map(m=>`${m.name}: ${modSign(m.far)} одиночным и прицельным на 51 м+${farNote}`),
-    (t.mag || t.magPlus) && `магазин ${magazine || '—'}${t.mag && !magazineByType[type] ? ' (своё оружие: впишите размер магазина вручную)' : ''}`,
-    mods.tech.conceal && 'оружие скрываемое (модернизация Техника)', t.noConceal && `нельзя спрятать под одеждой${mods.tech.conceal ? ' — из-за модификаций' : ''}`,
-    t.bayonet && bayonetHint, mods.tech.ammo && 'стреляет небазовыми боеприпасами (модернизация Техника)'].filter(Boolean);
-  const hint = exotic && !mods.tech.exotic ? 'Экзотическое оружие: по книге модификаций у него нет — если Техник не дал ему слоты (ниже). Свою можно добавить, если разрешит мастер.'
-    : weaponTypes[type] || exotic ? '' : 'Своё оружие: лист не знает его тип, поэтому разрешены любые модификации. Сверьтесь с мастером.';
-  const techBox = (key, label, title) => `<label class="mod-check" title="${title}"><input type="checkbox" data-mod-tech="${key}"${mods.tech[key] ? ' checked' : ''}> ${label}</label>`;
+  const farNote = farMode === 'auto' ? L(' (по дистанции в карточке)') : mods.far ? '' : L(' (цель ближе — не считается)');
+  const effects = [mods.quality === 'excellent' && L('отличное качество: +1 к атакам'), mods.quality === 'poor' && L('низкое качество: при выпавшей 1 на атаке оружие заклинит'),
+    ...infos.filter(m=>m.atk).map(m=>`${L(m.name)}: ${modSign(m.atk)} ${L('к атакам')}`),
+    ...infos.filter(m=>m.far).map(m=>`${L(m.name)}: ${modSign(m.far)} ${L('одиночным и прицельным на 51 м+')}${farNote}`),
+    (totals.mag || totals.magPlus) && `${L('магазин')} ${magazine || '—'}${totals.mag && !magazineByType[type] ? L(' (своё оружие: впишите размер магазина вручную)') : ''}`,
+    mods.tech.conceal && L('оружие скрываемое (модернизация Техника)'), totals.noConceal && `${L('нельзя спрятать под одеждой')}${mods.tech.conceal ? L(' — из-за модификаций') : ''}`,
+    totals.bayonet && (typeof t === 'function' ? t(bayonetHint) : bayonetHint), mods.tech.ammo && L('стреляет небазовыми боеприпасами (модернизация Техника)')].filter(Boolean);
+  const hint = exotic && !mods.tech.exotic ? L('Экзотическое оружие: по книге модификаций у него нет — если Техник не дал ему слоты (ниже). Свою можно добавить, если разрешит мастер.')
+    : weaponTypes[type] || exotic ? '' : L('Своё оружие: лист не знает его тип, поэтому разрешены любые модификации. Сверьтесь с мастером.');
+  const techBox = (key, label, title) => `<label class="mod-check" title="${modEsc(L(title))}"><input type="checkbox" data-mod-tech="${key}"${mods.tech[key] ? ' checked' : ''}> ${L(label)}</label>`;
   const tech = [
     !melee && techBox('slot', '+1 слот модификаций', 'Добавить в предмет ещё один слот того же типа'),
     techBox('conceal', 'сделать скрываемым', 'Сделать нескрываемое одноручное оружие скрываемым'),
     exotic && techBox('exotic', 'экзотике — слоты модификаций', 'Дать экзотическому оружию слоты для модификаций'),
     exotic && techBox('ammo', 'экзотике — небазовые боеприпасы', 'Дать экзотическому оружию стрелять одним из небазовых типов боеприпасов'),
   ].filter(Boolean).join('');
-  const quality = `<label class="mod-quality">Качество <select data-mod-quality aria-label="Качество оружия">${Object.entries(QUALITY_NAMES).map(([v, label])=>`<option value="${v}"${mods.quality === v ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
-    <small>Отличное — +1 к атакам; низкое — заклинивает при выпавшей 1 (стр. 342). Повысить стандартное до отличного может Техник (Мастер модернизации).</small>`;
+  const quality = `<label class="mod-quality">${L('Качество')} <select data-mod-quality aria-label="${modEsc(L('Качество оружия'))}">${Object.entries(QUALITY_NAMES).map(([v, label])=>`<option value="${v}"${mods.quality === v ? ' selected' : ''}>${L(label)}</option>`).join('')}</select></label>
+    <small>${L('Отличное — +1 к атакам; низкое — заклинивает при выпавшей 1 (стр. 342). Повысить стандартное до отличного может Техник (Мастер модернизации).')}</small>`;
+  const slotsTitle = totals.slots > limit
+    ? L('Занято больше слотов, чем есть')
+    : `${L('У неэкзотического оружия дальнего боя')} ${WEAPON_MOD_SLOTS} ${L('слота')}${mods.tech.slot ? L(', +1 от Техника') : ''}`;
+  const shownName = name ? L(name) : L('Оружие');
   return `<form method="dialog" class="mod-form">
-    <header><div><span class="eyebrow">${melee ? 'КАЧЕСТВО ОРУЖИЯ' : 'МОДИФИКАЦИИ ОРУЖИЯ'}</span><h2>${modEsc(name || 'Оружие')}</h2></div>
-      ${melee ? '' : `<strong class="${t.slots > limit ? 'is-over' : ''}" title="${t.slots > limit ? 'Занято больше слотов, чем есть' : `У неэкзотического оружия дальнего боя ${WEAPON_MOD_SLOTS} слота${mods.tech.slot ? ', +1 от Техника' : ''}`}">СЛОТЫ ${t.slots} / ${limit}</strong>`}
-      <button type="submit" class="remove" aria-label="Закрыть">×</button></header>
+    <header><div><span class="eyebrow">${melee ? L('КАЧЕСТВО ОРУЖИЯ') : L('МОДИФИКАЦИИ ОРУЖИЯ')}</span><h2>${modEsc(shownName)}</h2></div>
+      ${melee ? '' : `<strong class="${totals.slots > limit ? 'is-over' : ''}" title="${modEsc(slotsTitle)}">${L('СЛОТЫ')} ${totals.slots} / ${limit}</strong>`}
+      <button type="submit" class="remove" aria-label="${modEsc(L('Закрыть'))}">×</button></header>
     <div class="mod-section">${quality}</div>
     ${hint && !melee ? `<p class="mod-hint">${hint}</p>` : ''}
     ${melee ? '' : `<ul class="mod-list">${list}</ul>
-    <div class="mod-add"><select id="modPick" aria-label="Модификация из книги"><option value="">модификация из книги…</option>${options}</select>
-      <button type="button" class="add-row" data-mod-add>ПОСТАВИТЬ</button><button type="button" class="add-row" data-mod-custom>+ СВОЯ МОДИФИКАЦИЯ</button></div>
-    ${farMode === 'toggle' && (t.far || mods.far) ? `<label class="mod-check mod-far"><input type="checkbox" data-mod-far${mods.far ? ' checked' : ''}> Цель на 51 м и дальше — бонус к одиночным и прицельным выстрелам</label>` : ''}`}
-    <details class="mod-section mod-tech"${Object.values(mods.tech).some(Boolean) ? ' open' : ''}><summary>Модернизации Техника (Мастер модернизации, стр. 148)</summary>
+    <div class="mod-add"><select id="modPick" aria-label="${modEsc(L('Модификация из книги'))}"><option value="">${L('модификация из книги…')}</option>${options}</select>
+      <button type="button" class="add-row" data-mod-add>${L('ПОСТАВИТЬ')}</button><button type="button" class="add-row" data-mod-custom>${L('+ СВОЯ МОДИФИКАЦИЯ')}</button></div>
+    ${farMode === 'toggle' && (totals.far || mods.far) ? `<label class="mod-check mod-far"><input type="checkbox" data-mod-far${mods.far ? ' checked' : ''}> ${L('Цель на 51 м и дальше — бонус к одиночным и прицельным выстрелам')}</label>` : ''}`}
+    <details class="mod-section mod-tech"${Object.values(mods.tech).some(Boolean) ? ' open' : ''}><summary>${L('Модернизации Техника (Мастер модернизации, стр. 148)')}</summary>
       <div class="mod-tech-list">${tech}</div>
-      <small>Модернизацию делает Техник: ТЕХ + навык ремонта + ранг Мастера модернизации + 1d10 против СЛ по цене предмета (вкладка роли Техника). Отличное качество — выше, в «Качестве».</small></details>
-    <p class="mod-effects">${effects.length ? `<b>Итог:</b> ${effects.map(modEsc).join(' · ')}` : 'Модификации не меняют броски.'}</p>
+      <small>${L('Модернизацию делает Техник: ТЕХ + навык ремонта + ранг Мастера модернизации + 1d10 против СЛ по цене предмета (вкладка роли Техника). Отличное качество — выше, в «Качестве».')}</small></details>
+    <p class="mod-effects">${effects.length ? `<b>${L('Итог:')}</b> ${effects.map(modEsc).join(' · ')}` : L('Модификации не меняют броски.')}</p>
   </form>`;
 }
 // Действие в окне модификаций: меняет mods и говорит, что произошло. null — событие не про модификации.
@@ -840,13 +846,19 @@ const blackIce = {
 
 // Подсказки при наведении (атрибут data-tip): первая строка — заголовок, дальше абзацы;
 // строки «10 — …» показываются с номером уровня.
+const tipT = text => (typeof t === 'function' ? t(text) : text);
+const tipTerm = text => (typeof term === 'function' ? term(text) : text);
 const statTitle = abbr => {
   const info = statInfo.find(([s])=>s === (statAliases[abbr] || abbr));
-  return info ? `${info[1]} · ${info[2]}\n${info[3][0].toUpperCase()}${info[3].slice(1)}.` : '';
+  if(!info) return '';
+  const body = tipT(info[3]);
+  return `${tipTerm(info[1]) || tipT(info[1])} · ${tipT(info[2])}\n${body[0].toUpperCase()}${body.slice(1)}${/[.!?…]$/.test(body) ? '' : '.'}`;
 };
 const skillTitle = name => {
   const info = skillInfo[name];
-  return info ? `${name.replace(' (x2)', '')}\n${info[0]}\n10 — ${info[1]}\n14 — ${info[2]}\n18 — ${info[3]}` : '';
+  if(!info) return '';
+  const head = tipTerm(name.replace(' (x2)', '')) || tipT(name.replace(' (x2)', ''));
+  return `${head}\n${tipT(info[0])}\n10 — ${tipT(info[1])}\n14 — ${tipT(info[2])}\n18 — ${tipT(info[3])}`;
 };
 // Расшифровки сокращений: первая строка — заголовок подсказки, дальше — пояснение. СТАТы берутся из statInfo.
 const abbrInfo = {
@@ -877,7 +889,10 @@ const abbrInfo = {
   'ЭМИ':'ЭМИ — электромагнитный импульс\nВыводит из строя электронику и киберимпланты.',
   'ИИ':'ИИ — искусственный интеллект'
 };
-const abbrTip = word => abbrInfo[word] || (statInfo.some(([s])=>s === (statAliases[word] || word)) ? `${word} — ${statTitle(word)}` : '');
+const abbrTip = word => {
+  if(abbrInfo[word]) return tipT(abbrInfo[word]);
+  return statInfo.some(([s])=>s === (statAliases[word] || word)) ? `${tipTerm(word) || word} — ${statTitle(word)}` : '';
+};
 // Сокращения в тексте страницы сами получают подсказку: <abbr class="has-tip" data-tip>. Новое содержимое
 // (перерисовка вкладок, карточки) размечается наблюдателем. Поля ввода, кнопки и элементы со своей подсказкой не трогаем.
 (()=>{

@@ -55,7 +55,7 @@
         <h2 data-i18n="Новый персонаж">Новый персонаж</h2>
         <p class="muted" data-i18n="Пустой лист или готовый шаблон Streetrat из книги (роль 4, снаряжение и кибер).">Пустой лист или готовый шаблон Streetrat из книги (роль 4, снаряжение и кибер).</p>
         <button type="submit" value="blank" class="primary new-sheet-blank" data-i18n="Свой (пустой лист)">Свой (пустой лист)</button>
-        <div class="section-title gap-top">ШАБЛОН STREETRAT</div>
+        <div class="section-title gap-top" data-i18n="ШАБЛОН STREETRAT">ШАБЛОН STREETRAT</div>
         <div class="new-sheet-roles" id="newSheetRoles"></div>
         <button type="submit" value="cancel" class="ghost" data-i18n="Отмена">Отмена</button>
       </form>
@@ -86,7 +86,7 @@
         </div>
         <div class="panel activity-panel">
           <div class="section-title"><span data-i18n="ПОСЛЕДНИЕ БРОСКИ">ПОСЛЕДНИЕ БРОСКИ</span> <button class="clear-log" id="clearLog" data-i18n="ОЧИСТИТЬ">ОЧИСТИТЬ</button></div>
-          <div id="dashboardLog" class="dashboard-log">Пока нет бросков.</div>
+          <div id="dashboardLog" class="dashboard-log" data-i18n="Пока нет бросков.">Пока нет бросков.</div>
         </div>
         <div class="panel session-notes">
           <div class="section-title"><span data-i18n="ЗАМЕТКИ ИГРОКА">ЗАМЕТКИ ИГРОКА</span></div>
@@ -114,7 +114,7 @@
           </div>
         </div>
         <div class="stats-card">
-          <div class="section-title"><span data-i18n="ХАРАКТЕРИСТИКИ">ХАРАКТЕРИСТИКИ</span> <span>STAT // CURRENT RESOURCE</span></div>
+          <div class="section-title"><span data-i18n="ХАРАКТЕРИСТИКИ">ХАРАКТЕРИСТИКИ</span> <span class="section-meta">STAT // CURRENT RESOURCE</span></div>
           <div class="stats-grid" id="statsGrid"></div>
           <div class="derived-grid">
             <div class="metric"><span data-i18n="Хиты">Хиты</span><strong><input id="hpValue" data-key="currentHp" type="number" min="0" value="0" data-i18n-aria-label="Текущее здоровье" aria-label="Текущее здоровье"> / <output id="hpMaximum">0</output></strong></div>
@@ -127,7 +127,7 @@
 
       <div class="columns-3">
         <div class="panel">
-          <div class="section-title"><span data-i18n="БРОНЯ">БРОНЯ</span> <span data-i18n="SP // ТЕКУЩЕЕ / МАКС.">SP // ТЕКУЩЕЕ / МАКС.</span></div>
+          <div class="section-title"><span data-i18n="БРОНЯ">БРОНЯ</span> <span class="section-meta" data-i18n="SP // ТЕКУЩЕЕ / МАКС.">SP // ТЕКУЩЕЕ / МАКС.</span></div>
           <div class="armor-form">
             <label><span data-i18n="Броня головы">Броня головы</span><select data-key="armorHeadType" data-armor-zone="Head"></select></label>
             <label><span data-i18n="Броня тела">Броня тела</span><select data-key="armorBodyType" data-armor-zone="Body"></select></label>
@@ -215,7 +215,7 @@
           <button class="add-row" data-add="gear" data-i18n="+ ДОБАВИТЬ ПРЕДМЕТ">+ ДОБАВИТЬ ПРЕДМЕТ</button>
         </div>
         <div class="panel">
-          <div class="section-title"><span data-i18n="БОЕПРИПАСЫ">БОЕПРИПАСЫ</span> <span>CALIBER // TYPE // COUNT</span></div>
+          <div class="section-title"><span data-i18n="БОЕПРИПАСЫ">БОЕПРИПАСЫ</span> <span class="section-meta">CALIBER // TYPE // COUNT</span></div>
           <div class="table-scroll">
             <table class="data-table ammo-table">
               <thead><tr><th data-i18n="Калибр">Калибр</th><th data-i18n="Тип">Тип</th><th data-i18n="Кол-во">Кол-во</th><th data-i18n="Свойство и цена">Свойство и цена</th><th></th></tr></thead>
@@ -225,17 +225,17 @@
           <button class="add-row" data-add="ammo" data-i18n="+ ДОБАВИТЬ БОЕПРИПАСЫ">+ ДОБАВИТЬ БОЕПРИПАСЫ</button>
         </div>
         <div class="panel">
-          <div class="section-title"><span data-i18n="ОРУЖИЕ">ОРУЖИЕ</span> <span>TYPE // SKILL // DMG // AMMO // ROF // AUTO</span></div>
+          <div class="section-title"><span data-i18n="ОРУЖИЕ">ОРУЖИЕ</span> <span class="section-meta">TYPE // SKILL // DMG // AMMO // ROF // AUTO</span></div>
           <div class="table-scroll">
             <table class="data-table weapon-table">
-              <thead><tr><th data-i18n="Оружие">Оружие</th><th data-i18n="Тип">Тип</th><th data-i18n="Навык">Навык</th><th data-i18n="Урон">Урон</th><th data-i18n-title="Патроны сейчас; пусто — не считать" title="Патроны сейчас; пусто — не считать">Патр.</th><th data-i18n-title="Размер магазина" title="Размер магазина">Маг.</th><th>ROF</th><th data-i18n-title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам" title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам">Авто</th><th data-i18n-title="Какими патронами заряжено; перезарядка берёт их из «Боеприпасов»" title="Какими патронами заряжено; перезарядка берёт их из «Боеприпасов»">Боеприпасы</th><th data-i18n="Заметки">Заметки</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="Оружие">Оружие</th><th data-i18n="Тип">Тип</th><th data-i18n="Навык">Навык</th><th data-i18n="Урон">Урон</th><th data-i18n="Патр." data-i18n-title="Патроны сейчас; пусто — не считать" title="Патроны сейчас; пусто — не считать">Патр.</th><th data-i18n="Маг." data-i18n-title="Размер магазина" title="Размер магазина">Маг.</th><th>ROF</th><th data-i18n="Авто" data-i18n-title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам" title="Автоматический огонь (очередь): доступен пистолетам-пулемётам и штурмовым винтовкам">Авто</th><th data-i18n-title="Какими патронами заряжено; перезарядка берёт их из «Боеприпасов»" title="Какими патронами заряжено; перезарядка берёт их из «Боеприпасов»">Боеприпасы</th><th data-i18n="Заметки">Заметки</th><th></th></tr></thead>
               <tbody id="weaponRows"></tbody>
             </table>
           </div>
           <button class="add-row" data-add="weapon" data-i18n="+ ДОБАВИТЬ ОРУЖИЕ">+ ДОБАВИТЬ ОРУЖИЕ</button>
         </div>
         <div class="panel combat-panel">
-          <div class="section-title"><span data-i18n="БОЕВЫЕ ДЕЙСТВИЯ">БОЕВЫЕ ДЕЙСТВИЯ</span> <span id="combatGrappleNote" hidden data-i18n="В ЗАХВАТЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ">В ЗАХВАТЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ</span></div>
+          <div class="section-title"><span data-i18n="БОЕВЫЕ ДЕЙСТВИЯ">БОЕВЫЕ ДЕЙСТВИЯ</span> <span class="section-meta" id="combatGrappleNote" hidden data-i18n="В ЗАХВАТЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ">В ЗАХВАТЕ: −2 КО ВСЕМ ДЕЙСТВИЯМ</span></div>
           <p class="combat-hint" data-i18n="Число на кнопке — что прибавляется к 1d10, нажмите, чтобы бросить. Нажмите на название — правило из книги. Атака, автоогонь, подавляющий огонь и перезарядка — в таблице оружия выше.">Число на кнопке — что прибавляется к 1d10, нажмите, чтобы бросить. Нажмите на название — правило из книги. Атака, автоогонь, подавляющий огонь и перезарядка — в таблице оружия выше.</p>
           <div class="combat-actions" id="combatActions"></div>
         </div>
@@ -248,7 +248,7 @@
       <div class="life-grid">
         <div class="panel life-fields" id="lifeFields"></div>
         <div class="panel">
-          <div class="section-title"><span data-i18n="СВЯЗИ">СВЯЗИ</span> <span>RELATIONSHIPS</span></div>
+          <div class="section-title"><span data-i18n="СВЯЗИ">СВЯЗИ</span> <span class="section-meta">RELATIONSHIPS</span></div>
           <div class="table-scroll"><table class="data-table"><thead><tr><th data-i18n="Персонаж">Персонаж</th><th data-i18n="Кто это?">Кто это?</th><th data-i18n="Что ему нужно?">Что ему нужно?</th><th></th></tr></thead><tbody id="relationshipRows"></tbody></table></div>
           <button class="add-row" data-add="relationship" data-i18n="+ ДОБАВИТЬ СВЯЗЬ">+ ДОБАВИТЬ СВЯЗЬ</button>
         </div>

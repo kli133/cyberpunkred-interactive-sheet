@@ -1,4 +1,4 @@
-// Броски кубиков — вынесено из player/app.js. Глобалы: state, helpers из app/shared.
+// Броски кубиков — вынесено из player/app.js. Глобалы: state, helpers из app/shared; t/term/termsIn/phrasesIn из i18n.
 function normalizeDicePool(pool){
   const normalized=[];
   let totalCount=0;
@@ -23,15 +23,16 @@ function rollModeLabel(){
 }
 
 const signed = value => value >= 0 ? String(value) : '−'+Math.abs(value);
-const critPart = item => item.critical && Number(item.critExtra) ? ` ${Number(item.die) === 10 ? '+' : '−'} крит ${Number(item.critExtra)}` : '';
+const critPart = item => item.critical && Number(item.critExtra) ? ` ${Number(item.die) === 10 ? '+' : '−'} ${t('крит')} ${Number(item.critExtra)}` : '';
 const diceText = item => (item.diceDetails ? item.diceDetails.map(die=>`D${Number(die.sides)}: ${Number(die.value)}`).join(' + ') : (Array.isArray(item.dice) ? item.dice.map(Number).join(' + ') : Number(item.die))) + critPart(item);
-const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? 'КРИТИЧЕСКИЙ УСПЕХ' : 'КРИТИЧЕСКИЙ ПРОВАЛ'}</em>` : '';
+const critText = item => item.critical ? ` <em>${Number(item.die) === 10 ? t('КРИТИЧЕСКИЙ УСПЕХ') : t('КРИТИЧЕСКИЙ ПРОВАЛ')}</em>` : '';
 const rollTotalText = item => item.autofireMult
   ? `${signed(Number(item.total))} ×${item.autofireMult} = ${signed(Number(item.total) * item.autofireMult)}`
   : signed(Number(item.total));
+const displayRollText = text => typeof phrasesIn === 'function' ? phrasesIn(text) : termsIn(text);
 const logLine = item => item.kind === 'damage'
-  ? `<b class="log-tag">УРОН</b> ${esc(item.text)}`
-  : `${esc(item.label)}${item.mode ? ` [${esc(item.mode)}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''}${item.luck ? ` + удача ${item.luck}` : ''} = <strong>${rollTotalText(item)}</strong>${critText(item)}${item.note ? ` <em>${esc(item.note)}</em>` : ''}`;
+  ? `<b class="log-tag">${t('УРОН')}</b> ${esc(displayRollText(item.text))}`
+  : `${esc(displayRollText(item.label))}${item.mode ? ` [${esc(t(item.mode))}]` : ''}: <b>${diceText(item)}</b>${Number(item.modifier) ? ` + ${signed(Number(item.modifier))}` : ''}${item.luck ? ` + ${t('удача')} ${item.luck}` : ''} = <strong>${rollTotalText(item)}</strong>${critText(item)}${item.note ? ` <em>${esc(displayRollText(item.note))}</em>` : ''}`;
 
 function addHistory(entry){
   state.rollHistory = [{...entry, time:now()}, ...(state.rollHistory || [])].slice(0, 30);
@@ -44,7 +45,8 @@ function addHistory(entry){
 // luck — к результату можно добавить Удачу кнопкой в окне кубика; onMiss/onHit — кнопки «ПОПАЛ / НЕ ПОПАЛ»
 // (умные патроны: «НЕ ПОПАЛ» бросает второй шанс; Соло «Слабое место»: «ПОПАЛ» вооружает бонус к урону).
 let lastRoll = null;
-function rollDicePool(pool, modifier, label='Свободный бросок', {crits=true, judge, attack=false, luck=false, onMiss, onHit, autofireMax=0}={}){
+function rollDicePool(pool, modifier, label, {crits=true, judge, attack=false, luck=false, onMiss, onHit, autofireMax=0}={}){
+  if(label == null || label === '') label = 'Свободный бросок';
   const dicePool=normalizeDicePool(pool);
   const diceDetails=dicePool.flatMap(({sides,count})=>Array.from({length:count},()=>({sides,value:rollDie(sides)})));
   const die = diceDetails.reduce((sum,item)=>sum+item.value,0);
@@ -67,16 +69,20 @@ function rollDicePool(pool, modifier, label='Свободный бросок', {
 function showRollResult(){
   const {entry, luck, onMiss, onHit, autofireMax} = lastRoll;
   const {diceDetails, critical, critExtra, die, total} = entry;
-  const critDie = critical ? `<span class="formula-die is-crit" aria-label="Кубик крита">${die === 10 ? '+' : '−'}${critExtra}<small>КРИТ</small></span>` : '';
-  const luckDie = entry.luck ? `<span class="formula-die is-luck" aria-label="Удача">+${entry.luck}<small>УДЧ</small></span>` : '';
+  const critDie = critical ? `<span class="formula-die is-crit" aria-label="${esc(t('Кубик крита'))}">${die === 10 ? '+' : '−'}${critExtra}<small>${t('КРИТ')}</small></span>` : '';
+  const luckDie = entry.luck ? `<span class="formula-die is-luck" aria-label="${esc(t('Удача'))}">+${entry.luck}<small>${t('УДЧ')}</small></span>` : '';
   const left = numeric('luckCurrent');
   const luckControls = luck ? `<div class="roll-actions">${left > 0
-    ? `<label>УДАЧА<input id="luckAfter" type="number" min="1" max="${left}" value="1"></label><button type="button" class="weapon-btn" data-roll-luck>+ К РЕЗУЛЬТАТУ</button><small>осталось ${left}</small>`
-    : '<small>Удачи не осталось</small>'}</div>` : '';
-  const hitControls = (onMiss || onHit) ? `<div class="roll-actions"><button type="button" class="weapon-btn" data-roll-hit>ПОПАЛ</button><button type="button" class="weapon-btn" data-roll-miss title="${onMiss ? 'Промах на 4 или меньше: второй шанс 1d10 + 10' : 'Промах — Слабое место не сработает'}">НЕ ПОПАЛ</button></div>` : '';
+    ? `<label>${t('УДАЧА')}<input id="luckAfter" type="number" min="1" max="${left}" value="1"></label><button type="button" class="weapon-btn" data-roll-luck>${t('+ К РЕЗУЛЬТАТУ')}</button><small>${t('осталось')} ${left}</small>`
+    : `<small>${t('Удачи не осталось')}</small>`}</div>` : '';
+  const missTitle = onMiss
+    ? t('Промах на 4 или меньше: второй шанс 1d10 + 10')
+    : t('Промах — Слабое место не сработает');
+  const hitControls = (onMiss || onHit) ? `<div class="roll-actions"><button type="button" class="weapon-btn" data-roll-hit>${t('ПОПАЛ')}</button><button type="button" class="weapon-btn" data-roll-miss title="${esc(missTitle)}">${t('НЕ ПОПАЛ')}</button></div>` : '';
   const showAutofire = autofireMax > 0 && /урон очереди/i.test(entry.label || '');
-  const autofireControls = showAutofire ? `<div class="roll-actions"><label title="Множитель = на сколько атака превысила DV цели, не больше ×${autofireMax}">× ОТ ДМ<input id="autofireAfter" type="number" min="1" max="${autofireMax}" value="${entry.autofireMult || ''}" placeholder="?"></label><small>макс. ×${autofireMax}</small></div>` : '';
-  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die${critical && index === 0 ? ' is-crit-source' : ''}" aria-label="D${item.sides}, кубик ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}${critDie}${luckDie}</div><strong class="formula-roll-total" id="rollTotal">${showAutofire ? autofireTotalLabel(entry) : `СУММА: ${signed(total)}`}</strong>${critText(entry) || entry.note ? `<div class="roll-note" id="rollNote">${critText(entry)}${entry.note ? `<span>${esc(entry.note)}</span>` : ''}</div>` : ''}${luckControls}${hitControls}${autofireControls}`;
+  const autofireControls = showAutofire ? `<div class="roll-actions"><label title="${esc(t('Множитель = на сколько атака превысила DV цели, не больше ×') + autofireMax)}">${t('× ОТ ДМ')}<input id="autofireAfter" type="number" min="1" max="${autofireMax}" value="${entry.autofireMult || ''}" placeholder="?"></label><small>${t('макс. ×')}${autofireMax}</small></div>` : '';
+  const noteHtml = critText(entry) || entry.note ? `<div class="roll-note" id="rollNote">${critText(entry)}${entry.note ? `<span>${esc(displayRollText(entry.note))}</span>` : ''}</div>` : '';
+  $('#diceResult').innerHTML = `<div class="formula-roll-values">${diceDetails.map((item,index)=>`<span class="formula-die${critical && index === 0 ? ' is-crit-source' : ''}" aria-label="D${item.sides}, ${t('кубик')} ${index + 1}">${item.value}<small>D${item.sides}</small></span>`).join('')}${critDie}${luckDie}</div><strong class="formula-roll-total" id="rollTotal">${showAutofire ? autofireTotalLabel(entry) : `${t('СУММА:')} ${signed(total)}`}</strong>${noteHtml}${luckControls}${hitControls}${autofireControls}`;
   if(showAutofire) $('#autofireAfter')?.focus();
 }
 // Убрать поле «× ОТ ДМ», если открыли обычный кубик или сделали другой бросок.
@@ -86,14 +92,14 @@ function clearAutofireRollUi(){
   if(lastRoll.entry) showRollResult();
 }
 const autofireTotalLabel = entry => entry.autofireMult
-  ? `СУММА: ${signed(entry.total)} ×${entry.autofireMult} = ${signed(entry.total * entry.autofireMult)}`
-  : `СУММА: ${signed(entry.total)}`;
+  ? `${t('СУММА:')} ${signed(entry.total)} ×${entry.autofireMult} = ${signed(entry.total * entry.autofireMult)}`
+  : `${t('СУММА:')} ${signed(entry.total)}`;
 function syncAutofireResult(){
   const {entry} = lastRoll;
   const totalEl = $('#rollTotal');
   if(totalEl) totalEl.textContent = autofireTotalLabel(entry);
   const noteEl = $('#rollNote');
-  if(noteEl) noteEl.innerHTML = `${critText(entry)}${entry.note ? `<span>${esc(entry.note)}</span>` : ''}`;
+  if(noteEl) noteEl.innerHTML = `${critText(entry)}${entry.note ? `<span>${esc(displayRollText(entry.note))}</span>` : ''}`;
   Object.assign(lastRoll.history, entry);
   persist();
   renderDashboardLog();
@@ -156,4 +162,3 @@ function rollFormula(formula){
 }
 
 const withNotes = (label, notes) => notes.filter(Boolean).length ? `${label} (${notes.filter(Boolean).join(', ')})` : label;
-

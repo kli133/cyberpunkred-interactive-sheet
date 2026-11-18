@@ -71,11 +71,11 @@
           <label><span data-i18n="Цели и зацепки">Цели и зацепки</span><textarea data-key="hooks" rows="3" data-i18n-placeholder="Что должно случиться, что игроки могут найти..." placeholder="Что должно случиться, что игроки могут найти..."></textarea></label>
         </div>
         <div class="panel">
-          <div class="section-title"><span data-i18n="ПОЛЕ БОЯ">ПОЛЕ БОЯ</span> <span>HP // SP</span></div>
+          <div class="section-title"><span data-i18n="ПОЛЕ БОЯ">ПОЛЕ БОЯ</span> <span class="section-meta">HP // SP</span></div>
           <div id="battleOverview" class="battle-overview"></div>
         </div>
         <div class="panel session-notes">
-          <div class="section-title"><span data-i18n="ИГРОКИ">ИГРОКИ</span> <span data-i18n="ЧТО ЗНАЕТ МАСТЕР">ЧТО ЗНАЕТ МАСТЕР</span></div>
+          <div class="section-title"><span data-i18n="ИГРОКИ">ИГРОКИ</span> <span class="section-meta" data-i18n="ЧТО ЗНАЕТ МАСТЕР">ЧТО ЗНАЕТ МАСТЕР</span></div>
           <div class="table-scroll">
             <table class="data-table players-table">
               <thead><tr><th data-i18n="Игрок">Игрок</th><th data-i18n="Персонаж">Персонаж</th><th data-i18n="Роль">Роль</th><th data-i18n="РЕА">РЕА</th><th data-i18n="Хиты">Хиты</th><th data-i18n="SP г/т">SP г/т</th><th data-i18n="Заметки">Заметки</th><th></th></tr></thead>
@@ -141,7 +141,7 @@
       </div>
       <div id="turnPanel" data-block="Сейчас ходит"></div>
       <div class="panel">
-        <div class="section-title"><span data-i18n="ОЧЕРЁДНОСТЬ">ОЧЕРЁДНОСТЬ</span> <span data-i18n="БОЛЬШЕ — РАНЬШЕ">БОЛЬШЕ — РАНЬШЕ</span></div>
+        <div class="section-title"><span data-i18n="ОЧЕРЁДНОСТЬ">ОЧЕРЁДНОСТЬ</span> <span class="section-meta" data-i18n="БОЛЬШЕ — РАНЬШЕ">БОЛЬШЕ — РАНЬШЕ</span></div>
         <div class="table-scroll">
           <table class="data-table init-table">
             <thead><tr><th></th><th data-i18n="Участник">Участник</th><th data-i18n="Иниц.">Иниц.</th><th data-i18n="Хиты">Хиты</th><th data-i18n="Состояние">Состояние</th><th data-i18n="Эффекты">Эффекты</th><th data-i18n="Заметка">Заметка</th><th></th></tr></thead>
@@ -162,7 +162,7 @@
         <p data-i18n="КТО ЕСТЬ КТО">КТО ЕСТЬ КТО</p>
       </div>
       <div class="panel">
-        <div class="section-title">NPC <span id="npcCount"></span></div>
+        <div class="section-title">NPC <span class="section-meta" id="npcCount"></span></div>
         <div class="npc-toolbar">
           <input id="npcSearch" type="search" data-i18n-placeholder="Поиск по имени, фракции, заметкам..." placeholder="Поиск по имени, фракции, заметкам..." data-i18n-aria-label="Поиск NPC" aria-label="Поиск NPC">
           <button class="add-row" type="button" data-add="npcs">+ NPC</button>
@@ -171,7 +171,7 @@
         <div id="npcList" class="npc-list"></div>
       </div>
       <div class="panel gap-top">
-        <div class="section-title"><span data-i18n="ПОДЧИНЁННЫЕ КОРПОРАТОВ">ПОДЧИНЁННЫЕ КОРПОРАТОВ</span> <span id="execTeamCount"></span></div>
+        <div class="section-title"><span data-i18n="ПОДЧИНЁННЫЕ КОРПОРАТОВ">ПОДЧИНЁННЫЕ КОРПОРАТОВ</span> <span class="section-meta" id="execTeamCount"></span></div>
         <p class="muted" data-i18n="Как на листе игрока (роль Корпорат, стр. 153–157): найм по таблице типа, лояльность и проверка 1d6. Можно подтянуть команду из листов персонажей в этом браузере.">Как на листе игрока (роль Корпорат, стр. 153–157): найм по таблице типа, лояльность и проверка 1d6. Можно подтянуть команду из листов персонажей в этом браузере.</p>
         <div class="dm-toolbar exec-team-toolbar">
           <label><span data-i18n="Корпорат">Корпорат</span><input id="execOwner" list="execOwnerList" data-i18n-placeholder="Имя персонажа" placeholder="Имя персонажа" data-i18n-aria-label="Чей подчинённый" aria-label="Чей подчинённый"></label>
@@ -212,7 +212,7 @@
       <div class="rules-note" data-block="Подсказка бестиария">Соберите противника на вкладке «Противники» и нажмите ★ — он сохранится здесь как шаблон. Шаблон с тем же именем заменяется. Из шаблона можно выставить сразу несколько копий: они получат номера.</div>
       <div id="templateList" class="template-list" data-block="Шаблоны противников"></div>
       <div class="panel gap-top">
-        <div class="section-title"><span data-i18n="СЦЕНЫ">СЦЕНЫ</span> <span data-i18n="ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ">ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ</span></div>
+        <div class="section-title"><span data-i18n="СЦЕНЫ">СЦЕНЫ</span> <span class="section-meta" data-i18n="ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ">ЗАГОТОВЛЕННЫЕ СТОЛКНОВЕНИЯ</span></div>
         <p class="muted" data-i18n="Соберите противников на поле и сохраните их как сцену: потом она выставляется целиком, со свежими хитами, бронёй и магазинами.">Соберите противников на поле и сохраните их как сцену: потом она выставляется целиком, со свежими хитами, бронёй и магазинами.</p>
         <div class="init-add">
           <input id="sceneName" data-i18n-placeholder="Засада на мосту" placeholder="Засада на мосту">
@@ -262,12 +262,12 @@
       <div id="genList" class="rules-list"></div>
       <div class="world-grid generators-grid gap-top">
         <div class="panel">
-          <div class="section-title"><span data-i18n="ИМЕНА">ИМЕНА</span> <span data-i18n="СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ">СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ</span></div>
+          <div class="section-title"><span data-i18n="ИМЕНА">ИМЕНА</span> <span class="section-meta" data-i18n="СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ">СПИСКИ ЛИСТА, НЕ ИЗ КНИГИ</span></div>
           <div id="nameList" class="scene-list"></div>
           <button class="quick-roll gap-top" type="button" id="genNames" data-i18n="ЕЩЁ ИМЕНА">ЕЩЁ ИМЕНА</button>
         </div>
         <div class="panel generators-tables">
-          <div class="section-title"><span data-i18n="СВОИ ТАБЛИЦЫ">СВОИ ТАБЛИЦЫ</span> <span data-i18n="СЛУЧАЙНАЯ СТРОКА">СЛУЧАЙНАЯ СТРОКА</span></div>
+          <div class="section-title"><span data-i18n="СВОИ ТАБЛИЦЫ">СВОИ ТАБЛИЦЫ</span> <span class="section-meta" data-i18n="СЛУЧАЙНАЯ СТРОКА">СЛУЧАЙНАЯ СТРОКА</span></div>
           <p class="muted" data-i18n="Перенесите сюда таблицы из книги (Ночной рынок, случайные встречи) или придумайте свои: одна строка — один вариант. Результат попадает в журнал.">Перенесите сюда таблицы из книги (Ночной рынок, случайные встречи) или придумайте свои: одна строка — один вариант. Результат попадает в журнал.</p>
           <div id="tableList" class="template-list"></div>
           <button class="add-row" type="button" id="addTable" data-i18n="+ ТАБЛИЦА">+ ТАБЛИЦА</button>

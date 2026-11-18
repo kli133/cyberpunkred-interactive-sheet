@@ -370,8 +370,9 @@ function renderEnemyModDialog(){
   const dialog = $('#modDialog');
   const e = modTarget && state.enemies[modTarget[0]], w = e?.weapons[modTarget[1]];
   if(!dialog || !w) return;
-  dialog.innerHTML = modDialogHtml({name:`${w[0] || 'Оружие'} — ${enemyName(e)}`, type:w[6], mods:parseMods(w[9]), magazine:w[5], farMode:'auto',
-    bayonetHint:'штык — отдельной строкой оружия', melee:isMelee(w)});
+  const weaponLabel = w[0] || 'Оружие';
+  dialog.innerHTML = modDialogHtml({name:`${typeof t === 'function' ? t(weaponLabel) : weaponLabel} — ${enemyName(e)}`, type:w[6], mods:parseMods(w[9]), magazine:w[5], farMode:'auto',
+    bayonetHint:typeof t === 'function' ? t('штык — отдельной строкой оружия') : 'штык — отдельной строкой оружия', melee:isMelee(w)});
 }
 const openEnemyMods = (e, i, j) => {
   modTarget = [i, j];
@@ -972,7 +973,7 @@ function renderTurn(){
   if(!item){ panel.innerHTML = ''; return; }
   const e = item.enemyId && enemyById(item.enemyId);
   const effects = item.effects.length ? `<p class="turn-effects">Эффекты: ${item.effects.map(ef=>esc(effectText(ef))).join(', ')}</p>` : '';
-  const head = `<div class="section-title">СЕЙЧАС ХОДИТ // ${esc(e ? enemyName(e) : item.name || '—')} <span>РАУНД ${state.round}</span></div>`;
+  const head = `<div class="section-title">СЕЙЧАС ХОДИТ // ${esc(e ? enemyName(e) : item.name || '—')} <span class="section-meta">РАУНД ${state.round}</span></div>`;
   const memo = '<p class="muted">За ход: одно перемещение (СКО × 2 м) и одно действие — атака, бег (ещё перемещение), уклонение, перезарядка, использование предмета.</p>';
   panel.innerHTML = e ? `<div class="turn-panel">${head}${effects}${memo}${enemyCard(e, state.enemies.indexOf(e))}</div>` : `<div class="panel turn-panel">${head}${effects}${memo}</div>`;
   if(e) updateCard(state.enemies.indexOf(e));
@@ -1036,7 +1037,7 @@ function renderTemplates(){
     : '<option value="">— пусто —</option>';
   $('#bestiarySummary').textContent = `ШАБЛОНОВ: ${state.templates.length} // СЦЕН: ${state.scenes.length}`;
   $('#templateList').innerHTML = state.templates.map((t,i)=>`<div class="panel template-card">
-      <div class="section-title">${esc(t.name || 'Без имени')} <span>${esc(t.kind)}</span></div>
+      <div class="section-title">${esc(t.name || 'Без имени')} <span class="section-meta">${esc(t.kind)}</span></div>
       <div class="template-stats">${stats.map((n,s)=>`<span data-tip="${esc(statTitle(n))}"><small>${n}</small>${esc(t.stats[s] || '—')}</span>`).join('')}</div>
       <p>Хиты ${maxHp(t)} · SP ${num(t.headSpMax || t.headSp)}/${num(t.bodySpMax || t.bodySp)}${t.weapons.length ? ` · ${t.weapons.map(w=>esc(w[0] || 'оружие')).join(', ')}` : ''}</p>
       <div class="enemy-row-add">
@@ -1253,7 +1254,7 @@ function renderNetGen(){
 }
 function renderNets(){
   $('#netList').innerHTML = state.nets.map((net,n)=>`<div class="panel net-panel">
-      <div class="section-title"><input class="net-name" data-net="${n}" data-k="name" value="${esc(net.name)}" placeholder="Архитектура ${n + 1}"><button type="button" class="clear-log" data-net-del="${n}">УДАЛИТЬ</button><span>${net.difficulty ? esc(netGenTitles[net.difficulty]) : ''}${net.floors.length ? ` · ЭТАЖЕЙ ${new Set(net.floors.map(f=>`${f[1]}:${f[0]}`)).size}` : ''}</span></div>
+      <div class="section-title"><input class="net-name" data-net="${n}" data-k="name" value="${esc(net.name)}" placeholder="Архитектура ${n + 1}"><button type="button" class="clear-log" data-net-del="${n}">УДАЛИТЬ</button><span class="section-meta">${net.difficulty ? esc(netGenTitles[net.difficulty]) : ''}${net.floors.length ? ` · ЭТАЖЕЙ ${new Set(net.floors.map(f=>`${f[1]}:${f[0]}`)).size}` : ''}</span></div>
       ${demonBlock(net, n)}
       <div class="table-scroll">
         <table class="data-table net-table">
@@ -1366,7 +1367,13 @@ const saveUiPrefs = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(ui
 const PANEL_SKIP = '.template-card, .net-panel, .turn-panel, .random-table, .enemy-card, .npc-card, .rules-section';
 const panelHead = el => el.querySelector(':scope > .section-title');
 const textTitle = node => [...(node?.childNodes || [])].filter(n=>n.nodeType === 3).map(n=>n.textContent).join(' ').replace(/\s+/g, ' ').trim();
-const panelTitle = el => textTitle(panelHead(el));
+const panelTitle = el => {
+  const head = panelHead(el);
+  if(!head) return '';
+  const labeled = [...head.children].find(child => child.matches('[data-i18n]') && !child.classList.contains('section-meta') && !child.matches('button, input, select, textarea, label, a'));
+  if(labeled) return (labeled.getAttribute('data-i18n') || labeled.textContent || '').replace(/\s+/g, ' ').trim();
+  return textTitle(head);
+};
 const sectionTitle = el => textTitle(el.querySelector(':scope > summary')) || el.querySelector(':scope > summary')?.childNodes[0]?.textContent?.trim() || '';
 const blockTitle = el => el.dataset.block || (el.matches('.rules-section') ? sectionTitle(el) : panelTitle(el));
 const blockKey = (tab, el) => {

@@ -671,7 +671,7 @@ button {
   margin: -14px -14px 13px;
 }
 
-.section-title span {
+.section-title .section-meta {
   float: right;
   color: #aaa;
   font-size: 11px;
@@ -2002,7 +2002,7 @@ footer {
 }
 
 /* Боевые действия на вкладке «Снаряжение»: строки в стиле листа — название, правило по нажатию, кнопки с итогом. */
-.combat-panel .section-title span {
+.combat-panel .section-title .section-meta {
   color: #ff6b70;
 }
 
@@ -2179,7 +2179,7 @@ footer {
 }
 
 @media(max-width:560px) {
-  .combat-panel .section-title span:not([hidden]) {
+  .combat-panel .section-title .section-meta:not([hidden]) {
     float: none;
     display: block;
     margin-top: 2px;

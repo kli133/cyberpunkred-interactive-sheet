@@ -122,9 +122,16 @@ const currentRole = () => roles[viewRoleId()];
 const roleRank = () => rankOf(viewRoleId());
 const rolesLabel = () => charRoles().map(id=>`${roles[id].name} ${rankOf(id)}`).join(' / ');
 // Почему сейчас нельзя взять новую роль (пусто — можно).
-const multiclassBlock = () => state.creationMode !== false ? 'Нельзя начать сразу в двух ролях: новую роль берут в режиме игры'
-  : rankOf(lastRoleId()) < MULTICLASS_MIN_RANK ? `Сначала доведите роль «${roles[lastRoleId()].name}» до ранга ${MULTICLASS_MIN_RANK}`
-  : numeric('ip') < ROLE_RANK_IP ? `Нужно ${ROLE_RANK_IP} IP` : '';
+const multiclassBlock = () => {
+  if(state.creationMode !== false) return t('Нельзя начать сразу в двух ролях: новую роль берут в режиме игры');
+  if(rankOf(lastRoleId()) < MULTICLASS_MIN_RANK){
+    return t('Сначала доведите роль «{name}» до ранга {rank}')
+      .replace('{name}', term(roles[lastRoleId()].name))
+      .replace('{rank}', String(MULTICLASS_MIN_RANK));
+  }
+  if(numeric('ip') < ROLE_RANK_IP) return t('Нужно {ip} IP').replace('{ip}', String(ROLE_RANK_IP));
+  return '';
+};
 const rolePointsKey = (roleId, key) => `rolePts_${roleId}_${key}`;
 const rolePointsBudget = () => roleRank() * (currentRole()?.pointsPerRank || 1);
 const rolePointsSpent = roleId => (roles[roleId]?.specialties || []).reduce((sum,item)=>sum + numeric(rolePointsKey(roleId, item.key)) * item.cost, 0);
@@ -173,12 +180,12 @@ function refreshSoloRoundUi(){
   if(!el) return;
   const weak = soloLevel('weakness'), def = soloLevel('deflection');
   const parts = [];
-  if(def) parts.push(state.soloDeflectionUsed ? 'Отражение использовано' : `Отражение −${def} готово`);
+  if(def) parts.push(state.soloDeflectionUsed ? t('Отражение использовано') : `${t('Отражение')} −${def} ${t('готово')}`);
   if(weak){
-    parts.push(state.soloWeaknessUsed ? 'Слабое место использовано'
-      : state.soloWeaknessArmed ? `Слабое место +${weak} к урону` : `Слабое место +${weak}: после попадания`);
+    parts.push(state.soloWeaknessUsed ? t('Слабое место использовано')
+      : state.soloWeaknessArmed ? `${t('Слабое место')} +${weak} ${t('к урону')}` : `${t('Слабое место')} +${weak}: ${t('после попадания')}`);
   }
-  el.textContent = parts.length ? parts.join(' · ') : 'Нет очков в Отражении / Слабом месте';
+  el.textContent = parts.length ? parts.join(' · ') : t('Нет очков в Отражении / Слабом месте');
 }
 // Кнопки «ПОПАЛ / НЕ ПОПАЛ» на атаке: для умных патронов и/или Слабого места Соло.
 function attackHitControls(onMiss, onHit){
@@ -248,7 +255,17 @@ function reallocateSoloPoints(){
 const maxHp = () => 10 + 5*Math.ceil((statValue(8) + numeric('stat5'))/2);
 const textValue = el => el.isContentEditable ? el.textContent : el.value;
 const setVal = (el, value) => { if(el !== document.activeElement) el.value = value; };
-const setInput = (key, value) => $$(`[data-key="${key}"]`).forEach(el=>{ el.value = value; });
+const setInput = (key, value) => {
+  $$(`[data-key="${key}"]`).forEach(el=>{ el.value = value; });
+  // Keep EN mirror inputs in sync when storage (RU) changes without a full re-render.
+  $$(`[data-store-ru="${key}"]`).forEach(el=>{
+    const raw = value == null ? '' : String(value);
+    if(typeof I18N !== 'undefined' && I18N.getLang() === 'en'){
+      const m = raw.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+      el.value = m ? m[2] : t(raw);
+    } else el.value = raw;
+  });
+};
 const isSafeImage = src => /^data:image\/[\w.+-]+;base64,[A-Za-z0-9+/=]+$/.test(String(src || ''));
 const formulaHtml = (key, value) => {
   const formulas = state.formulaMarks?.[key] || [];
@@ -500,9 +517,9 @@ function openNewSheetDialog(){
   const dialog = $('#newSheetDialog');
   if(!dialog){ createSheet(); switchTab('character'); return; }
   const rolesBox = $('#newSheetRoles');
-  if(rolesBox && !rolesBox.childElementCount){
+  if(rolesBox){
     rolesBox.innerHTML = Object.keys(streetratRoleLabels).map(id=>
-      `<button type="submit" value="${esc(id)}" class="ghost new-sheet-role">${esc(streetratRoleLabels[id])}</button>`
+      `<button type="submit" value="${esc(id)}" class="ghost new-sheet-role">${esc(term(streetratRoleLabels[id]))}</button>`
     ).join('');
   }
   if(dialog.showModal) dialog.showModal();
@@ -518,12 +535,12 @@ function handleNewSheetDialog(e){
   if(value === 'cancel') return;
   if(value === 'blank'){ createSheet(); switchTab('character'); return; }
   const data = buildStreetratSheet(value);
-  if(!data){ toast('Неизвестный шаблон роли'); return; }
+  if(!data){ toast(t('Неизвестный шаблон роли')); return; }
   createSheet(data);
   syncCyberWeapons(true);
   updateDerived();
   switchTab('character');
-  toast(`Streetrat: ${streetratRoleLabels[value] || value}`);
+  toast(`Streetrat: ${term(streetratRoleLabels[value] || value)}`);
 }
 
 function deleteSheet(){
@@ -718,7 +735,7 @@ function renderSkillFilters(){
 }
 
 function renderLife(){
-  $('#lifeBasics').innerHTML = `<div class="section-title">${t('ПОВСЕДНЕВНАЯ ЖИЗНЬ')} <span>LIFESTYLE</span></div><div class="life-basics-fields">
+  $('#lifeBasics').innerHTML = `<div class="section-title">${t('ПОВСЕДНЕВНАЯ ЖИЗНЬ')} <span class="section-meta">LIFESTYLE</span></div><div class="life-basics-fields">
     <label>${t('Образ жизни')}${growField('lifeStyle',state.lifeStyle||'', t('Например: Бродяга, Средний, Богатый'))}</label>
     <label>${t('Арендная плата')}${growField('lifeRent',state.lifeRent||'', t('Ежемесячная плата'))}</label>
     <label>${t('Жильё')}${growField('lifeHousing',state.lifeHousing||'', t('Тип и описание жилья'))}</label>
@@ -747,61 +764,112 @@ function row(type,data=[],index){
   const cells = rowColumns[type].map(({j,note,short,select,toggle,placeholder,label})=>{
     const key = `${type}${index}_${j}`;
     if(note && type === 'weapon' && /__cyber:/.test(data[j] || ''))
-      return `<td><span class="muted">кибероружие</span><input type="hidden" data-key="${key}" value="${esc(data[j])}"></td>`;
+      return `<td><span class="muted">${t('кибероружие')}</span><input type="hidden" data-key="${key}" value="${esc(data[j])}"></td>`;
+    if(type === 'gear' && j === 0) return `<td>${enBoundField(key, data[j] || '', t('Предмет'), '', {multiline:true})}</td>`;
+    if(type === 'gear' && note) return `<td>${enBoundField(key, data[j] || '', t('Заметка'), '', {multiline:true})}</td>`;
     if(note) return `<td><div class="formula-editor" data-key="${key}" contenteditable="true">${formulaHtml(key,data[j]||'')}</div></td>`;
     if(select === 'skill') return `<td>${weaponSkillSelect(key, data[j] || '')}</td>`;
     if(select === 'type') return `<td>${weaponTypeSelect(key, data[j] || '', `${type}${index}_7`, data[7] || '')}</td>`;
     if(select === 'teamType') return `<td><select data-key="${key}" aria-label="Тип подчинённого"><option value="">—</option>${Object.entries(execSubordinates).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}</select></td>`;
     if(select === 'vehicleType') return `<td><select data-key="${key}" aria-label="Тип транспорта"><option value="">Свой</option>${Object.entries(vehicleTypes).map(([id,item])=>`<option value="${id}"${id === data[j] ? ' selected' : ''}>${esc(item[0])}</option>`).join('')}</select></td>`;
-    if(select === 'caliber') return `<td><select data-key="${key}" aria-label="Калибр"><option value="">—</option>${Object.entries(ammoCalibers).map(([id,[name]])=>`<option value="${id}" title="${esc(caliberWeapons(id))}"${id === data[j] ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>${data[j] ? `<small class="ammo-for">${esc(caliberWeapons(data[j]))}</small>` : ''}</td>`;
-    if(select === 'ammoType') return `<td><select data-key="${key}" aria-label="Тип боеприпасов">${ammoTypeOptions(data[0], data[j])}</select></td>`;
-    if(select === 'ammoInfo'){ const item = ammoTypes[String(data[1] || '').split(':')[1]]; return `<td class="ammo-info">${item ? `${esc(item[3])}<small>${esc(item[1])} за ${ammoCalibers[data[0]]?.[1] === 1 ? 'штуку' : '10 шт.'}</small>` : ''}</td>`; }
-    if(select === 'loadedAmmo') return `<td><select data-key="${key}" aria-label="Заряжено">${loadedAmmoOptions(data)}</select></td>`;
+    if(select === 'caliber') return `<td><select data-key="${key}" aria-label="${esc(t('Калибр'))}"><option value="">—</option>${Object.entries(ammoCalibers).map(([id,[name]])=>`<option value="${id}" title="${esc(t(caliberWeapons(id)))}"${id === data[j] ? ' selected' : ''}>${esc(term(name))}</option>`).join('')}</select>${data[j] ? `<small class="ammo-for">${esc(t(caliberWeapons(data[j])))}</small>` : ''}</td>`;
+    if(select === 'ammoType') return `<td><select data-key="${key}" aria-label="${esc(t('Тип боеприпасов'))}">${ammoTypeOptions(data[0], data[j])}</select></td>`;
+    if(select === 'ammoInfo'){ const item = ammoTypes[String(data[1] || '').split(':')[1]]; return `<td class="ammo-info">${item ? `${esc(t(item[3]))}<small>${esc(t(item[1]))} ${ammoCalibers[data[0]]?.[1] === 1 ? t('за штуку') : t('за 10 шт.')}</small>` : ''}</td>`; }
+    if(select === 'loadedAmmo') return `<td><select data-key="${key}" aria-label="${esc(t('Заряжено'))}">${loadedAmmoOptions(data)}</select></td>`;
     if(select === 'program') return `<td>${programPresetSelect(key, data[j] || '')}</td>`;
     if(select === 'boost') return `<td>${programBoostEditor(index, data)}</td>`;
-    if(toggle && type !== 'weapon') return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Включено"${data[j] === '1' ? ' checked' : ''}></td>`;
-    if(toggle) return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="Автоматический огонь"${isAutofireOn(data) ? ' checked' : ''}${autofireMultiplier(data) ? '' : ' disabled'}></td>`;
+    if(toggle && type !== 'weapon') return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="${esc(t('Включено'))}"${data[j] === '1' ? ' checked' : ''}></td>`;
+    if(toggle) return `<td class="auto-cell"><input type="checkbox" data-key="${key}" aria-label="${esc(t('Автоматический огонь'))}"${isAutofireOn(data) ? ' checked' : ''}${autofireMultiplier(data) ? '' : ' disabled'}></td>`;
+    if(type === 'weapon' && j === 0) return `<td>${enBoundField(key, data[j] || '', t('Оружие'), '', {multiline:true})}</td>`;
     return short ? `<td>${field(key, data[j] || '', 'text', placeholder || '')}</td>` : `<td>${growField(key, data[j] || '')}</td>`;
-  }).map((html,k)=>{ const label = rowColumns[type][k].label; return label ? html.replace('<td', `<td data-label="${label}"`) : html; }).join('');
+  }).map((html,k)=>{ const label = rowColumns[type][k].label; return label ? html.replace('<td', `<td data-label="${esc(t(label))}"`) : html; }).join('');
   const ammoActions = type === 'ammo'
-    ? `<button type="button" class="weapon-btn" data-ammo-pack="${index}" title="Купить пачку: +10 (гранаты и ракеты — +1)">+${ammoCalibers[data[0]]?.[1] ?? 10}</button>`
+    ? `<button type="button" class="weapon-btn" data-ammo-pack="${index}" title="${esc(t('Купить пачку: +10 (гранаты и ракеты — +1)'))}">+${ammoCalibers[data[0]]?.[1] ?? 10}</button>`
     : '';
   const programActions = type === 'rolePrograms'
-    ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="Бросок урона программы (после попадания)">УРОН</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="Восстановить REZ до максимума">↺</button>`
+    ? `<button type="button" class="weapon-btn" data-program-attack="${index}" title="${esc(t('Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру'))}">${t('ПОПАДАНИЕ')}</button><button type="button" class="weapon-btn" data-program-damage="${index}" title="${esc(t('Бросок урона программы (после попадания)'))}">${t('УРОН')}</button><button type="button" class="weapon-btn" data-program-rez="${index}" title="${esc(t('Восстановить REZ до максимума'))}">↺</button>`
     : '';
   const roleActions = type === 'roleTeam'
-    ? `<button type="button" class="weapon-btn" data-role-action="loyaltyCheck" data-index="${index}" title="Проверка лояльности: мастер бросает 1d6">1D6</button>`
+    ? `<button type="button" class="weapon-btn" data-role-action="loyaltyCheck" data-index="${index}" title="${esc(t('Проверка лояльности: мастер бросает 1d6'))}">1D6</button>`
     : type === 'roleVehicles'
-      ? `<button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${index}" title="Полностью починить: ПЗТ = максимум">↺</button>`
+      ? `<button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${index}" title="${esc(t('Полностью починить: ПЗТ = максимум'))}">↺</button>`
       : '';
   const weaponActions = type === 'weapon'
-    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">УРОН</button><button type="button" class="weapon-btn" data-weapon-suppress="${index}" title="Подавляющий огонь: 10 патронов, РЕА + Автоматический огонь + 1d10; цели в 25 м без укрытия бросают ВОЛЯ + Концентрация против результата" hidden>ПОДАВЛ.</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="Перезарядить: патроны = магазин">↻</button>${weaponModButtons(index, data)}<input type="hidden" data-key="weapon${index}_11" value="${esc(data[11] || '')}">`
+    ? `<button type="button" class="weapon-btn" data-weapon-attack="${index}">${t('ПОПАДАНИЕ')}</button><button type="button" class="weapon-btn" data-weapon-damage="${index}">${t('УРОН')}</button><button type="button" class="weapon-btn" data-weapon-suppress="${index}" title="${esc(t('Подавляющий огонь: 10 патронов, РЕА + Автоматический огонь + 1d10; цели в 25 м без укрытия бросают ВОЛЯ + Концентрация против результата'))}" hidden>${t('ПОДАВЛ.')}</button><button type="button" class="weapon-btn" data-weapon-reload="${index}" title="${esc(t('Перезарядить: патроны = магазин'))}">↻</button>${weaponModButtons(index, data)}<input type="hidden" data-key="weapon${index}_11" value="${esc(data[11] || '')}">`
     : '';
-  return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}${ammoActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="Удалить строку">×</button></td></tr>`;
+  return `<tr>${cells}<td class="row-actions">${weaponActions}${programActions}${roleActions}${ammoActions}<button type="button" class="remove" data-remove="${type}" data-index="${index}" title="${esc(t('Удалить строку'))}">×</button></td></tr>`;
 }
 // СТАТы подчинённого хранятся строкой «ИНТ 5 · РЕА 7 · …»; на карточке — сеткой полей.
 const parseTeamStats = text => execStatNames.map(name=>{ const match = new RegExp(`${name}\\s*(\\d+)`).exec(String(text || '')); return match ? match[1] : ''; });
 const formatTeamStats = values => values.map((value,i)=>isBlank(value) ? '' : `${execStatNames[i]} ${value}`).filter(Boolean).join(' · ');
 // Карточка подчинённого корпората: шапка, сетка СТАТов, навыки и снаряжение из книги (свёрнуты), заметки.
+// Bound fields stay RU in state; show EN via mirror inputs that write RU back for known phrases.
+const ruFromDisplay = text => {
+  if(typeof I18N === 'undefined' || I18N.getLang() !== 'en' || text == null) return text;
+  const want = String(text);
+  const phrases = I18N.EN_PHRASES || {};
+  for(const ru of Object.keys(phrases)) if(phrases[ru] === want) return ru;
+  if(typeof programPresets !== 'undefined'){
+    for(const [name] of Object.values(programPresets)){
+      const m = String(name).match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+      if(m && m[2] === want) return name;
+    }
+  }
+  if(typeof weaponTypes !== 'undefined'){
+    for(const [name] of Object.values(weaponTypes)) if(t(name) === want || term(name) === want) return name;
+  }
+  if(typeof cyberWeaponTypes !== 'undefined'){
+    for(const [name] of Object.values(cyberWeaponTypes)) if(t(name) === want || term(name) === want) return name;
+  }
+  return want;
+};
+const enBoundField = (key, value, placeholder, className = '', {multiline = false} = {}) => {
+  const raw = value || '';
+  const en = typeof I18N !== 'undefined' && I18N.getLang && I18N.getLang() === 'en';
+  let shown = raw;
+  if(en){
+    const m = raw.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    shown = m ? m[2] : t(raw);
+  }
+  if(!en || shown === raw){
+    if(multiline) return growField(key, raw, placeholder);
+    return `<input class="${className}" data-key="${key}" value="${esc(raw)}" placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}">`;
+  }
+  const cls = className || (multiline ? 'grow-field' : '');
+  return `<input type="hidden" data-key="${key}" value="${esc(raw)}"><input class="${cls}" data-store-ru="${key}" value="${esc(shown)}" placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}">`;
+};
+const localizePiece = part => {
+  const raw = String(part || '').replace(/Сопротивление пыткам\/наркотикам/g, 'Сопрот. пыткам/наркотикам').trim();
+  if(!raw) return part;
+  const viaT = t(raw);
+  if(viaT !== raw) return viaT;
+  const viaTerm = term(raw);
+  if(viaTerm !== raw) return viaTerm;
+  return phrasesIn(raw);
+};
+const localizeCsv = text => String(text || '').split(/;\s*/).map(seg=>seg.split(/,\s*/).map(localizePiece).join(', ')).join('; ');
 function teamCard(data, i){
   const type = execSubordinates[data[4]];
   const stats = parseTeamStats(data[5]);
-  const skills = type ? type.skills.split('; ').map(line=>{ const [bonus, list] = line.split(': '); return `<li><strong>${esc(bonus)}</strong> ${esc(list)}</li>`; }).join('') : '';
+  const skills = type ? type.skills.split('; ').map(line=>{
+    const [bonus, list] = line.split(': ');
+    return `<li><strong>${esc(bonus)}</strong> ${esc(localizeCsv(list))}</li>`;
+  }).join('') : '';
   return `<article class="team-card">
     <div class="team-head">
-      <input class="team-name" data-key="roleTeam${i}_0" value="${esc(data[0] || '')}" placeholder="Имя подчинённого" aria-label="Имя">
-      <label class="team-loyalty" title="Лояльность: проверка — 1d6 мастера">ЛОЯЛЬНОСТЬ<input data-key="roleTeam${i}_2" type="number" value="${esc(data[2] || '')}"></label>
-      <button type="button" class="weapon-btn" data-role-action="loyaltyCheck" data-index="${i}" title="Проверка лояльности: мастер бросает 1d6">1D6</button>
-      <button type="button" class="remove" data-remove="roleTeam" data-index="${i}" title="Уволить / удалить">×</button>
+      ${enBoundField(`roleTeam${i}_0`, data[0] || '', t('Имя подчинённого'), 'team-name')}
+      <label class="team-loyalty" title="${esc(t('Лояльность: проверка — 1d6 мастера'))}">${t('ЛОЯЛЬНОСТЬ')}<input data-key="roleTeam${i}_2" type="number" value="${esc(data[2] || '')}"></label>
+      <button type="button" class="weapon-btn" data-role-action="loyaltyCheck" data-index="${i}" title="${esc(t('Проверка лояльности: мастер бросает 1d6'))}">1D6</button>
+      <button type="button" class="remove" data-remove="roleTeam" data-index="${i}" title="${esc(t('Уволить / удалить'))}">×</button>
     </div>
     <div class="team-meta">
-      <select data-key="roleTeam${i}_4" aria-label="Тип подчинённого"><option value="">Тип —</option>${Object.entries(execSubordinates).map(([id,item])=>`<option value="${id}"${id === data[4] ? ' selected' : ''}>${esc(item.name)}</option>`).join('')}</select>
-      ${growField(`roleTeam${i}_1`, data[1] || '', 'Работа')}
+      <select data-key="roleTeam${i}_4" aria-label="${esc(t('Тип подчинённого'))}"><option value="">${t('Тип —')}</option>${Object.entries(execSubordinates).map(([id,item])=>`<option value="${id}"${id === data[4] ? ' selected' : ''}>${esc(t(item.name))}</option>`).join('')}</select>
+      ${enBoundField(`roleTeam${i}_1`, data[1] || '', t('Работа'), '', {multiline:true})}
     </div>
-    <div class="team-stats">${execStatNames.map((name,k)=>`<label><span class="has-tip" data-tip="${esc(statTitle(name))}">${name}</span><input data-team-stat="${i}" data-stat-index="${k}" type="number" min="0" max="10" value="${esc(stats[k])}" aria-label="${name}"></label>`).join('')}</div>
+    <div class="team-stats">${execStatNames.map((name,k)=>`<label><span class="has-tip" data-tip="${esc(statTitle(name))}">${term(name)}</span><input data-team-stat="${i}" data-stat-index="${k}" type="number" min="0" max="10" value="${esc(stats[k])}" aria-label="${term(name)}"></label>`).join('')}</div>
     <input type="hidden" data-key="roleTeam${i}_5" value="${esc(data[5] || '')}">
-    ${type ? `<details class="team-details"><summary>Навыки и снаряжение</summary><p><strong>Прикрытие:</strong> ${esc(type.cover)}</p><ul>${skills}</ul><p><strong>Киберимпланты и снаряжение:</strong> ${esc(type.gear)}</p></details>` : ''}
-    ${growField(`roleTeam${i}_3`, data[3] || '', 'Заметки')}
+    ${type ? `<details class="team-details"><summary>${t('Навыки и снаряжение')}</summary><p><strong>${t('Прикрытие:')}</strong> ${esc(t(type.cover))}</p><p><strong>${t('Работа')}:</strong> ${esc(t(type.job))}</p><ul>${skills}</ul><p><strong>${t('Киберимпланты и снаряжение:')}</strong> ${esc(localizeCsv(type.gear))}</p></details>` : ''}
+    ${growField(`roleTeam${i}_3`, data[3] || '', t('Заметки'))}
   </article>`;
 }
 // Программа кибердеки — компактная карточка: параметры в одну строку, эффект под ней.
@@ -810,22 +878,22 @@ function programCard(data, i){
   const mini = (label, j, title = '') => `<label class="mini"${title ? ` title="${title}"` : ''}><span>${label}</span><input data-key="${k(j)}" value="${esc(data[j] || '')}"></label>`;
   return `<article class="program-card">
     <div class="program-main">
-      <label class="program-on" title="Программа включена"><input type="checkbox" data-key="${k(8)}"${data[8] === '1' ? ' checked' : ''} aria-label="Включена"></label>
-      <input class="program-name" data-key="${k(0)}" value="${esc(data[0] || '')}" placeholder="Программа" aria-label="Название">
+      <label class="program-on" title="${esc(t('Программа включена'))}"><input type="checkbox" data-key="${k(8)}"${data[8] === '1' ? ' checked' : ''} aria-label="${esc(t('Включена'))}"></label>
+      ${enBoundField(k(0), data[0] || '', t('Программа'), 'program-name')}
       <div class="program-fields">
-        <label class="mini wide"><span>Из книги</span>${programPresetSelect(k(6), data[6] || '')}</label>
-        <label class="mini wide"><span>Класс</span><input data-key="${k(1)}" value="${esc(data[1] || '')}"></label>
-        ${mini('ATK', 2)}${mini('ЗАЩ', 3)}
-        <label class="mini rez" title="REZ сейчас / максимум"><span>REZ</span><span class="rez-pair"><input data-key="${k(7)}" value="${esc(data[7] || '')}" aria-label="REZ сейчас">/<input data-key="${k(4)}" value="${esc(data[4] || '')}" aria-label="REZ максимум"></span></label>
-        <label class="mini"><span data-program-roll-label="${i}">${data[13] === 'effect' ? 'Свойство' : !isBlank(data[12]) ? 'Урон: прогр.' : 'Урон'}</span><input data-key="${k(11)}" value="${esc(data[11] || '')}"></label>
-        <label class="mini" title="Урон по Чёрному ЛЬДУ, если он отличается"><span>Урон: Ч.ЛЁД</span><input data-key="${k(12)}" value="${esc(data[12] || '')}"></label>
+        <label class="mini wide"><span>${t('Из книги')}</span>${programPresetSelect(k(6), data[6] || '')}</label>
+        <label class="mini wide"><span>${t('Класс')}</span>${enBoundField(k(1), data[1] || '', t('Класс'))}</label>
+        ${mini('ATK', 2)}${mini(t('ЗАЩ'), 3)}
+        <label class="mini rez" title="${esc(t('REZ сейчас / максимум'))}"><span>REZ</span><span class="rez-pair"><input data-key="${k(7)}" value="${esc(data[7] || '')}" aria-label="${esc(t('REZ сейчас'))}">/<input data-key="${k(4)}" value="${esc(data[4] || '')}" aria-label="${esc(t('REZ максимум'))}"></span></label>
+        <label class="mini"><span data-program-roll-label="${i}">${data[13] === 'effect' ? t('Свойство') : !isBlank(data[12]) ? t('Урон: прогр.') : t('Урон')}</span><input data-key="${k(11)}" value="${esc(data[11] || '')}"></label>
+        <label class="mini" title="${esc(t('Урон по Чёрному ЛЬДУ, если он отличается'))}"><span>${t('Урон: Ч.ЛЁД')}</span><input data-key="${k(12)}" value="${esc(data[12] || '')}"></label>
         ${programPresets[data[6]] ? `<input type="hidden" data-key="${k(13)}" value="${esc(data[13] || '')}">`
-          : `<label class="mini wide" title="Кубики своей программы: урон (атака) или свойство — длительность, штраф, как у Суперклея"><span>Кубики</span><select data-key="${k(13)}" aria-label="Что бросают кубики программы"><option value=""${data[13] === 'effect' ? '' : ' selected'}>урон</option><option value="effect"${data[13] === 'effect' ? ' selected' : ''}>свойство</option></select></label>`}
-        <div class="mini wide boost-field"><span>Усиливает</span>${programBoostEditor(i, data)}</div>
+          : `<label class="mini wide" title="${esc(t('Кубики своей программы: урон (атака) или свойство — длительность, штраф, как у Суперклея'))}"><span>${t('Кубики')}</span><select data-key="${k(13)}" aria-label="${esc(t('Что бросают кубики программы'))}"><option value=""${data[13] === 'effect' ? '' : ' selected'}>${t('урон')}</option><option value="effect"${data[13] === 'effect' ? ' selected' : ''}>${t('свойство')}</option></select></label>`}
+        <div class="mini wide boost-field"><span>${t('Усиливает')}</span>${programBoostEditor(i, data)}</div>
       </div>
-      <div class="row-actions"><button type="button" class="weapon-btn" data-program-attack="${i}" title="Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру">ПОПАДАНИЕ</button><button type="button" class="weapon-btn" data-program-damage="${i}">УРОН</button><button type="button" class="weapon-btn" data-program-damage="${i}" data-target="ice" title="Урон по Чёрному ЛЬДУ (после попадания)">ПО ЧЁРНОМУ ЛЬДУ</button><button type="button" class="weapon-btn" data-program-rez="${i}" title="Восстановить REZ до максимума">↺</button><button type="button" class="remove" data-remove="rolePrograms" data-index="${i}" title="Удалить">×</button></div>
+      <div class="row-actions"><button type="button" class="weapon-btn" data-program-attack="${i}" title="${esc(t('Бросок на попадание: 1d10 + ранг Интерфейса + ATK; результат назовите мастеру'))}">${t('ПОПАДАНИЕ')}</button><button type="button" class="weapon-btn" data-program-damage="${i}">${t('УРОН')}</button><button type="button" class="weapon-btn" data-program-damage="${i}" data-target="ice" title="${esc(t('Урон по Чёрному ЛЬДУ (после попадания)'))}">${t('ПО ЧЁРНОМУ ЛЬДУ')}</button><button type="button" class="weapon-btn" data-program-rez="${i}" title="${esc(t('Восстановить REZ до максимума'))}">↺</button><button type="button" class="remove" data-remove="rolePrograms" data-index="${i}" title="${esc(t('Удалить'))}">×</button></div>
     </div>
-    ${growField(k(5), data[5] || '', 'Эффект')}
+    ${enBoundField(k(5), data[5] || '', t('Эффект'), '', {multiline:true})}
   </article>`;
 }
 // Транспорт кочевника — карточка: ПЗТ с полоской, характеристики, улучшения галочками.
@@ -836,26 +904,26 @@ function vehicleCard(data, i){
   const chosen = vehicleUpgradeList(data);
   const rank = rankOf('nomad');
   const stats = preset
-    ? `<div class="vehicle-stats"><div><span>Мест</span><strong>${esc(preset[2])}</strong></div><div><span>СКО в бою</span><strong>${preset[3]}</strong></div><div><span>Скорость</span><strong>${preset[4]} км/ч</strong></div></div><input type="hidden" data-key="${k(6)}" value="${esc(data[6] || '')}">`
-    : growField(k(6), data[6] || '', 'Места, СКО в бою, скорость');
-  const upgrades = nomadUpgrades.map(([name, from, kind])=>`<label class="check-row${rank >= from ? '' : ' is-locked'}" title="${esc(kind)}"><input type="checkbox" data-vehicle-upgrade="${i}" value="${esc(name)}"${chosen.includes(name) ? ' checked' : ''}${rank >= from || chosen.includes(name) ? '' : ' disabled'}> ${esc(name)} <small>ранг ${from}</small></label>`).join('');
+    ? `<div class="vehicle-stats"><div><span>${t('Мест')}</span><strong>${esc(preset[2])}</strong></div><div><span>${t('СКО в бою')}</span><strong>${preset[3]}</strong></div><div><span>${t('Скорость', 'Speed')}</span><strong>${preset[4]} ${t('км/ч')}</strong></div></div><input type="hidden" data-key="${k(6)}" value="${esc(data[6] || '')}">`
+    : growField(k(6), data[6] || '', t('Места, СКО в бою, скорость'));
+  const upgrades = nomadUpgrades.map(([name, from, kind])=>`<label class="check-row${rank >= from ? '' : ' is-locked'}" title="${esc(t(kind))}"><input type="checkbox" data-vehicle-upgrade="${i}" value="${esc(name)}"${chosen.includes(name) ? ' checked' : ''}${rank >= from || chosen.includes(name) ? '' : ' disabled'}> ${esc(t(name))} <small>${t('ранг')} ${from}</small></label>`).join('');
   return `<article class="vehicle-card">
     <div class="team-head">
-      <input class="team-name" data-key="${k(0)}" value="${esc(data[0] || '')}" placeholder="Транспорт" aria-label="Название">
-      <select data-key="${k(3)}" aria-label="Тип транспорта"><option value="">Свой</option>${Object.entries(vehicleTypes).map(([id,item])=>`<option value="${id}"${id === data[3] ? ' selected' : ''}>${esc(item[0])}</option>`).join('')}</select>
-      <button type="button" class="remove" data-remove="roleVehicles" data-index="${i}" title="Удалить">×</button>
+      <input class="team-name" data-key="${k(0)}" value="${esc(data[0] || '')}" placeholder="${esc(t('Транспорт'))}" aria-label="${esc(t('Название'))}">
+      <select data-key="${k(3)}" aria-label="${esc(t('Тип транспорта'))}"><option value="">${t('Свой')}</option>${Object.entries(vehicleTypes).map(([id,item])=>`<option value="${id}"${id === data[3] ? ' selected' : ''}>${esc(t(item[0]))}</option>`).join('')}</select>
+      <button type="button" class="remove" data-remove="roleVehicles" data-index="${i}" title="${esc(t('Удалить'))}">×</button>
     </div>
     <div class="vehicle-hp">
-      <label>ПЗТ<span class="rez-pair"><input data-key="${k(4)}" value="${esc(data[4] || '')}" aria-label="ПЗТ сейчас">/<input data-key="${k(5)}" value="${esc(data[5] || '')}" aria-label="ПЗТ максимум"></span></label>
+      <label>${t('ПЗТ')}<span class="rez-pair"><input data-key="${k(4)}" value="${esc(data[4] || '')}" aria-label="${esc(t('ПЗТ сейчас'))}">/<input data-key="${k(5)}" value="${esc(data[5] || '')}" aria-label="${esc(t('ПЗТ максимум'))}"></span></label>
       <div class="hp-bar" data-vehicle-bar="${i}"><span></span></div>
-      <input class="vehicle-damage" data-vehicle-damage="${i}" type="number" min="0" placeholder="урон" aria-label="Урон транспорту">
-      <button type="button" class="weapon-btn" data-role-action="vehicleDamage" data-index="${i}" title="Снять урон с ПЗТ">УРОН</button>
-      <button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${i}" title="Полностью починить">↺</button>
+      <input class="vehicle-damage" data-vehicle-damage="${i}" type="number" min="0" placeholder="${esc(t('урон'))}" aria-label="${esc(t('Урон транспорту'))}">
+      <button type="button" class="weapon-btn" data-role-action="vehicleDamage" data-index="${i}" title="${esc(t('Снять урон с ПЗТ'))}">${t('УРОН')}</button>
+      <button type="button" class="weapon-btn" data-role-action="vehicleRepair" data-index="${i}" title="${esc(t('Полностью починить'))}">↺</button>
     </div>
     ${stats}
-    <details class="team-details"><summary data-vehicle-summary="${i}">Улучшения</summary><div class="vehicle-upgrades">${upgrades}</div></details>
+    <details class="team-details"><summary data-vehicle-summary="${i}">${t('Улучшения')}</summary><div class="vehicle-upgrades">${upgrades}</div></details>
     <input type="hidden" data-key="${k(1)}" value="${esc(data[1] || '')}">
-    ${growField(k(2), data[2] || '', 'Заметки')}
+    ${growField(k(2), data[2] || '', t('Заметки'))}
   </article>`;
 }
 function refreshVehicleCards(){
@@ -865,11 +933,11 @@ function refreshVehicleCards(){
     const share = max ? Math.min(1, now / max) : 0;
     bar.firstElementChild.style.width = `${Math.round(share * 100)}%`;
     bar.classList.toggle('is-low', max > 0 && share <= .5);
-    bar.title = max ? `${now} / ${max}${now === 0 ? ' — уничтожен' : ''}` : '';
+    bar.title = max ? `${now} / ${max}${now === 0 ? ` — ${t('уничтожен')}` : ''}` : '';
   });
   $$('[data-vehicle-summary]').forEach(summary=>{
     const count = vehicleUpgradeList(state.roleVehicles?.[Number(summary.dataset.vehicleSummary)]).length;
-    summary.textContent = count ? `Улучшения (${count})` : 'Улучшения';
+    summary.textContent = count ? `${t('Улучшения')} (${count})` : t('Улучшения');
   });
 }
 const cardRenderers = {roleTeam:teamCard, rolePrograms:programCard, roleVehicles:vehicleCard};
@@ -895,7 +963,9 @@ function refreshWeaponRows(){
       // Сброс «Авто», если убрали множитель (своё: «без очереди» / тип без автоогня) — иначе в state остаётся «1».
       if(!multiplier && data?.[9] === '1') data[9] = '';
       toggle.checked = isAutofireOn(data);
-      toggle.title = multiplier ? `Автоматический огонь (множитель до ×${multiplier})` : weaponTypes[data?.[8]] ? 'Этот тип оружия не стреляет очередями' : 'Своё оружие: выберите «очередь ×…» под типом оружия';
+      toggle.title = multiplier
+        ? `${t('Автоматический огонь (множитель до ×')}${multiplier})`
+        : weaponTypes[data?.[8]] ? t('Этот тип оружия не стреляет очередями') : t('Своё оружие: выберите «очередь ×…» под типом оружия');
     }
     const on = isAutofireOn(data);
     tr.classList.toggle('is-autofire', on);
@@ -908,18 +978,18 @@ function refreshWeaponRows(){
     if(attack){
       attack.textContent = t('ПОПАДАНИЕ');
       attack.title = on
-        ? t('Бросок на попадание очередью: 10 патронов, 1d10 + РЕА + «Автоматический огонь»; результат назовите мастеру', 'Autofire attack roll: 10 rounds, 1d10 + REF + Autofire; tell the GM the result')
-        : t('Бросок на попадание: 1d10 + стат + навык; результат назовите мастеру', 'Attack roll: 1d10 + STAT + skill; tell the GM the result');
+        ? t('Бросок на попадание очередью: 10 патронов, 1d10 + РЕА + «Автоматический огонь»; результат назовите мастеру')
+        : t('Бросок на попадание: 1d10 + стат + навык; результат назовите мастеру');
     }
     if(damage){
       const effect = !on && loaded && loaded.type in ammoNoDamage;
       damage.textContent = on ? t('УРОН ОЧЕРЕДИ') : effect ? t('ЭФФЕКТ') : t('УРОН');
-      damage.title = on ? t('Урон очереди после попадания: 2d6 × множитель, который назовёт мастер', 'Autofire damage after a hit: 2d6 × the multiplier the GM names')
-        : effect ? `${term(ammoTypes[loaded.type][0])}: ${t('урона оружия нет —', 'no weapon damage —')} ${termsIn(ammoTypes[loaded.type][3])}`
-        : shell ? t(`Запасной бросок урона дробью ${SHOTGUN_SHELL_DAMAGE} (основной — «ПОПАДАНИЕ» против СЛ ${SHELL_DV})`, `Backup shell damage ${SHOTGUN_SHELL_DAMAGE} (primary is ATTACK vs DV ${SHELL_DV})`) : t('Бросок урона после попадания', 'Damage roll after a hit');
+      damage.title = on ? t('Урон очереди после попадания: 2d6 × множитель, который назовёт мастер')
+        : effect ? `${term(ammoTypes[loaded.type][0])}: ${t('урона оружия нет —')} ${t(ammoTypes[loaded.type][3])}`
+        : shell ? t(`Запасной бросок урона дробью ${SHOTGUN_SHELL_DAMAGE} (основной — «ПОПАДАНИЕ» против СЛ ${SHELL_DV})`, `Backup shell damage ${SHOTGUN_SHELL_DAMAGE} (primary is ATTACK vs DV ${SHELL_DV})`) : t('Бросок урона после попадания');
     }
     if(attack && shell && !on){
-      attack.title = `Дробь: 1d10 + стат + навык против СЛ ${SHELL_DV}; при успехе — ${SHOTGUN_SHELL_DAMAGE} всем в 6 м перед вами`;
+      attack.title = `${t('Дробь: 1d10 + стат + навык против СЛ')} ${SHELL_DV}; ${t('при успехе —', 'on success —')} ${SHOTGUN_SHELL_DAMAGE} ${t('всем в 6 м перед вами', 'to everyone in 6 m in front of you')}`;
     }
   });
 }
@@ -935,11 +1005,11 @@ function autoGrow(el){
 const autoGrowAll = () => $$('.grow-field').forEach(autoGrow);
 
 function foundationOffLabel(conf){
-  if(conf.meat) return 'Живая';
-  if(conf.group === 'optic') return 'Обычный';
-  if(conf.group === 'audio') return 'Обычный';
-  if(conf.group === 'neural') return 'Нет';
-  return 'Нет';
+  if(conf.meat) return t('Живая');
+  if(conf.group === 'optic') return t('Обычный');
+  if(conf.group === 'audio') return t('Обычный');
+  if(conf.group === 'neural') return t('Нет');
+  return t('Нет');
 }
 function syncWoundsWithHp(){
   if(isBlank(state.currentHp)) return;
@@ -968,10 +1038,18 @@ const rollSkill = ref => rollCheck(typeof ref === 'number' ? `b${ref}` : String(
 let combatShown = null;
 const shortSkill = name => name.replace(' (x2)', '').replace('Автоматический огонь', 'Автоогонь');
 const chipLabels = {'Пилотирование (x2)':'Пилот.', 'Судовождение':'Судно', 'Вождение':'Вожд.', 'Первая помощь':'1-я помощь', 'Парамедик (x2)':'Парамедик'};
+const combatChipLabel = roll => {
+  const labeled = chipLabels[roll];
+  if(labeled) return t(labeled);
+  const full = term(roll);
+  return full !== roll ? full.replace(/ \(x2\)$/, '') : t(shortSkill(roll));
+};
 function combatChip(name, roll, many){
-  if(roll === 'body') return `<span class="combat-roll is-static" title="Урон, равный ТЕЛ, мимо брони"><small>урон</small>ТЕЛ ${statValue(8)}</span>`;
+  if(roll === 'body') return `<span class="combat-roll is-static" title="${esc(t('Урон, равный ТЕЛ, мимо брони'))}"><small>${t('урон')}</small>${term('ТЕЛ')} ${statValue(8)}</span>`;
   const ref = `b${skills.indexOf(roll)}`;
-  return `<button type="button" class="combat-roll" data-combat-roll="${esc(roll)}" data-combat-name="${esc(name)}" title="${esc(`${skillEntries[refBase(ref)][1]} + ${shortSkill(roll)} + 1d10 — нажмите, чтобы бросить`)}">${many ? `<small>${esc(chipLabels[roll] || shortSkill(roll))}</small>` : ''}${withSign(refTotal(ref))}</button>`;
+  const skillShort = combatChipLabel(roll);
+  const titleSkill = term(shortSkill(roll)) !== shortSkill(roll) ? term(shortSkill(roll)) : skillShort;
+  return `<button type="button" class="combat-roll" data-combat-roll="${esc(roll)}" data-combat-name="${esc(name)}" title="${esc(`${term(skillEntries[refBase(ref)][1])} + ${titleSkill} + 1d10${t('— нажмите, чтобы бросить')}`)}">${many ? `<small>${esc(skillShort)}</small>` : ''}${withSign(refTotal(ref))}</button>`;
 }
 function renderCombatActions(){
   const box = $('#combatActions');
@@ -979,22 +1057,22 @@ function renderCombatActions(){
   const grapple = grapplePenalty();
   const indexed = sheetCombatActions.map((action, k)=>[action, k]);
   const rows = indexed.filter(([[, , rolls]])=>rolls.length).map(([[name, , rolls, extra], k])=>{
-    const toggle = extra === 'grapple' ? `<label class="combat-toggle" title="В захвате оба получают −2 ко всем действиям"><input type="checkbox" data-combat-grapple${grapple ? ' checked' : ''}> в захвате</label>` : '';
+    const toggle = extra === 'grapple' ? `<label class="combat-toggle" title="${esc(t('В захвате оба получают −2 ко всем действиям'))}"><input type="checkbox" data-combat-grapple${grapple ? ' checked' : ''}> ${t('в захвате')}</label>` : '';
     return `<div class="combat-action${combatShown === k ? ' is-open' : ''}">
-      <button type="button" class="combat-name" data-combat-info="${k}" aria-expanded="${combatShown === k}" title="Правило из книги">${esc(name)}</button>${toggle}
+      <button type="button" class="combat-name" data-combat-info="${k}" aria-expanded="${combatShown === k}" title="${esc(t('Правило из книги'))}">${esc(term(name))}</button>${toggle}
       <span class="combat-rolls">${rolls.map(roll=>combatChip(name, roll, rolls.length > 1)).join('')}</span></div>`;
   }).join('');
   const refs = indexed.filter(([[, , rolls]])=>!rolls.length);
   const shown = sheetCombatActions[combatShown];
   box.innerHTML = `<div class="combat-rows">${rows}</div>
-    <div class="combat-refs"><span class="combat-refs-title">ДРУГИЕ ДЕЙСТВИЯ</span>${refs.map(([[name], k])=>`<button type="button" class="combat-tag${k === combatShown ? ' active' : ''}" data-combat-info="${k}" aria-pressed="${k === combatShown}">${esc(name)}</button>`).join('')}</div>
-    ${shown && !shown[2].length ? `<p class="combat-ref-text"><b>${esc(shown[0])}.</b> ${esc(shown[1])}</p>` : ''}`;
+    <div class="combat-refs"><span class="combat-refs-title">${t('ДРУГИЕ ДЕЙСТВИЯ')}</span>${refs.map(([[name], k])=>`<button type="button" class="combat-tag${k === combatShown ? ' active' : ''}" data-combat-info="${k}" aria-pressed="${k === combatShown}">${esc(term(name))}</button>`).join('')}</div>
+    ${shown && !shown[2].length ? `<p class="combat-ref-text"><b>${esc(term(shown[0]))}.</b> ${esc(t(shown[1]))}</p>` : ''}`;
   // Правило действия с бросками — сразу под его рядом сетки: после последней строки того же ряда.
   const grid = box.querySelector('.combat-rows'), open = grid.querySelector('.combat-action.is-open');
   if(shown && open){
     const items = [...grid.children], cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').length);
     const rowEnd = Math.min(items.length - 1, Math.floor(items.indexOf(open) / cols) * cols + cols - 1);
-    items[rowEnd].insertAdjacentHTML('afterend', `<p class="combat-ref-text combat-row-rule"><b>${esc(shown[0])}.</b> ${esc(shown[1])}</p>`);
+    items[rowEnd].insertAdjacentHTML('afterend', `<p class="combat-ref-text combat-row-rule"><b>${esc(term(shown[0]))}.</b> ${esc(termsIn(shown[1]))}</p>`);
   }
   $('#combatGrappleNote').hidden = !grapple;
 }
@@ -1133,7 +1211,7 @@ function weaponDamage(index){
   if(isAutofireOn(data)){
     const max = autofireMultiplier(data);
     const weak = consumeSoloWeakness();
-    if(!weak && soloLevel('weakness') && !state.soloWeaknessUsed) toast('Слабое место: сначала подтвердите попадание кнопкой «ПОПАЛ»');
+    if(!weak && soloLevel('weakness') && !state.soloWeaknessUsed) toast(t('Слабое место: сначала подтвердите попадание кнопкой «ПОПАЛ»'));
     rollDicePool([AUTOFIRE_DAMAGE], weak, `${name}: урон очереди`, {crits:false, autofireMax: max, judge: entry => [damageTable(entry, max), weak && `Слабое место +${weak}`, ammoNote(data)].filter(Boolean).join('. ')});
     return;
   }
@@ -1151,11 +1229,11 @@ function weaponDamage(index){
   const damage = parseDamage(data[1]);
   if(!damage){ toast(`${name}: укажите урон в виде 3d6 или 2d6+2`); return; }
   const weak = consumeSoloWeakness();
-  if(!weak && soloLevel('weakness') && !state.soloWeaknessUsed) toast('Слабое место: сначала подтвердите попадание кнопкой «ПОПАЛ»');
+  if(!weak && soloLevel('weakness') && !state.soloWeaknessUsed) toast(t('Слабое место: сначала подтвердите попадание кнопкой «ПОПАЛ»'));
   rollDicePool([{sides:damage.sides,count:damage.count}], damage.bonus + weak, `${name}: урон`, {crits:false,
     judge: entry => [isCriticalDamage(entry) && `КРИТИЧЕСКАЯ ТРАВМА у цели: +${CRITICAL_BONUS_DAMAGE} урона`, weak && `Слабое место +${weak}`, ammoNote(data)].filter(Boolean).join('. ')});
 }
-const ammoNote = data => { const loaded = loadedAmmo(data); return loaded && loaded.type !== 'basic' ? `${ammoTypes[loaded.type][0]}: ${ammoTypes[loaded.type][3]}` : ''; };
+const ammoNote = data => { const loaded = loadedAmmo(data); return loaded && loaded.type !== 'basic' ? `${term(ammoTypes[loaded.type][0])}: ${t(ammoTypes[loaded.type][3])}` : ''; };
 // ---------- Боеприпасы: запас в снаряжении и заряженные в оружие ----------
 // Боеприпас — «форма:тип», например «slug:ap»: жаканы, бронебойные. Калибр формы — ammoKinds[форма][1].
 const kindsOf = caliber => Object.keys(ammoKinds).filter(kind=>ammoKinds[kind][1] === caliber);
@@ -1164,9 +1242,10 @@ const typesOfKind = kind => Object.entries(ammoTypes).filter(([, item])=>item[2]
 // Список вариантов: при нескольких формах — группы, а в тексте варианта — форма (видно и в закрытом списке).
 function ammoOptions(kinds, value, label){
   const names = kinds.map(kind=>ammoKinds[kind][0]);
-  const prefix = kind => kinds.length < 2 ? '' : `${new Set(names).size < names.length ? kindLabel(kind) : ammoKinds[kind][0]}: `;
-  const options = kind => typesOfKind(kind).map(([type,[name]])=>{ const id = `${kind}:${type}`; return `<option value="${id}"${id === value ? ' selected' : ''}>${esc(prefix(kind) + name)}${label ? esc(label(kind, type)) : ''}</option>`; }).join('');
-  return kinds.length > 1 ? kinds.map(kind=>`<optgroup label="${esc(kindLabel(kind))}">${options(kind)}</optgroup>`).join('') : options(kinds[0]);
+  const prefixRu = kind => kinds.length < 2 ? '' : `${new Set(names).size < names.length ? kindLabel(kind) : ammoKinds[kind][0]}: `;
+  const prefix = kind => termsIn(prefixRu(kind));
+  const options = kind => typesOfKind(kind).map(([type,[name]])=>{ const id = `${kind}:${type}`; return `<option value="${id}"${id === value ? ' selected' : ''}>${esc(prefix(kind) + term(name))}${label ? esc(label(kind, type)) : ''}</option>`; }).join('');
+  return kinds.length > 1 ? kinds.map(kind=>`<optgroup label="${esc(termsIn(kindLabel(kind)))}">${options(kind)}</optgroup>`).join('') : options(kinds[0]);
 }
 const ammoTypeOptions = (caliber, value) => '<option value="">—</option>' + (kindsOf(caliber).length ? ammoOptions(kindsOf(caliber), value) : '');
 // Оружие, которое стреляет этим калибром.
@@ -1177,8 +1256,8 @@ const ammoStock = (kind, type) => (state.ammo || []).filter(row=>row[1] === `${k
 // Заряжено: «форма:тип»; пусто — патроны не связаны со снаряжением (перезарядка без учёта запаса).
 function loadedAmmoOptions(data){
   const kinds = weaponKindList(data);
-  if(!kinds.length) return '<option value="">— не нужны</option>';
-  return '<option value="">— без учёта запаса</option>' + ammoOptions(kinds, data?.[10], (kind, type)=>` (${ammoStock(kind, type)})`);
+  if(!kinds.length) return `<option value="">${t('— не нужны')}</option>`;
+  return `<option value="">${t('— без учёта запаса')}</option>` + ammoOptions(kinds, data?.[10], (kind, type)=>` (${ammoStock(kind, type)})`);
 }
 const loadedAmmo = data => { const [kind, type] = String(data?.[10] || '').split(':'); return ammoKinds[kind] && ammoTypes[type] ? {kind, type} : null; };
 // Снять патроны из запаса (по строкам снаряжения), вернуть остаток в запас.
@@ -1239,9 +1318,9 @@ const modsOf = i => parseMods($(`[data-key="weapon${i}_11"]`)?.value ?? state.we
 const isMeleeType = type => weaponTypes[type] && !rangedWeaponSkills.includes(weaponTypes[type][1]);
 function weaponModButtons(index, data){
   const mods = parseMods(data[11]);
-  if(isMeleeType(data[8])) return `<button type="button" class="weapon-btn mod-btn${mods.quality ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Качество оружия: отличное +1 к атакам, низкое заклинивает">КАЧ.${qualityLabel(mods)}</button>`;
-  const t = modTotals(mods);
-  return `${t.bayonet ? `<button type="button" class="weapon-btn" data-weapon-bayonet="${index}" title="Удар штыком: 1d10 + ЛВК + «Оружие ближнего боя»">ШТЫК</button><button type="button" class="weapon-btn" data-weapon-bayonet-damage="${index}" title="Урон штыка 1d6 (лёгкое холодное оружие: SP цели вдвое меньше)">1D6</button>` : ''}<button type="button" class="weapon-btn mod-btn${t.slots ? ' has-mods' : ''}" data-weapon-mods="${index}" title="Модификации и качество оружия: слоты, прицелы, магазины, свои модификации">МОД ${t.slots}/${modSlotLimit(mods)}${qualityLabel(mods)}</button>`;
+  if(isMeleeType(data[8])) return `<button type="button" class="weapon-btn mod-btn${mods.quality ? ' has-mods' : ''}" data-weapon-mods="${index}" title="${esc(t('Качество оружия: отличное +1 к атакам, низкое заклинивает'))}">${t('КАЧ.')}${qualityLabel(mods)}</button>`;
+  const totals = modTotals(mods);
+  return `${totals.bayonet ? `<button type="button" class="weapon-btn" data-weapon-bayonet="${index}" title="${esc(t('Удар штыком: 1d10 + ЛВК + «Оружие ближнего боя»'))}">${t('ШТЫК')}</button><button type="button" class="weapon-btn" data-weapon-bayonet-damage="${index}" title="${esc(t('Урон штыка 1d6 (лёгкое холодное оружие: SP цели вдвое меньше)'))}">1D6</button>` : ''}<button type="button" class="weapon-btn mod-btn${totals.slots ? ' has-mods' : ''}" data-weapon-mods="${index}" title="${esc(t('Модификации и качество оружия: слоты, прицелы, магазины, свои модификации'))}">${t('МОД')} ${totals.slots}/${modSlotLimit(mods)}${qualityLabel(mods)}</button>`;
 }
 const modAttackExtras = (data, autofire) => { const mods = parseMods(data[11]); return modAttackParts(mods, !autofire && mods.far); };
 // Магазин пересчитывается по модификациям; патроны в магазине не больше нового размера.
@@ -1269,7 +1348,7 @@ function addUnderbarrel(i, id){
   Object.assign(row, {0:`${weaponModPresets[id][0]} (${host})`, 1:damage, 2:String(magazine), 3:rof, 5:skill, 6:String(magazine), 8:type});
   state.weapon.push(row);
   renderRows('weapon'); bindInputs(); refreshWeaponRows(); save();
-  toast(`Добавлена строка «${row[0]}»: стреляйте из неё, держа оружие двумя руками`);
+  toast(`${t('Добавлена строка «')}${t(row[0])}${t('»: стреляйте из неё, держа оружие двумя руками')}`);
 }
 let modDialogIndex = null;
 function renderModDialog(i){
@@ -1278,7 +1357,7 @@ function renderModDialog(i){
   modDialogIndex = i;
   const data = state.weapon[i];
   dialog.innerHTML = modDialogHtml({name:data[0], type:data[8], mods:parseMods(data[11]), magazine:data[6], farMode:'toggle',
-    bayonetHint:'штык: кнопки «ШТЫК» и «1D6» в строке оружия', melee:isMeleeType(data[8])});
+    bayonetHint:t('штык: кнопки «ШТЫК» и «1D6» в строке оружия'), melee:isMeleeType(data[8])});
 }
 function openModDialog(i){
   save();
@@ -1293,7 +1372,7 @@ function modDialogEvent(e){
   if(!result) return;
   setWeaponMods(i, result.mods, result.rerender);
   if(result.added && weaponModPresets[result.added][4].under) addUnderbarrel(i, result.added);
-  if(weaponModPresets[result.removed?.id]?.[4].under) toast(`Строка «${weaponModPresets[result.removed.id][0]}» осталась в таблице оружия — удалите её, если она больше не нужна`);
+  if(weaponModPresets[result.removed?.id]?.[4].under) toast(`${t('Строка «')}${t(weaponModPresets[result.removed.id][0])}${t('» осталась в таблице оружия — удалите её, если она больше не нужна')}`);
 }
 function bayonetAttack(index){
   const data = weaponRow(index);
@@ -1304,7 +1383,7 @@ function bayonetDamage(index){
   const data = weaponRow(index);
   if(!data) return;
   const weak = consumeSoloWeakness();
-  if(!weak && soloLevel('weakness') && !state.soloWeaknessUsed) toast('Слабое место: сначала подтвердите попадание кнопкой «ПОПАЛ»');
+  if(!weak && soloLevel('weakness') && !state.soloWeaknessUsed) toast(t('Слабое место: сначала подтвердите попадание кнопкой «ПОПАЛ»'));
   rollDicePool([{sides:6, count:1}], weak, `${data[0] || 'Оружие'}: урон штыка`, {judge: () => ['Лёгкое холодное оружие: SP цели вдвое меньше', weak && `Слабое место +${weak}`].filter(Boolean).join('. ')});
 }
 function weaponReload(index){
@@ -1352,9 +1431,9 @@ function rollDeathSave(){
 function renderDicePool(){
   const pool=normalizeDicePool(state.dicePool || [{sides:10,count:1}]);
   $('#dicePool').innerHTML=pool.map((item,index)=>`<div class="dice-pool-row" data-dice-index="${index}">
-    <label>ГРАНИ<select class="dice-sides"><option value="10"${item.sides===10?' selected':''}>D10</option><option value="6"${item.sides===6?' selected':''}>D6</option><option value="100"${item.sides===100?' selected':''}>D100</option></select></label>
-    <label>КОЛИЧЕСТВО<input class="dice-count" type="number" min="1" max="100" value="${item.count}"></label>
-    <button type="button" class="remove-die" aria-label="Удалить тип кубика"${pool.length===1?' disabled':''}>×</button>
+    <label>${t('ГРАНИ')}<select class="dice-sides"><option value="10"${item.sides===10?' selected':''}>D10</option><option value="6"${item.sides===6?' selected':''}>D6</option><option value="100"${item.sides===100?' selected':''}>D100</option></select></label>
+    <label>${t('КОЛИЧЕСТВО')}<input class="dice-count" type="number" min="1" max="100" value="${item.count}"></label>
+    <button type="button" class="remove-die" aria-label="${esc(t('Удалить тип кубика'))}"${pool.length===1?' disabled':''}>×</button>
   </div>`).join('');
 }
 
@@ -1380,7 +1459,7 @@ function renderDashboardLog(){
 }
 
 function renderDashboard(){
-  $('#dashboardGreeting').textContent = state.name ? `ОПЕРАТИВНИК: ${state.name.toUpperCase()}` : 'СИСТЕМА ГОТОВА';
+  $('#dashboardGreeting').textContent = state.name ? `${t('ОПЕРАТИВНИК:')} ${state.name.toUpperCase()}` : t('СИСТЕМА ГОТОВА');
   renderDashboardLog();
   const preview = $('#portraitPreview');
   const hasImage = isSafeImage(state.portrait);
@@ -1586,6 +1665,19 @@ function repairArmor(){
 }
 
 function bindInputs(){
+  $$('[data-store-ru]').forEach(el=>{
+    if(el.dataset.boundStore) return;
+    el.dataset.boundStore = 'true';
+    el.addEventListener('input', ()=>{
+      const key = el.dataset.storeRu;
+      const ru = ruFromDisplay(el.value);
+      const hidden = $(`[data-key="${key}"]`);
+      if(hidden) hidden.value = ru;
+      state[key] = ru;
+      if(el.classList.contains('grow-field')) autoGrow(el);
+      save(key);
+    });
+  });
   $$('[data-key]').forEach(el=>{
     if(el.dataset.bound) return;
     el.dataset.bound='true';
@@ -1661,7 +1753,13 @@ const uiPrefs = (() => {
 const saveUiPrefs = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(uiPrefs)); } catch {} };
 const PANEL_SELECTOR = '.panel, .stats-card';
 const panelHead = panel => panel.querySelector(':scope > .section-title');
-const panelTitle = panel => [...(panelHead(panel)?.childNodes || [])].filter(node=>node.nodeType === 3).map(node=>node.textContent).join(' ').replace(/\s+/g, ' ').trim();
+const panelTitle = panel => {
+  const head = panelHead(panel);
+  if(!head) return '';
+  const labeled = [...head.children].find(el => el.matches('[data-i18n]') && !el.classList.contains('section-meta') && !el.matches('button, input, select, textarea, label, a'));
+  if(labeled) return (labeled.getAttribute('data-i18n') || labeled.textContent || '').replace(/\s+/g, ' ').trim();
+  return [...head.childNodes].filter(node=>node.nodeType === 3).map(node=>node.textContent).join(' ').replace(/\s+/g, ' ').trim();
+};
 const tabPanels = tab => [...tab.querySelectorAll(PANEL_SELECTOR)].filter(panel=>panelHead(panel) && panelTitle(panel) && !panel.parentElement.closest(PANEL_SELECTOR));
 function setupPanels(){
   $$('.tab-panel').forEach(tab=>{
@@ -1669,14 +1767,14 @@ function setupPanels(){
     panels.forEach(panel=>{
       const key = `${tab.id}:${panelTitle(panel)}`, head = panelHead(panel);
       panel.dataset.panelKey = key;
-      if(!head.querySelector('.panel-collapse')) head.insertAdjacentHTML('afterbegin', '<button type="button" class="panel-collapse" data-panel-collapse title="Свернуть или развернуть блок"></button>');
+      if(!head.querySelector('.panel-collapse')) head.insertAdjacentHTML('afterbegin', `<button type="button" class="panel-collapse" data-panel-collapse title="${esc(t('Свернуть или развернуть блок'))}"></button>`);
       const collapsed = !!uiPrefs.collapsed[key];
       panel.classList.toggle('is-collapsed', collapsed);
       head.querySelector('.panel-collapse').setAttribute('aria-expanded', String(!collapsed));
       panel.hidden = !!uiPrefs.hidden[key];
     });
     const heading = tab.querySelector(':scope > .page-heading');
-    if(heading && panels.length > 1 && !heading.querySelector('.panel-gear')) heading.insertAdjacentHTML('beforeend', '<div class="panel-gear"><button type="button" class="panel-gear-btn" data-panel-gear title="Какие блоки показывать на вкладке" aria-haspopup="true" aria-expanded="false">⚙</button><div class="panel-gear-menu" hidden></div></div>');
+    if(heading && panels.length > 1 && !heading.querySelector('.panel-gear')) heading.insertAdjacentHTML('beforeend', `<div class="panel-gear"><button type="button" class="panel-gear-btn" data-panel-gear title="${esc(t('Какие блоки показывать на вкладке'))}" aria-haspopup="true" aria-expanded="false">⚙</button><div class="panel-gear-menu" hidden></div></div>`);
     const hiddenCount = panels.filter(panel=>panel.hidden).length;
     const gear = heading?.querySelector('.panel-gear-btn');
     if(gear) gear.dataset.count = hiddenCount ? String(hiddenCount) : '';
@@ -1685,8 +1783,8 @@ function setupPanels(){
 function renderPanelMenu(tab){
   const menu = tab.querySelector('.panel-gear-menu');
   if(!menu) return;
-  menu.innerHTML = `<div class="panel-gear-title">БЛОКИ ВКЛАДКИ</div>${tabPanels(tab).map(panel=>`<label><input type="checkbox" data-panel-show="${esc(panel.dataset.panelKey)}"${panel.hidden ? '' : ' checked'}> ${esc(panelTitle(panel))}</label>`).join('')}
-    <div class="panel-gear-actions"><button type="button" class="weapon-btn" data-panel-all="show">ПОКАЗАТЬ ВСЕ</button><button type="button" class="weapon-btn" data-panel-all="expand">РАЗВЕРНУТЬ ВСЕ</button></div>`;
+  menu.innerHTML = `<div class="panel-gear-title">${t('БЛОКИ ВКЛАДКИ')}</div>${tabPanels(tab).map(panel=>`<label><input type="checkbox" data-panel-show="${esc(panel.dataset.panelKey)}"${panel.hidden ? '' : ' checked'}> ${esc(t(panelTitle(panel)))}</label>`).join('')}
+    <div class="panel-gear-actions"><button type="button" class="weapon-btn" data-panel-all="show">${t('ПОКАЗАТЬ ВСЕ')}</button><button type="button" class="weapon-btn" data-panel-all="expand">${t('РАЗВЕРНУТЬ ВСЕ')}</button></div>`;
 }
 function closePanelMenus(except){
   $$('.panel-gear-menu').forEach(menu=>{ if(menu !== except){ menu.hidden = true; menu.previousElementSibling?.setAttribute('aria-expanded', 'false'); } });

@@ -164,13 +164,13 @@ function setPieceInstalled(piece, on, key){
     piece.installed = true;
     adjustHumanity(hl);
     if(pieceMeta(piece).activate) piece.active = false;
-    toast(`${pieceLabel(piece)}: установлено${hl ? `, ПЧ ${hl}` : ''}`);
+    toast(`${term(pieceLabel(piece))}: ${t('установлено')}${hl ? `, ${t('ПЧ')} ${hl}` : ''}`);
   } else {
     const refund = Number(piece.hl) || 0;
     piece.installed = false;
     piece.active = false;
     adjustHumanity(-refund);
-    toast(`${pieceLabel(piece)}: снято${refund ? `, Человечность +${refund}` : ''}`);
+    toast(`${term(pieceLabel(piece))}: ${t('снято')}${refund ? `, ${t('Человечность +')}${refund}` : ''}`);
   }
 }
 function catalogOptions(group, kind){
@@ -333,12 +333,12 @@ function syncCyberWeapons(quiet=false){
 }
 function cyberEffectSummary(){
   const bits = [];
-  if(cyberBody() !== numeric('stat8')) bits.push(`ТЕЛ ${cyberBody()}`);
-  if(cyberInitBonus()) bits.push(`инициатива +${cyberInitBonus()}`);
-  if(cyberIgnoresWound()) bits.push('без штрафа тяжёлого ранения');
+  if(cyberBody() !== numeric('stat8')) bits.push(`${term('ТЕЛ')} ${cyberBody()}`);
+  if(cyberInitBonus()) bits.push(`${t('инициатива +')}${cyberInitBonus()}`);
+  if(cyberIgnoresWound()) bits.push(t('без штрафа тяжёлого ранения'));
   if(cyberSpFloor()) bits.push(`SP ≥ ${cyberSpFloor()}`);
-  if(cyberMoveBonus()) bits.push(`бег +${cyberMoveBonus()} м`);
-  const notes = installedFx().map(fx=>fx.note).filter(Boolean);
+  if(cyberMoveBonus()) bits.push(`${t('бег +')}${cyberMoveBonus()} ${t('м')}`);
+  const notes = installedFx().map(fx=>fx.note).filter(Boolean).map(note=>t(note));
   return [...bits, ...notes].filter((v,i,a)=>a.indexOf(v)===i);
 }
 function findCyberPiece(key, id){
@@ -362,7 +362,7 @@ function addCyberPiece(key, value){
   const sys = cyberSys(key);
   if(value === '__custom'){
     const block = canAddOption(key, '');
-    if(block && slotsMax(key) < 99 && slotsUsed(key) >= slotsMax(key)){ toast(block); return; }
+    if(block && slotsMax(key) < 99 && slotsUsed(key) >= slotsMax(key)){ toast(termsIn(block)); return; }
     const piece = makeCustom(1);
     piece.installed = true;
     sys.options.push(piece);
@@ -370,7 +370,7 @@ function addCyberPiece(key, value){
     return;
   }
   const block = canAddOption(key, value);
-  if(block){ toast(block); return; }
+  if(block){ toast(termsIn(block)); return; }
   const piece = makeFromCatalog(value);
   // Из каталога сразу ставим: ПЧ и эффекты (включая оружие в снаряжении).
   sys.options.push(piece);
@@ -409,7 +409,7 @@ function handleCyberClick(e){
   }
   if(act === 'active' && found){
     found.piece.active = !found.piece.active;
-    toast(`${pieceLabel(found.piece)}: ${found.piece.active ? 'активирован' : 'деактивирован'}`);
+    toast(`${term(pieceLabel(found.piece))}: ${found.piece.active ? t('активирован') : t('деактивирован')}`);
     commitCyber();
     return;
   }
@@ -433,7 +433,7 @@ function handleCyberChange(e){
       const shown = parseFormula(value) ? `${parseFormula(value).count}d${parseFormula(value).sides}` : value;
       value = String(total);
       field.value = value;
-      toast(`Потеря человечности: ${shown} = ${total}`);
+      toast(`${t('Потеря человечности:')} ${shown} = ${total}`);
     }
     const prev = Number(found.piece.hl) || 0;
     const next = Number(value) || 0;
@@ -455,19 +455,21 @@ function cyberHead(key, conf, sys){
   const over = used > max && max < 99;
   let baseCtrl = '';
   if(hasBase){
-    const label = baseOn ? (sys.foundation.name || conf.foundation) : foundationOffLabel(conf);
+    const rawLabel = baseOn ? (sys.foundation.name || conf.foundation) : foundationOffLabel(conf);
+    const label = baseOn ? term(rawLabel) : rawLabel;
     const hl = baseOn
-      ? `<label class="cyber-base-hl" title="Потеря человечности базы">ПЧ <input data-cyber-field="hl" data-cyber-key="${key}" data-cyber-id="${esc(sys.foundation.id)}" value="${esc(sys.foundation.hl)}"></label>`
+      ? `<label class="cyber-base-hl" title="${esc(t('Потеря человечности базы'))}">${t('ПЧ')} <input data-cyber-field="hl" data-cyber-key="${key}" data-cyber-id="${esc(sys.foundation.id)}" value="${esc(sys.foundation.hl)}"></label>`
       : '';
-    baseCtrl = `<button type="button" class="cyber-base-toggle${baseOn ? ' is-on' : ''}" data-cyber-act="foundation" data-cyber-key="${key}" title="${baseOn ? 'Снять базу (вернуть ПЧ)' : `Установить: ${conf.foundation}`}">${esc(label)}</button>${hl}`;
+    const baseTitle = baseOn ? t('Снять базу (вернуть ПЧ)') : `${t('Установка:')} ${term(conf.foundation)}`;
+    baseCtrl = `<button type="button" class="cyber-base-toggle${baseOn ? ' is-on' : ''}" data-cyber-act="foundation" data-cyber-key="${key}" title="${esc(baseTitle)}">${esc(label)}</button>${hl}`;
   }
   const slots = conf.bodySlots
-    ? (conf.bodySlots >= 99 ? '' : `<span class="cyber-head-meta${over ? ' is-over' : ''}">${used}/${conf.bodySlots} сл.</span>`)
+    ? (conf.bodySlots >= 99 ? '' : `<span class="cyber-head-meta${over ? ' is-over' : ''}">${used}/${conf.bodySlots} ${t('сл.')}</span>`)
     : hasBase
-      ? `<span class="cyber-head-meta${over ? ' is-over' : ''}">${baseOn ? `${used}/${max} сл.` : (conf.meat ? 'модули в мясо' : 'нужна база')}</span>`
+      ? `<span class="cyber-head-meta${over ? ' is-over' : ''}">${baseOn ? `${used}/${max} ${t('сл.')}` : (conf.meat ? t('модули в мясо') : t('нужна база'))}</span>`
       : '';
   return `<div class="cyber-panel-head">
-    <strong class="cyber-head-title">${esc(conf.title)}</strong>
+    <strong class="cyber-head-title">${esc(term(conf.title))}</strong>
     ${baseCtrl}${slots}
   </div>`;
 }
@@ -476,30 +478,30 @@ function cyberPieceCard(key, piece, kind){
   const on = piece.installed !== false;
   const over = kind === 'option' && slotsUsed(key) > slotsMax(key);
   const activate = meta.activate && on
-    ? `<button type="button" class="cyber-active${piece.active ? ' is-on' : ''}" data-cyber-act="active" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" title="Боевая активация (Сандевистан)">${piece.active ? 'АКТИВЕН' : 'ВЫКЛ'}</button>`
+    ? `<button type="button" class="cyber-active${piece.active ? ' is-on' : ''}" data-cyber-act="active" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" title="${esc(t('Боевая активация (Сандевистан)'))}">${piece.active ? t('АКТИВЕН') : t('ВЫКЛ')}</button>`
     : '';
   const nameCell = piece.custom
-    ? `<input data-cyber-field="name" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" value="${esc(piece.name)}" placeholder="Свой имплант">`
-    : `<strong title="${esc(piece.info)}">${esc(pieceLabel(piece))}</strong>${meta.slots ? ` <small>${meta.slots} сл.</small>` : ''}`;
+    ? `<input data-cyber-field="name" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" value="${esc(piece.name)}" placeholder="${esc(t('Свой имплант'))}">`
+    : `<strong title="${esc(t(pieceInfoText(piece) || ''))}">${esc(term(pieceLabel(piece)))}</strong>${meta.slots ? ` <small>${meta.slots} ${t('сл.')}</small>` : ''}`;
   const infoCell = piece.custom
-    ? `<textarea class="grow-field" data-cyber-field="info" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" rows="1" placeholder="Описание">${esc(piece.info)}</textarea>`
-    : `<span class="cyber-desc">${esc(pieceInfoText(piece) || meta.note || '')}</span>`;
+    ? `<textarea class="grow-field" data-cyber-field="info" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" rows="1" placeholder="${esc(t('Описание'))}">${esc(piece.info)}</textarea>`
+    : `<span class="cyber-desc">${esc(t(pieceInfoText(piece) || meta.note || ''))}</span>`;
   const weaponNote = meta.weapon && on && pieceActive(piece, key)
-    ? `<span class="cyber-weapon-link">→ в снаряжении: ${esc(meta.weapon[0])}</span>`
+    ? `<span class="cyber-weapon-link">${t('→ в снаряжении:')} ${esc(term(meta.weapon[0]))}</span>`
     : meta.weapon && on
-      ? `<span class="cyber-weapon-link is-warn">оружие не активно (проверьте базу)</span>`
-      : meta.weapon ? `<span class="cyber-weapon-link">после ВКЛ появится в снаряжении</span>` : '';
+      ? `<span class="cyber-weapon-link is-warn">${t('оружие не активно (проверьте базу)')}</span>`
+      : meta.weapon ? `<span class="cyber-weapon-link">${t('после ВКЛ появится в снаряжении')}</span>` : '';
   return `<article class="cyber-piece${on ? ' is-installed' : ' is-off'}${over ? ' is-over' : ''}">
     <div class="cyber-piece-tools">
-      <button type="button" class="cyber-install${on ? ' is-on' : ''}" data-cyber-act="toggle" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" aria-pressed="${on}" title="${on ? 'Снять (вернуть ПЧ)' : 'Установить (списать ПЧ)'}">${on ? 'ВКЛ' : 'ВЫКЛ'}</button>
+      <button type="button" class="cyber-install${on ? ' is-on' : ''}" data-cyber-act="toggle" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" aria-pressed="${on}" title="${esc(on ? t('Снять (вернуть ПЧ)') : t('Установить (списать ПЧ)'))}">${on ? t('ВКЛ') : t('ВЫКЛ')}</button>
       ${activate}
-      <button type="button" class="remove" data-cyber-act="del" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" title="Удалить">×</button>
+      <button type="button" class="remove" data-cyber-act="del" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" title="${esc(t('Удалить'))}">×</button>
     </div>
     <div class="cyber-piece-main">
       <div class="cyber-piece-name">${nameCell}</div>
       <div class="cyber-piece-info">${infoCell}${weaponNote}</div>
     </div>
-    <label class="cyber-piece-hl" title="Потеря человечности">ПЧ <input data-cyber-field="hl" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" value="${esc(piece.hl)}" placeholder="0"></label>
+    <label class="cyber-piece-hl" title="${esc(t('Потеря человечности'))}">${t('ПЧ')} <input data-cyber-field="hl" data-cyber-key="${key}" data-cyber-id="${esc(piece.id)}" value="${esc(piece.hl)}" placeholder="0"></label>
   </article>`;
 }
 function cyberCatalogLists(key){
@@ -513,31 +515,39 @@ function cyberCatalogLists(key){
   });
   return {available, blocked};
 }
+function displayOptionTags(tags){
+  return tags.map(tag=>{
+    if(/^\d+ сл\.$/.test(tag)) return tag.replace('сл.', t('сл.'));
+    if(tag.startsWith('иниц.')) return tag.replace('иниц.', t('иниц.'));
+    if(tag.startsWith('✓ ')) return `✓ ${term(tag.slice(2))}`;
+    return t(tag) !== tag ? t(tag) : term(tag);
+  });
+}
 function cyberAddSelect(key){
   const free = slotsMax(key) - slotsUsed(key);
   const {available, blocked} = cyberCatalogLists(key);
   const freeLabel = slotsMax(key) >= 99
-    ? (cyberSys(key).foundation?.installed ? '' : 'живая · без лимита слотов')
-    : `${Math.max(0, free)}/${slotsMax(key)} сл.`;
-  const pickMeta = (item, tags, extra=[]) => [item[1] && item[1] !== '—' ? item[1] : '', ...tags, item[3], item[4] !== '0' ? `ПЧ ${item[4]}` : '', ...extra].filter(Boolean).join(' · ');
-  const availHtml = available.map(({item, tags})=>`<button type="button" class="cyber-pick" data-cyber-act="pick" data-cyber-key="${key}" data-cyber-name="${esc(item[0])}" title="${esc([item[1] !== '—' ? `Установка: ${item[1]}` : '', item[2]].filter(Boolean).join(' · '))}">
-      <span class="cyber-pick-name">${esc(item[0])}</span>
+    ? (cyberSys(key).foundation?.installed ? '' : t('живая · без лимита слотов'))
+    : `${Math.max(0, free)}/${slotsMax(key)} ${t('сл.')}`;
+  const pickMeta = (item, tags, extra=[]) => [item[1] && item[1] !== '—' ? term(item[1]) : '', ...displayOptionTags(tags), item[3], item[4] !== '0' ? `${t('ПЧ')} ${item[4]}` : '', ...extra.map(x=>termsIn(x))].filter(Boolean).join(' · ');
+  const availHtml = available.map(({item, tags})=>`<button type="button" class="cyber-pick" data-cyber-act="pick" data-cyber-key="${key}" data-cyber-name="${esc(item[0])}" title="${esc([item[1] !== '—' ? `${t('Установка:')} ${term(item[1])}` : '', t(item[2])].filter(Boolean).join(' · '))}">
+      <span class="cyber-pick-name">${esc(term(item[0]))}</span>
       <span class="cyber-pick-meta">${esc(pickMeta(item, tags))}</span>
-    </button>`).join('') || '<p class="cyber-empty-note">Сейчас ничего не доступно</p>';
-  const blockHtml = blocked.map(({item, reason, tags})=>`<div class="cyber-pick is-blocked" title="${esc(reason)}">
-      <span class="cyber-pick-name">${esc(item[0])}</span>
-      <span class="cyber-pick-meta">${esc(pickMeta(item, tags, [reason]))}</span>
+    </button>`).join('') || `<p class="cyber-empty-note">${t('Сейчас ничего не доступно')}</p>`;
+  const blockHtml = blocked.map(({item, reason, tags})=>`<div class="cyber-pick is-blocked" title="${esc(t(reason))}">
+      <span class="cyber-pick-name">${esc(term(item[0]))}</span>
+      <span class="cyber-pick-meta">${esc(pickMeta(item, tags, [t(reason)]))}</span>
     </div>`).join('');
   return `<div class="cyber-add">
     <div class="cyber-add-bar">
-      <button type="button" class="cyber-add-open" data-cyber-act="picker" data-cyber-key="${key}">+ модуль${available.length ? ` · ${available.length}` : ''}</button>
+      <button type="button" class="cyber-add-open" data-cyber-act="picker" data-cyber-key="${key}">${t('+ модуль')}${available.length ? ` · ${available.length}` : ''}</button>
       ${freeLabel ? `<span class="cyber-add-free">${esc(freeLabel)}</span>` : ''}
     </div>
     <div class="cyber-picker" data-cyber-picker="${key}" hidden>
-      <input type="search" data-cyber-filter="${key}" placeholder="Найти модуль…" aria-label="Поиск модуля">
+      <input type="search" data-cyber-filter="${key}" placeholder="${esc(t('Найти модуль…'))}" aria-label="${esc(t('Поиск модуля'))}">
       <div class="cyber-picker-avail" data-cyber-pick-list="${key}">${availHtml}</div>
-      <button type="button" class="cyber-pick is-custom" data-cyber-act="pick-custom" data-cyber-key="${key}">+ свой имплант</button>
-      ${blocked.length ? `<details class="cyber-picker-blocked"><summary>Пока нельзя (${blocked.length})</summary>${blockHtml}</details>` : ''}
+      <button type="button" class="cyber-pick is-custom" data-cyber-act="pick-custom" data-cyber-key="${key}">${t('+ свой имплант')}</button>
+      ${blocked.length ? `<details class="cyber-picker-blocked"><summary>${t('Пока нельзя')} (${blocked.length})</summary>${blockHtml}</details>` : ''}
     </div>
   </div>`;
 }
@@ -583,16 +593,16 @@ function renderCyberDiagram(){
     el.classList.toggle('is-fashion', fashion);
   });
   const bits = [];
-  if(foundationOn('rightArm') || foundationOn('leftArm')) bits.push('руки');
-  if(foundationOn('rightLeg') || foundationOn('leftLeg')) bits.push('ноги');
-  if(foundationOn('rightEye') || foundationOn('leftEye')) bits.push('глаза');
-  if(foundationOn('audio')) bits.push('слух');
-  if(foundationOn('neural')) bits.push('нейро');
+  if(foundationOn('rightArm') || foundationOn('leftArm')) bits.push(t('руки'));
+  if(foundationOn('rightLeg') || foundationOn('leftLeg')) bits.push(t('ноги'));
+  if(foundationOn('rightEye') || foundationOn('leftEye')) bits.push(t('глаза'));
+  if(foundationOn('audio')) bits.push(t('слух'));
+  if(foundationOn('neural')) bits.push(t('нейро'));
   if(skin) bits.push(`SP ${cyberSpFloor()}`);
   const legend = $('#cyberDiagramLegend');
   if(legend) legend.innerHTML = bits.length
-    ? `<span class="cyber-legend-dot is-cyber"></span> Кибер: ${esc(bits.join(' · '))}`
-    : `<span class="cyber-legend-dot"></span> Органика`;
+    ? `<span class="cyber-legend-dot is-cyber"></span> ${t('Кибер:')} ${esc(bits.join(' · '))}`
+    : `<span class="cyber-legend-dot"></span> ${t('Органика')}`;
 }
 function renderCyber(){
   state.cyber = normalizeCyber(state.cyber);
@@ -607,7 +617,7 @@ function renderCyber(){
     const canOptions = !conf.foundation || sys.foundation?.installed || conf.meat;
     const cards = sys.options.map(p=>cyberPieceCard(key, p, conf.bodySlots ? 'body' : 'option')).join('');
     const empty = !sys.options.length
-      ? `<p class="cyber-empty-note">${canOptions ? 'Модулей пока нет' : 'Сначала включите базу в подписи сверху'}</p>`
+      ? `<p class="cyber-empty-note">${canOptions ? t('Модулей пока нет') : t('Сначала включите базу в подписи сверху')}</p>`
       : '';
     target.innerHTML = `<section class="cyber-panel">
       ${cyberHead(key, conf, sys)}
@@ -618,7 +628,7 @@ function renderCyber(){
   renderCyberDiagram();
   const summary = cyberEffectSummary();
   const effects = $('#cyberEffects');
-  if(effects) effects.textContent = summary.length ? `Действует: ${summary.join(' · ')}` : 'Установленные импланты влияют на ТЕЛ, навыки, инициативу, броню и оружие.';
+  if(effects) effects.textContent = summary.length ? `${t('Действует:')} ${summary.join(' · ')}` : t('Установленные импланты влияют на ТЕЛ, навыки, инициативу, броню и оружие.');
   autoGrowAll();
 }
 
@@ -669,7 +679,7 @@ function updateDerived(){
   updateResource('humanityCurrent', emp * 10);
   const psycho = emp > 0 && numeric('humanityCurrent') <= 0;
   const bodyNote = body !== baseBody ? ` · ТЕЛ ${baseBody}→${body}` : '';
-  $('#humanityMeta').textContent = `ПОТЕРЯ ${humanityLoss()} · ЭМП ${currentEmp()}/${emp}${bodyNote}${spFloor ? ` · SP≥${spFloor}` : ''}${psycho ? ' · КИБЕРПСИХОЗ' : ''}`;
+  $('#humanityMeta').textContent = `${t('ПОТЕРЯ')} ${humanityLoss()} · ${term('ЭМП')} ${currentEmp()}/${emp}${bodyNote}${spFloor ? ` · SP≥${spFloor}` : ''}${psycho ? ` · ${t('КИБЕРПСИХОЗ')}` : ''}`;
   $('#humanityMeta').classList.toggle('is-danger', psycho);
   // Штраф испытаний против смерти действует, пока персонаж смертельно ранен.
   if(!isMortallyWounded()) state.deathSavePenalty = 0;
@@ -685,7 +695,7 @@ function updateDerived(){
   const effects = $('#cyberEffects');
   if(effects){
     const summary = cyberEffectSummary();
-    effects.textContent = summary.length ? `Действует: ${summary.join(' · ')}` : 'Установленные импланты влияют на ТЕЛ, навыки, инициативу, броню и оружие.';
+    effects.textContent = summary.length ? `${t('Действует:')} ${summary.join(' · ')}` : t('Установленные импланты влияют на ТЕЛ, навыки, инициативу, броню и оружие.');
   }
   refreshSkills();
 }
