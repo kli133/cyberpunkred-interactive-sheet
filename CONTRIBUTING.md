@@ -23,8 +23,8 @@
 | Область | Файлы |
 | --- | --- |
 | Точки входа | `Player.html`, `Dm.html` |
-| Лист игрока | `player/app.js`, `player/data-templates.js` |
-| Общие таблицы и стили | `shared/data.js`, `shared/styles.css` |
+| Лист игрока | `player/app.js`, `player/cyber.js`, `player/dice.js`, `player/roles.js`, `player/print.js`, `player/data-templates.js`, `player/player.css` |
+| Общие таблицы и утилиты | `shared/data.js`, `shared/dom.js`, `shared/injuries.js`, `shared/damage-core.js`, `shared/styles.css` |
 | Лист Мастера | `dm/dm.js`, `dm/dm.css` и модули `dm/*.js` |
 | Шрифт | `shared/fonts/` (SIL OFL) |
 
@@ -33,6 +33,8 @@
 ## Правила кода
 
 - Пишите по-русски в UI и комментариях там, где уже принято в проекте.
+  Для английского интерфейса используйте `shared/i18n.js` (`t` / `term` / `data-i18n`):
+  русские строки остаются каноном в данных и сохранениях, EN — слой отображения.
 - Не подключайте фреймворки и сборщики без обсуждения.
 - Сохраняйте офлайн-работу: без обязательного интернета и бэкенда.
 - Сверяйте механику с книгой *Cyberpunk RED* (1.25e). Если это домашнее правило —

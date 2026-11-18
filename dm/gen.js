@@ -24,7 +24,7 @@ const subResult = (sub, r) => sub.find(([a, b])=>r >= a && r <= b)?.[2] || '';
 const calDate = () => new Date(`${state.calendar.now}:00Z`);
 const calIso = date => date.toISOString().slice(0, 16);
 const partOfDay = date => { const h = date.getUTCHours(); return h >= 6 && h < 18 ? 'day' : h >= 18 ? 'evening' : 'night'; };
-const ruDate = (date, opts) => date.toLocaleDateString('ru-RU', {timeZone:'UTC', ...opts});
+const ruDate = (date, opts) => date.toLocaleDateString(typeof localeTag === 'function' ? localeTag() : 'ru-RU', {timeZone:'UTC', ...opts});
 function calendarLabel(){
   const date = calDate();
   return `${ruDate(date, {weekday:'long'})}, ${ruDate(date, {day:'numeric', month:'long', year:'numeric'})}, ${date.toISOString().slice(11, 16)} — ${encounterTimes[partOfDay(date)].toLowerCase()}`;

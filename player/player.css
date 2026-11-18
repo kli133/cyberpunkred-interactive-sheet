@@ -1,0 +1,1828 @@
+/* Стили листа игрока (роль, кибер, печать, боеприпасы). Общие токены — shared/styles.css */
+.cyber-diagram {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 12px 8px;
+  background:
+    linear-gradient(180deg, #1a1a1a 0%, #111 100%);
+  border: 3px solid var(--red);
+  min-width: 0;
+}
+
+.body-silhouette {
+  width: min(120px, 100%);
+  height: auto;
+  max-height: 320px;
+  overflow: visible;
+}
+
+.body-part,
+.body-eye,
+.body-ear,
+.body-port {
+  fill: url(#meatTone);
+  stroke: #666;
+  stroke-width: 1.5;
+  transition: fill .25s ease, stroke .25s ease, filter .25s ease;
+}
+
+.body-eye,
+.body-ear {
+  fill: #4a4948;
+  stroke: #777;
+}
+
+.body-port {
+  fill: #333;
+  stroke: #555;
+  stroke-width: 1;
+}
+
+.body-part.is-cyber,
+.body-eye.is-cyber,
+.body-ear.is-cyber,
+.body-port.is-cyber {
+  fill: url(#cyberMetal);
+  stroke: #ff6b6b;
+  filter: drop-shadow(0 0 4px rgba(196, 24, 40, .55));
+}
+
+.body-part.is-armor {
+  stroke: #ffb4b4;
+  stroke-width: 2.2;
+}
+
+.body-part.is-fashion:not(.is-cyber) {
+  fill: #3a3538;
+  stroke: #c45c6a;
+}
+
+.cyber-diagram-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #bbb;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 150px;
+}
+
+.cyber-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #555;
+  flex: 0 0 auto;
+}
+
+.cyber-legend-dot.is-cyber {
+  background: var(--red);
+  box-shadow: 0 0 6px rgba(196, 24, 40, .8);
+}
+
+.cyber-layout {
+  align-items: start;
+}
+
+.cyber-core {
+  display: grid;
+  grid-template-columns: 1fr .7fr 1fr;
+  grid-template-areas: "cranial cranial cranial" "righteye body lefteye" "rightarm body leftarm" "neural neural neural" "rightleg . leftleg";
+  gap: 14px;
+  align-items: center;
+}
+
+.cyber-core .slot-cranial {
+  grid-area: cranial;
+}
+
+.cyber-core .slot-right-eye {
+  grid-area: righteye;
+}
+
+.cyber-core .slot-left-eye {
+  grid-area: lefteye;
+}
+
+.cyber-core .slot-right-arm {
+  grid-area: rightarm;
+}
+
+.cyber-core .slot-left-arm {
+  grid-area: leftarm;
+}
+
+.cyber-core .slot-neural {
+  grid-area: neural;
+}
+
+.cyber-core .slot-right-leg {
+  grid-area: rightleg;
+}
+
+.cyber-core .slot-left-leg {
+  grid-area: leftleg;
+}
+
+.cyber-core .cyber-diagram {
+  grid-area: body;
+  min-height: 360px;
+  align-self: stretch;
+}
+
+.cyber-advanced {
+  display: grid;
+  gap: 14px;
+}
+
+.cyber-table-slot {
+  min-width: 0;
+}
+
+.cyber-panel {
+  border: 3px solid var(--red);
+  background: #fff;
+  min-width: 0;
+}
+
+.cyber-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  background: var(--black);
+  color: #fff;
+  padding: 7px 8px;
+}
+
+.cyber-head-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-right: auto;
+}
+
+.cyber-base-toggle {
+  border: 1px solid #fff;
+  background: transparent;
+  color: #fff;
+  font: 700 10px/1 var(--font, inherit);
+  padding: 6px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.cyber-base-toggle.is-on {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.cyber-base-hl,
+.cyber-piece-hl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.cyber-base-hl input,
+.cyber-piece-hl input {
+  width: 36px;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  font: 700 12px/1 var(--font, inherit);
+  padding: 2px 0;
+  outline: 0;
+}
+
+.cyber-base-hl {
+  color: #fff;
+}
+
+.cyber-head-meta {
+  font-size: 10px;
+  opacity: .8;
+  text-transform: uppercase;
+}
+
+.cyber-head-meta.is-over {
+  color: #ffb4b4;
+}
+
+.cyber-piece.is-over {
+  background: #fff1f1;
+  box-shadow: inset 3px 0 var(--red);
+}
+
+.cyber-pieces {
+  display: grid;
+  gap: 0;
+}
+
+.cyber-piece {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 8px;
+  border-top: 1px solid var(--red);
+  background: #fff;
+  color: var(--ink);
+}
+
+.cyber-piece.is-off {
+  opacity: .62;
+  background: #f7f7f7;
+}
+
+.cyber-piece-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 48px;
+}
+
+.cyber-install,
+.cyber-active {
+  display: block;
+  width: 100%;
+  border: 1px solid #888;
+  background: #eee;
+  color: #444;
+  font: 700 10px/1 var(--font, inherit);
+  padding: 6px 2px;
+  cursor: pointer;
+}
+
+.cyber-install.is-on {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.cyber-active.is-on {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+  color: #fff;
+}
+
+.cyber-piece-tools .remove {
+  border: 0;
+  background: transparent;
+  color: #888;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.cyber-piece-main {
+  min-width: 0;
+}
+
+.cyber-piece-name {
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.cyber-piece-name input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #ccc;
+  background: transparent;
+  font: 700 13px/1.3 var(--font, inherit);
+  padding: 2px 0;
+  outline: 0;
+}
+
+.cyber-piece-name small {
+  color: #777;
+  font-weight: 500;
+}
+
+.cyber-desc {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #444;
+  overflow-wrap: anywhere;
+}
+
+.cyber-weapon-link {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--red);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.cyber-weapon-link.is-warn {
+  color: #a66;
+}
+
+.cyber-piece .grow-field {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  border: 0;
+  border-bottom: 1px solid #ccc;
+  background: transparent;
+  padding: 2px 0;
+  outline: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  field-sizing: content;
+}
+
+.cyber-piece-hl {
+  color: #666;
+  padding-top: 2px;
+}
+
+.cyber-empty-note {
+  margin: 0;
+  padding: 10px 8px;
+  font-size: 12px;
+  color: #777;
+  border-top: 1px solid #eee;
+}
+
+.cyber-panel-add {
+  border-top: 1px solid var(--red);
+  padding: 6px;
+}
+
+.cyber-add {
+  display: grid;
+  gap: 6px;
+}
+
+.cyber-add-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cyber-add-open {
+  border: 1px solid var(--red);
+  background: #fff;
+  color: var(--red);
+  font: 700 11px/1 var(--font, inherit);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.cyber-add-open:hover {
+  background: #fff4f4;
+}
+
+.cyber-add-free {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.cyber-picker {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  max-height: min(320px, 50vh);
+  overflow: auto;
+}
+
+.cyber-picker[hidden] {
+  display: none !important;
+}
+
+.cyber-picker input[type=search] {
+  width: 100%;
+  border: 1px solid #ccc;
+  background: #fff;
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 13px;
+  outline: 0;
+}
+
+.cyber-picker-avail {
+  display: grid;
+  gap: 4px;
+}
+
+.cyber-pick {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #ccc;
+  background: #fff;
+  padding: 7px 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cyber-pick:hover {
+  border-color: var(--red);
+  background: #fff8f8;
+}
+
+.cyber-pick-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cyber-pick-meta {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.3;
+}
+
+.cyber-pick.is-custom {
+  border-style: dashed;
+  color: var(--red);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.cyber-pick.is-blocked {
+  cursor: default;
+  opacity: .7;
+  background: #f3f3f3;
+}
+
+.cyber-picker-blocked {
+  border-top: 1px solid #ddd;
+  padding-top: 4px;
+}
+
+.cyber-picker-blocked summary {
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #777;
+  padding: 4px 0;
+}
+
+.cyber-picker-blocked .cyber-pick {
+  margin-top: 4px;
+}
+
+.cyber-hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+/* === Роль === */
+.tab[hidden] {
+  display: none;
+}
+
+.role-pick {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 70px;
+  gap: 10px;
+}
+
+.role-pick select, .role-pick input {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: #f8f7f4;
+  padding: 7px 5px;
+  outline: 0;
+  color: var(--ink);
+  font: inherit;
+  margin-top: 5px;
+}
+
+.role-rank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--black);
+  color: #fff;
+  padding: 10px 14px;
+  border-left: 7px solid var(--red);
+}
+
+.role-rank label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.role-rank input {
+  width: 58px;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: transparent;
+  color: var(--red);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  outline: 0;
+}
+
+.role-rank .skill-upgrade {
+  color: #fff;
+  border-color: #777;
+}
+
+/* Мультикласс: переключатель ролей и взятие новой роли. */
+.role-multiclass {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.role-switch, .role-take {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.role-switch .skill-filter {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.role-switch .skill-filter b {
+  margin-left: 4px;
+}
+
+.role-switch .remove {
+  margin-left: -4px;
+}
+
+.role-take-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #555;
+}
+
+.role-take select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media(max-width:560px) {
+  .role-take select {
+    width: 100%;
+  }
+}
+
+.role-take .add-row {
+  margin: 0;
+}
+
+.role-take button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.role-take small, .role-street {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.role-extra-info {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media print {
+  .role-multiclass { display: none; }
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.role-grid .role-table-panel, .role-grid .role-notes {
+  grid-column: 1 / -1;
+}
+
+.role-ability p {
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.role-roll {
+  border: 0;
+  background: var(--red);
+  color: #fff;
+  padding: 10px 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.role-specialties td small {
+  display: block;
+  color: #777;
+  font-size: 11px;
+}
+
+.role-specialties td:nth-child(2) {
+  width: 60px;
+  white-space: nowrap;
+  color: #555;
+}
+
+.role-specialties td:nth-child(3) {
+  width: 70px;
+}
+
+.role-specialties input {
+  width: 56px;
+  text-align: center;
+}
+
+#rolePointsInfo.is-over {
+  color: var(--red);
+}
+
+.role-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.role-buttons .weapon-btn {
+  margin: 0;
+  padding: 5px 8px;
+}
+
+.role-notes textarea {
+  width: 100%;
+}
+
+.role-table {
+  min-width: 560px;
+}
+
+/* === Программы кибердеки: компактные карточки === */
+.program-cards {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.program-card {
+  border: 1px solid #d1ccc6;
+  border-left: 4px solid #bbb;
+  background: #fff;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.program-card.is-active {
+  border-left-color: #3fa95b;
+  background: #f4fbf5;
+}
+
+.program-card.is-derezzed {
+  background: #f3f1ef;
+  color: #999;
+}
+
+.program-card.is-derezzed .program-name {
+  text-decoration: line-through;
+}
+
+.program-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.program-on input {
+  width: 18px;
+  height: 18px;
+  accent-color: #3fa95b;
+}
+
+.program-name {
+  flex: 1 1 170px;
+  min-width: 0;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 3px 2px;
+  outline: 0;
+}
+
+.program-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 10 1 520px;
+}
+
+.program-card .mini {
+  display: grid;
+  gap: 1px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #777;
+  text-transform: uppercase;
+}
+
+.program-card .mini input, .program-card .mini select, .rez-pair input {
+  width: 46px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink);
+  text-align: center;
+  text-transform: none;
+  padding: 3px 0;
+  outline: 0;
+}
+
+.program-card .mini.wide input, .program-card .mini.wide select {
+  width: 140px;
+  text-align: left;
+}
+
+/* Усиления программы: строки «цель + величина», сколько угодно. */
+.program-card .boost-field {
+  flex: 1 1 100%;
+}
+
+.boost-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.boost-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.program-card .mini.wide .boost-row select {
+  width: auto;
+  max-width: 230px;
+}
+
+.program-card .boost-row input[type=number] {
+  width: 44px;
+  text-align: center;
+}
+
+.boost-list .add-row {
+  margin: 0;
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+.rez-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rez-pair input {
+  width: 34px;
+}
+
+.program-card .row-actions {
+  margin-left: auto;
+}
+
+.program-card .grow-field, .vehicle-card .grow-field {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  border: 0;
+  border-bottom: 1px dashed #ccc;
+  background: transparent;
+  padding: 3px 2px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #555;
+  resize: none;
+  overflow: hidden;
+  outline: 0;
+  field-sizing: content;
+}
+
+/* === Транспорт кочевника: карточки === */
+.vehicle-card {
+  border: 1px solid #d1ccc6;
+  border-left: 4px solid var(--red);
+  background: #fff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vehicle-card .team-head .team-name {
+  font-size: 15px;
+}
+
+.vehicle-card .team-head select {
+  max-width: 45%;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.vehicle-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vehicle-hp > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #777;
+}
+
+.hp-bar {
+  flex: 1 1 80px;
+  height: 8px;
+  background: #e6e1db;
+  overflow: hidden;
+}
+
+.hp-bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #3fa95b;
+  transition: width .2s;
+}
+
+.hp-bar.is-low span {
+  background: var(--red);
+}
+
+.vehicle-damage {
+  width: 64px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  text-align: center;
+  font: inherit;
+  padding: 3px 0;
+}
+
+.vehicle-hp .weapon-btn {
+  margin: 0;
+}
+
+.vehicle-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 6px;
+}
+
+.vehicle-stats div {
+  border: 1px solid #ddd;
+  text-align: center;
+  padding: 4px;
+}
+
+.vehicle-stats span {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #777;
+  text-transform: uppercase;
+}
+
+.vehicle-upgrades {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 0 12px;
+  margin-top: 6px;
+}
+
+.vehicle-upgrades .check-row {
+  font-size: 12px;
+  min-height: 26px;
+}
+
+.vehicle-upgrades .check-row small {
+  color: #999;
+}
+
+.vehicle-upgrades .is-locked {
+  color: #aaa;
+}
+
+.net-summary {
+  margin: 12px 0 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.net-summary strong {
+  color: var(--red);
+}
+
+/* Счётчик NET-действий в заголовке «СЕТЬ»: квадратики, счёт, ± от мастера, новый ход. */
+.section-title .net-tracker {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  color: #ddd;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.net-label {
+  margin-right: 2px;
+  color: #aaa;
+  letter-spacing: 1px;
+}
+
+.net-pip {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 2px solid var(--red);
+  background: transparent;
+  cursor: pointer;
+}
+
+.net-pip.is-used {
+  background: #666;
+  border-color: #888;
+}
+
+.net-pip.is-over {
+  border-style: dashed;
+}
+
+.net-pip.is-over.is-used {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.net-count {
+  margin: 0 3px 0 4px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.net-count.is-over, .net-bonus {
+  color: #ff6b70;
+}
+
+.net-bonus {
+  margin-right: 2px;
+}
+
+.net-mini {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border: 1px solid #666;
+  background: transparent;
+  color: #ddd;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.net-mini:hover {
+  border-color: var(--red);
+  color: #fff;
+}
+
+.net-reset {
+  margin-left: 3px;
+  border-color: var(--red);
+}
+
+@media(max-width:560px) {
+  .net-pip {
+    width: 20px;
+    height: 20px;
+  }
+
+  .net-mini {
+    min-width: 26px;
+    height: 26px;
+  }
+}
+
+.role-extra .armor-form {
+  margin-bottom: 12px;
+}
+
+.role-extra > .weapon-btn {
+  margin: 0 0 12px;
+}
+
+.role-table td.short-center input {
+  width: 56px;
+  text-align: center;
+}
+
+.role-extra .role-roll {
+  margin-bottom: 12px;
+}
+
+.role-info p {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+.role-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.45;
+}
+
+.role-list li {
+  margin-bottom: 4px;
+}
+
+.role-list li.is-locked, .law-table tr.is-locked td {
+  color: #aaa;
+}
+
+.role-list .is-current {
+  border-left: 3px solid var(--red);
+  padding-left: 6px;
+}
+
+[data-role-info].is-over {
+  color: var(--red);
+}
+
+.med-drugs td small {
+  display: block;
+  color: #777;
+  font-size: 11px;
+}
+
+.med-drugs td:nth-child(3) input {
+  width: 52px;
+  text-align: center;
+}
+
+.med-drugs .row-actions {
+  width: 170px;
+}
+
+@media(max-width:900px) {
+  .role-grid {
+    grid-template-columns: minmax(0,1fr);
+  }
+}
+
+/* === Печать: вместо интерфейса печатается отдельный лист #printSheet (см. renderPrintSheet) === */
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  html, body {
+    background: #fff !important;
+  }
+
+  body > :not(.print-sheet) {
+    display: none !important;
+  }
+
+  .print-sheet {
+    display: block;
+    color: #111;
+    font-size: 9pt;
+    line-height: 1.25;
+  }
+
+  .print-sheet * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .p-header {
+    display: flex;
+    gap: 5mm;
+    align-items: stretch;
+    border-bottom: 1.2mm solid var(--red);
+    padding-bottom: 3mm;
+    margin-bottom: 3mm;
+  }
+
+  .p-portrait {
+    width: 28mm;
+    height: 34mm;
+    object-fit: cover;
+    border: 0.3mm solid #111;
+  }
+
+  .p-title {
+    flex: 1;
+  }
+
+  .p-brand {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 1pt;
+  }
+
+  .p-brand b {
+    color: var(--red);
+  }
+
+  .p-header h1 {
+    margin: 1mm 0 2mm;
+    font-size: 20pt;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  .p-section {
+    margin-bottom: 3mm;
+    break-inside: avoid;
+  }
+
+  .p-section h2 {
+    margin: 0 0 1.5mm;
+    padding: 0.8mm 2mm;
+    font-size: 10pt;
+    text-transform: uppercase;
+    letter-spacing: .5pt;
+    border-left: 1.5mm solid var(--red);
+    border-bottom: 0.3mm solid #111;
+  }
+
+  .p-section h2 small {
+    font-size: 7.5pt;
+    font-weight: 400;
+    text-transform: none;
+    color: #555;
+    margin-left: 2mm;
+  }
+
+  .p-page-break {
+    break-before: page;
+  }
+
+  .p-grid {
+    display: grid;
+    gap: 1.5mm 4mm;
+    margin-bottom: 1.5mm;
+  }
+
+  .p-grid-1 { grid-template-columns: 1fr; }
+  .p-grid-2 { grid-template-columns: 1fr 1fr; }
+  .p-grid-gear { grid-template-columns: 3fr 2fr; }
+  .p-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .p-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  .p-grid > .p-section {
+    margin-bottom: 0;
+  }
+
+  .p-field {
+    border-bottom: 0.2mm solid #999;
+    padding-bottom: 0.5mm;
+    min-height: 8mm;
+  }
+
+  .p-field span {
+    display: block;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    color: #666;
+  }
+
+  .p-field strong {
+    font-size: 9.5pt;
+  }
+
+  .p-stats {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 1.5mm;
+    margin-bottom: 1.5mm;
+  }
+
+  .p-stats-derived {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .p-stat {
+    border: 0.3mm solid #111;
+    text-align: center;
+    padding: 1mm 0.5mm;
+  }
+
+  .p-stat span {
+    display: block;
+    font-size: 7pt;
+    text-transform: uppercase;
+    color: #555;
+  }
+
+  .p-stat strong {
+    font-size: 13pt;
+  }
+
+  .p-derived strong {
+    font-size: 11pt;
+  }
+
+  .p-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+  }
+
+  .p-table th {
+    text-align: left;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    color: #555;
+    border-bottom: 0.3mm solid #111;
+    padding: 0.5mm 1mm;
+  }
+
+  .p-table td {
+    border-bottom: 0.2mm solid #bbb;
+    padding: 1mm;
+    vertical-align: top;
+    height: 5mm;
+  }
+
+  .p-weapons td:nth-child(n+4):nth-child(-n+8), .p-cyber td:last-child, .p-gear td:nth-child(2) {
+    white-space: nowrap;
+  }
+
+  .p-note {
+    min-height: 16mm;
+    white-space: normal;
+    border-bottom: 0.2mm solid #999;
+  }
+
+  .p-skill-columns {
+    columns: 3;
+    column-gap: 5mm;
+  }
+
+  .p-skill-group {
+    break-inside: avoid;
+    margin-bottom: 2mm;
+  }
+
+  .p-skill-group h3 {
+    margin: 0 0 0.5mm;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    color: var(--red);
+  }
+
+  .p-skills td {
+    height: auto;
+    padding: 0.4mm 0.8mm;
+    font-size: 7.5pt;
+  }
+
+  .p-skills td:nth-child(n+2) {
+    text-align: center;
+    white-space: nowrap;
+    width: 7mm;
+  }
+
+  .p-skills td:nth-child(2) {
+    width: 9mm;
+    color: #666;
+  }
+
+  .p-skills td:last-child {
+    font-weight: 700;
+  }
+
+  .p-skills tr.is-trained td:first-child {
+    font-weight: 700;
+  }
+
+  .p-wounds {
+    font-size: 9pt;
+    padding: 1mm 0;
+  }
+
+  /* Бланк: больше места для записей от руки. */
+  .p-blank .p-stat strong {
+    display: block;
+    min-height: 7mm;
+  }
+
+  .p-blank .p-field {
+    min-height: 9mm;
+  }
+
+  .p-blank .p-table td {
+    height: 6mm;
+  }
+
+  .p-blank .p-skills td {
+    height: 4.6mm;
+  }
+
+  .p-blank .p-skills td:nth-child(3), .p-blank .p-skills td:nth-child(4) {
+    border-left: 0.2mm solid #bbb;
+  }
+
+  .p-blank .p-skills small {
+    color: #888;
+    font-size: 6pt;
+  }
+
+  .p-blank .p-note {
+    min-height: 30mm;
+  }
+}
+
+/* === Команда корпората: карточки подчинённых === */
+.team-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  align-items: start;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.team-card {
+  border: 1px solid #d1ccc6;
+  border-left: 4px solid var(--red);
+  background: #fff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+/* Всё внутри карточки может сжиматься, чтобы карточка не вылезала за сетку. */
+.team-card, .team-card > *, .team-head > *, .team-meta > *, .team-stats label, .team-stats input,
+.vehicle-card > *, .vehicle-hp > *, .vehicle-stats > *, .vehicle-upgrades > * {
+  min-width: 0;
+}
+
+.team-card, .vehicle-card {
+  overflow: hidden;
+}
+
+.team-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-head .team-name {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-bottom: 2px solid var(--red);
+  background: transparent;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 3px 2px;
+  outline: 0;
+}
+
+.team-loyalty {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #777;
+  letter-spacing: .5px;
+}
+
+.team-loyalty input {
+  width: 44px;
+  border: 1px solid #bbb;
+  text-align: center;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  padding: 2px;
+}
+
+.team-head .weapon-btn {
+  margin: 0;
+}
+
+.team-meta {
+  display: grid;
+  grid-template-columns: 170px minmax(0,1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.team-meta select {
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 5px 0;
+  font-size: 12px;
+}
+
+.team-stats {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0,1fr));
+  gap: 4px;
+}
+
+.team-stats label {
+  display: grid;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #777;
+  gap: 2px;
+}
+
+.team-stats input {
+  width: 100%;
+  border: 1px solid #bbb;
+  text-align: center;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 3px 0;
+}
+
+.team-details summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--red);
+  letter-spacing: .5px;
+}
+
+.team-details p, .team-details ul {
+  margin: 6px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #444;
+}
+
+.team-details ul {
+  padding-left: 16px;
+}
+
+.team-card .grow-field {
+  display: block;
+  width: 100%;
+  min-height: 26px;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 5px 4px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  resize: none;
+  overflow: hidden;
+  outline: 0;
+  field-sizing: content;
+}
+
+@media(max-width:560px) {
+  .team-cards {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .team-meta {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .team-stats {
+    grid-template-columns: repeat(5, minmax(0,1fr));
+  }
+}
+
+/* Текстовые области на панелях растут вместе с текстом; высота по rows — минимальная. */
+.panel textarea, .portrait-card textarea {
+  field-sizing: content;
+}
+
+.panel textarea[rows="2"], .portrait-card textarea[rows="2"] { min-height: 3.6em; }
+.panel textarea[rows="3"] { min-height: 5em; }
+.panel textarea[rows="5"] { min-height: 8em; }
+.panel textarea[rows="10"] { min-height: 15em; }
+
+.life-basics .grow-field {
+  font-weight: 400;
+  text-transform: none;
+  min-height: 32px;
+  margin-top: 6px;
+  background: #f8f7f4;
+  border-bottom: 2px solid var(--red);
+  padding: 7px 5px;
+  font-size: 14px;
+}
+
+.session-panel .grow-field {
+  min-height: 36px;
+  padding: 8px;
+  margin-top: 5px;
+  font-size: 15px;
+}
+
+/* === Оружие на узком экране: каждая строка — карточка с подписями полей, кнопки всегда видны === */
+@media(max-width:1320px) {
+  .equipment-grid .weapon-table {
+    min-width: 0;
+  }
+
+  .weapon-table thead {
+    display: none;
+  }
+
+  .weapon-table, .weapon-table tbody {
+    display: block;
+  }
+
+  .weapon-table tr {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0,1fr));
+    gap: 6px 8px;
+    border: 1px solid #d1ccc6;
+    border-left: 4px solid var(--red);
+    padding: 8px;
+    margin-bottom: 10px;
+  }
+
+  .equipment-grid .weapon-table td {
+    display: block;
+    width: auto !important;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+  }
+
+  .weapon-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: #777;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* 1-я строка: оружие, тип, навык, урон, патроны; 2-я: магазин, ROF, авто, боеприпасы, заметки; затем кнопки */
+  .weapon-table td:nth-child(1), .weapon-table td:nth-child(2), .weapon-table td:nth-child(3), .weapon-table td:nth-child(9) {
+    grid-column: span 2;
+  }
+
+  .weapon-table td:nth-child(10) {
+    grid-column: span 3;
+  }
+
+  .weapon-table td:last-child {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}
+
+@media(max-width:560px) {
+  .weapon-table tr {
+    grid-template-columns: repeat(4, minmax(0,1fr));
+  }
+
+  .weapon-table td:nth-child(1), .weapon-table td:nth-child(10) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Многострочные ячейки таблиц: выглядят как обычные поля, но растут вместе с текстом. */
+.data-table .grow-field {
+  min-height: 26px;
+  background: transparent;
+  border-bottom: 1px solid #aaa;
+  padding: 5px 4px;
+  font-size: 12px;
+}
+
+.data-table td {
+  vertical-align: top;
+}
+
+.life-fields .grow-field {
+  min-height: 32px;
+  margin-top: 4px;
+  background: #f8f7f4;
+  border-bottom: 2px solid var(--red);
+  padding: 7px 5px;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: none;
+}
+
+/* Панель Сети: базовая атака Разрядом отдельно от функций интерфейса. */
+.net-attack {
+  border-left: 3px solid var(--red);
+  padding-left: 10px;
+  margin: 12px 0;
+}
+
+.net-block-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: #3b3a39;
+  margin-top: 8px;
+}
+
+.net-block-title small {
+  font-weight: 400;
+  color: #888;
+  letter-spacing: 0;
+  margin-left: 6px;
+}
+
+.net-attack .role-buttons {
+  margin: 6px 0 0;
+}
+
+/* === Боеприпасы === */
+.ammo-table select, .weapon-table td:nth-child(9) select {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  background: transparent;
+  padding: 4px 0;
+  font-size: 12px;
+  outline: 0;
+}
+
+.equipment-grid .ammo-table th:nth-child(1), .equipment-grid .ammo-table td:nth-child(1) { width: 190px; }
+.equipment-grid .ammo-table th:nth-child(2), .equipment-grid .ammo-table td:nth-child(2) { width: 170px; }
+.equipment-grid .ammo-table th:nth-child(3), .equipment-grid .ammo-table td:nth-child(3) { width: 70px; }
+.equipment-grid .ammo-table th:last-child, .equipment-grid .ammo-table td:last-child { width: 80px; }
+
+.ammo-table td:nth-child(3) input {
+  text-align: center;
+}
+
+.ammo-info {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.35;
+}
+
+.ammo-for {
+  display: block;
+  color: #999;
+  font-size: 11px;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.ammo-info small {
+  display: block;
+  color: #999;
+  font-size: 11px;
+}
+
+/* Боеприпасы на узком экране: калибр, тип и количество в строку, свойство — под ними. */
+@media(max-width:760px) {
+  .ammo-table thead {
+    display: none;
+  }
+
+  .ammo-table, .ammo-table tbody {
+    display: block;
+  }
+
+  .ammo-table tr {
+    display: grid;
+    grid-template-columns: minmax(0,2fr) minmax(0,2fr) minmax(0,1fr);
+    gap: 6px 8px;
+    border-bottom: 1px solid #d1ccc6;
+    padding: 8px 0;
+  }
+
+  .equipment-grid .ammo-table td {
+    display: block;
+    width: auto !important;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+  }
+
+  .ammo-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: #777;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .ammo-table td.ammo-info, .ammo-table td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .ammo-table td:last-child {
+    text-align: left;
+  }
+}
+
+/* Кнопки после броска: удача к результату, «ПОПАЛ / НЕ ПОПАЛ» у умных патронов */
+.roll-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 10px;
+}
+
+.roll-actions label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.roll-actions input {
+  width: 52px;
+}
+
+.roll-actions small {
+  color: #888;
+  font-size: 11px;
+}
+
+.formula-die.is-luck {
+  border-color: #2e8b57;
+  color: #2e8b57;
+}
+

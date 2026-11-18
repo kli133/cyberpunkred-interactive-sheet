@@ -23,15 +23,8 @@ const floorKinds = ['Пароль','Файл','Узел управления','�
 const netGenDefaults = netBookTables;
 const netGenTitles = {lobby:'Лобби (этажи 1–2)', ...Object.fromEntries(Object.entries(netDifficulties).map(([k,[name,dv]])=>[k, `${name} (СЛ ${dv})`]))};
 const AUTOFIRE_AMMO_COST = 10;
-
-const $ = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
-const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const d = sides => Math.floor(Math.random()*sides)+1;
+// $, $$, esc, d, now, isBlank, num — shared/dom.js
 const pick = list => list[Math.floor(Math.random()*list.length)];
-const now = () => new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-const num = value => Number(value) || 0;
-const isBlank = value => value === undefined || value === null || String(value).trim() === '';
 const signed = value => value >= 0 ? `+${value}` : `−${Math.abs(value)}`;
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -126,9 +119,9 @@ function persist(){
   saveTimer = null;
   try {
     localStorage.setItem(DM_KEY, JSON.stringify(state));
-    $('#saveStatus').textContent = 'СОХРАНЕНО '+now();
+    $('#saveStatus').textContent = t('СОХРАНЕНО') + ' ' + now();
   } catch {
-    $('#saveStatus').textContent = 'НЕ СОХРАНЕНО: ПЕРЕПОЛНЕНО ХРАНИЛИЩЕ';
+    $('#saveStatus').textContent = t('НЕ СОХРАНЕНО: ПЕРЕПОЛНЕНО ХРАНИЛИЩЕ');
   }
 }
 const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(persist, 300); };
@@ -165,45 +158,23 @@ function condition(e){
 const enemyName = (e, i = state.enemies.indexOf(e)) => e.name.trim() || `Противник ${i + 1}`;
 const enemyById = id => state.enemies.find(e=>e.id === id);
 
-// --- Критические травмы противника ---
-// Травмы хранятся строками в e.injuries; правило находится по названию из книги или прежнему названию листа.
-const zoneLabels = {Body:'тело', Head:'голова'};
-function parseInjury(line){
-  const p = plain(line);
-  const zones = /\(голов/.test(p) ? ['Head', 'Body'] : ['Body', 'Head'];
-  for(const zone of zones){
-    const k = criticalInjuries[zone].findIndex((name, idx)=>p.startsWith(plain(name)) || p.startsWith(plain(injuryRules[zone][idx].old)));
-    if(k >= 0) return {line, zone, k, name:criticalInjuries[zone][k], rule:injuryRules[zone][k]};
-  }
-  return {line};
-}
-const enemyInjuries = e => e.injuries.split('\n').map(line=>line.trim()).filter(Boolean).map(parseInjury);
+// --- Критические травмы противника (shared/injuries.js) ---
+const plain = plainInjuryText;
+const zoneLabels = injuryZoneLabels;
+const parseInjury = parseInjuryLine;
+const enemyInjuries = e => String(e.injuries || '').split('\n').map(line=>line.trim()).filter(Boolean).map(parseInjuryLine);
 const hasInjury = (e, zone, k) => enemyInjuries(e).some(inj=>inj.zone === zone && inj.k === k);
-// Сумма эффектов всех травм: штрафы складываются, «не может уклоняться» и множитель головы — по худшей.
-function injuryMods(e){
-  const total = {all:0, ranged:0, melee:0, move:0, death:0, noDodge:false, headMult:2};
-  enemyInjuries(e).forEach(({rule})=>{
-    if(!rule) return;
-    const m = rule.mods;
-    ['all','ranged','melee','move','death'].forEach(k=>{ total[k] += num(m[k]); });
-    if(m.noDodge) total.noDodge = true;
-    if(m.headMult) total.headMult = Math.max(total.headMult, m.headMult);
-  });
-  return total;
-}
+const injuryMods = e => aggregateInjuryMods(enemyInjuries(e));
 function addInjury(e, zone, k, rolled){
-  const injury = `${criticalInjuries[zone][k]} (${zoneLabels[zone]}${rolled ? `, 2d6 = ${rolled}` : ''})`;
-  e.injuries = [e.injuries.trim(), injury].filter(Boolean).join('\n');
+  const injury = formatInjuryLine(zone, k, rolled);
+  e.injuries = [String(e.injuries || '').trim(), injury].filter(Boolean).join('\n');
   return injury;
 }
-// Бросок 2d6 по таблице повторяется, пока не выпадет травма, которой у цели ещё нет (стр. 187).
-function rollInjury(e, zone){
-  for(let tries = 0; tries < 50; tries++){
-    const r = d(6) + d(6);
-    if(!hasInjury(e, zone, r - 2)) return addInjury(e, zone, r - 2, r);
-  }
-  return 'все травмы этой зоны уже есть';
-}
+const rollInjury = (e, zone) => rollUniqueInjury(
+  (z, k) => hasInjury(e, z, k),
+  (z, k, rolled) => addInjury(e, z, k, rolled),
+  zone
+);
 // Штраф к броску противника: ранение, травмы, захват; kind — 'ranged' или 'melee' для травм глаз и мышц.
 function checkPenalty(e, kind = ''){
   const m = injuryMods(e);
@@ -230,7 +201,7 @@ const weaponProps = w => exoticWeapons[w[6]]?.[8] || {};
 const autofireMult = w => weaponType(w) ? num(weaponType(w)[5]) : num(w[8]);
 const isMelee = w => /Оружие ближнего боя|Рукопашный/.test(weaponType(w)?.[1] || '');
 const canShell = w => w[6] === 'shotgun' || w[6] === 'hurricane';
-const SHELL_DV = 13; // дробь и огнемёт: атака против СЛ 13 (стр. 174)
+// SHELL_DV — в shared/data.js (дробь и огнемёт против СЛ 13, стр. 174)
 // DV атаки: ручное значение карточки или таблица по дистанции; null — DV неизвестен, NaN — вне дальности.
 function attackDv(e, w, auto){
   if(!isBlank(e.dv)) return num(e.dv);
@@ -289,7 +260,7 @@ function addLog(entry){
 }
 function renderLog(){
   const html = state.log.map(item=>`<div><small>${esc(item.time)}</small> ${logLine(item)}</div>`).join('');
-  $('#dashboardLog').innerHTML = html || 'Пока нет бросков.';
+  $('#dashboardLog').innerHTML = html || t('Пока нет бросков.');
   $('#diceLog').innerHTML = html;
 }
 
@@ -428,28 +399,42 @@ $('#modDialog')?.addEventListener('input', enemyModEvent);
 // --- Урон ---
 // Зоны попадания: тело, голова, и прицельные выстрелы −8 (стр. 170) в ногу и в предмет в руке — урон идёт в тело.
 const hitZones = [['Body','Тело'], ['Head','Голова ×2'], ['Leg','Нога (прицельно)'], ['Hand','Предмет в руке (прицельно)']];
-// Вид урона: как броня его останавливает.
-const damageKinds = [['','обычный'], ['melee','ближний: SP/2'], ['ap11','броня < 11 не держит'], ['ignore','мимо брони'], ['nonlethal','несмертельный']];
+// Вид урона: как броня его останавливает; патроны — AP / резина / экспансивные / зажигательные.
+const damageKinds = [
+  ['','обычный'], ['melee','ближний: SP/2'], ['ap','бронебойные: SP −2'], ['ap11','броня < 11 не держит'],
+  ['ignore','мимо брони'], ['nonlethal','несмертельный'], ['rubber','резиновые'], ['expansive','экспансивные'], ['incendiary','зажигательные']
+];
 const LEG_BREAK = 6, LEG_LOST = 10; // индексы «Перелом ноги» и «Оторванная нога» в таблице тела
 // Урон по одному противнику, возвращает строку для журнала. attack — урон от атаки (у смертельно раненого — новая травма).
 function damageEnemy(e, damage, zone, kind, crit, attack = true){
   const head = zone === 'Head';
   const spKey = head ? 'headSp' : 'bodySp';
   const sp = num(e[spKey]);
-  const effectiveSp = kind === 'melee' ? Math.ceil(sp/2) : kind === 'ignore' || (kind === 'ap11' && sp < 11) ? 0 : sp;
   const mult = head ? injuryMods(e).headMult : 1;
-  let through = Math.max(0, damage - effectiveSp) * mult;
+  let {effectiveSp, soft, ablate, through} = resolvePenetratingDamage({damage, sp, kind, headMult: mult});
   const wasMortal = condition(e).key === 'mortal';
   const parts = [];
-  // Несмертельное и «мимо брони» броню не портят (стр. 186, 349).
-  if(through > 0 && sp > 0 && kind !== 'ignore' && kind !== 'nonlethal'){ e[spKey] = String(sp - 1); parts.push(`SP ${sp} → ${sp - 1}`); }
+  if(through > 0 && sp > 0 && ablate > 0){
+    const next = Math.max(0, sp - ablate);
+    e[spKey] = String(next);
+    const note = ablationNote(sp, next, ablate);
+    if(note) parts.push(note);
+  }
   if(through > 0 && zone === 'Hand') parts.push('роняет предмет из рук');
+  if(through > 0 && kind === 'incendiary'){
+    if(num(e.status.fire) < 2) e.status.fire = 2;
+    parts.push('горит: слабо (2) — зажигательные');
+  }
   const injuries = [];
-  if(kind !== 'nonlethal'){
+  if(!soft){
     // Прицельно в ногу: «Перелом ноги», если у цели ещё есть целая нога.
     const legsGone = enemyInjuries(e).filter(inj=>inj.zone === 'Body' && (inj.k === LEG_BREAK || inj.k === LEG_LOST)).length;
     if(through > 0 && zone === 'Leg' && legsGone < 2) injuries.push(addInjury(e, 'Body', LEG_BREAK));
     if(crit) injuries.push(rollInjury(e, head ? 'Head' : 'Body'));
+    // Экспансивные: при пробитии — «Инородное тело», если этой травмы ещё нет (стр. 345).
+    if(through > 0 && kind === 'expansive' && !hasInjury(e, head ? 'Head' : 'Body', FOREIGN_BODY_INJURY)){
+      injuries.push(addInjury(e, head ? 'Head' : 'Body', FOREIGN_BODY_INJURY));
+    }
     // Смертельно раненый от каждой атаки получает новую травму, штраф испытания смерти +1 (стр. 188).
     if(wasMortal && attack && through > 0 && kind !== 'ignore'){
       injuries.push(rollInjury(e, head ? 'Head' : 'Body'));
@@ -460,12 +445,12 @@ function damageEnemy(e, damage, zone, kind, crit, attack = true){
   if(injuries.length){ through += CRITICAL_BONUS_DAMAGE * injuries.length; parts.push(`крит. травма: ${injuries.join(', ')} (+${CRITICAL_BONUS_DAMAGE * injuries.length})`); }
   const before = curHp(e);
   let after = Math.max(0, before - through);
-  if(kind === 'nonlethal' && after < 1 && through > 0){ after = Math.min(before, 1); e.status.unconscious = true; parts.push('без сознания'); }
+  if(soft && after < 1 && through > 0){ after = Math.min(before, 1); e.status.unconscious = true; parts.push('без сознания'); }
   e.hp = String(after);
   const c = condition(e);
   const where = {Head:'голову', Leg:'ногу', Hand:'руку'}[zone] || 'тело';
   if(through <= 0) return `${enemyName(e)}: ${damage} в ${where} остановлено бронёй (SP ${effectiveSp}).`;
-  return [`${enemyName(e)}: ${damage} в ${where} (SP ${effectiveSp}${mult > 2 ? `, голова ×${mult}` : ''}) → −${kind === 'nonlethal' ? before - after : through} ХИТ, ${before} → ${e.hp}/${maxHp(e)}`, ...parts, c.key === 'ok' ? '' : c.label].filter(Boolean).join('. ');
+  return [`${enemyName(e)}: ${damage} в ${where} (SP ${effectiveSp}${mult > 2 ? `, голова ×${mult}` : ''}) → −${soft ? before - after : through} ХИТ, ${before} → ${e.hp}/${maxHp(e)}`, ...parts, c.key === 'ok' ? '' : c.label].filter(Boolean).join('. ');
 }
 // Урон мимо брони без атаки: огонь, удушье (стр. 180).
 function directDamage(e, amount, why){
@@ -557,7 +542,7 @@ const rangeSelect = (i, e) => `<select data-e="${i}" data-f="range" aria-label="
 const hitControls = (i, c, full) => `
   <input type="number" min="0" data-hit="damage" placeholder="урон" aria-label="Урон">
   <select data-hit="zone" aria-label="Зона" title="Нога: при пробитии брони — «Перелом ноги». Предмет в руке: цель роняет его. Прицельный выстрел стрелок делает с −8">${options(full ? hitZones : hitZones.slice(0, 2), 'Body')}</select>
-  ${full ? `<select data-hit="kind" aria-label="Вид урона" title="Ближний: SP/2. Броня ниже 11 не держит: Mono-Three, рельсотрон. Мимо брони: яд, огонь, удушение. Несмертельный: тазер, дубинка-шокер">${options(damageKinds, '')}</select>
+  ${full ? `<select data-hit="kind" aria-label="Вид урона" title="Ближний: SP/2. AP: броня −2. Резина: без травм и абляции, минимум 1 ПЗ. Экспансивные: «Инородное тело». Зажигательные: горит (2). Броня &lt; 11 / мимо брони / несмертельный — как в книге">${options(damageKinds, '')}</select>
   <label title="Две шестёрки на кубиках урона: травма 2d6 и +5 урона"><input type="checkbox" data-hit="crit"> крит</label>` : ''}
   <button type="button" class="quick-roll" data-act="hit" data-i="${i}">ПОПАДАНИЕ</button>
   ${full ? `<button type="button" class="weapon-btn" data-act="heal" data-i="${i}" title="Вылечить на число из поля «урон» (пусто — полностью)">ЛЕЧИТЬ</button>` : ''}
@@ -1069,7 +1054,7 @@ function renderTemplates(){
 }
 
 // --- Сеть ---
-const plain = text => text.toLowerCase().replace(/ё/g, 'е').trim();
+// plain — alias plainInjuryText выше (shared/injuries.js).
 // Заполнить строку этажа ЛЬДОМ или Демоном из книги: тип, статы с эффектом, REZ.
 function setFloorIce(f, key){ const ice = blackIce[key]; f[2] = 'Чёрный ЛЁД'; f[3] = ''; f[4] = iceText(ice); f[5] = f[6] = String(ice[6]); }
 function setFloorDemon(f, key){ const dm = demons[key]; f[2] = 'Демон'; f[3] = ''; f[4] = demonFloorText(dm); f[5] = f[6] = String(dm[1]); }

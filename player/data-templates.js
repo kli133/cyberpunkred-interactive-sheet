@@ -291,6 +291,14 @@ const streetratPrograms = {
   netrunner: ['armor','sword','seeYa','sword','worm']
 };
 
+// Очки специальностей ранга 4 (книга: распределить самому; здесь — рабочий пресет под шаблон).
+// Solo: 4 очка. Tech: 8 очков (2 за ранг). Medtech: 4 очка.
+const streetratRolePts = {
+  solo: {initiative:1, weakness:2, threat:1},
+  tech: {field:2, upgrade:2, fabrication:2, invention:2},
+  medtech: {surgery:2, pharma:1, cryo:1}
+};
+
 const streetratRoleLabels = {
   rockerboy:'Рокербой', solo:'Соло', netrunner:'Нетраннер', tech:'Техник', medtech:'Медтехник',
   media:'Медиа', lawman:'Законник', exec:'Корпорат', fixer:'Фиксер', nomad:'Кочевник'
