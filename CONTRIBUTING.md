@@ -3,6 +3,8 @@
 Спасибо, что хотите улучшить интерактивный лист *Cyberpunk RED*.
 Проект на обычных HTML, CSS и JavaScript — без сборки и зависимостей.
 
+Документация: [README.md](README.md) (русский) · [README.en.md](README.en.md) (English).
+
 ## Перед началом
 
 1. Откройте [Issues](https://github.com/kli133/cyberpunkred-interactive-sheet-rus/issues) —
